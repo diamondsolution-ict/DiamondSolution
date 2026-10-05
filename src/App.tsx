@@ -16,6 +16,7 @@ import AccountSettings from "@/pages/AccountSettings";
 import PaymentHistory from "@/pages/PaymentHistory";
 import Reactivation from "@/pages/Reactivation";
 import { ChatsComingSoon } from "@/pages/ComingSoon";
+import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminCourses from "@/pages/admin/AdminCourses";
 import AdminQuestions from "@/pages/admin/AdminQuestions";
@@ -49,6 +50,7 @@ export default function App() {
         </Route>
 
         <Route element={<AdminRoute />}>
+          <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/departments" element={<AdminDepartments />} />
           <Route path="/admin/courses" element={<AdminCourses />} />
           <Route

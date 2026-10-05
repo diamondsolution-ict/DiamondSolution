@@ -70,6 +70,7 @@ supabase functions deploy request-payout
 supabase functions deploy request-otp
 supabase functions deploy verify-otp
 supabase functions deploy change-password
+supabase functions deploy admin-manage-user
 ```
 
 (`_shared/` is bundled automatically into each function — no separate deploy step for it.)

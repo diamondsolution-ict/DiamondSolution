@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { DiamondLogo } from "@/components/DiamondLogo";
 
 const TABS = [
+  { to: "/admin/users", label: "Users" },
   { to: "/admin/departments", label: "Departments" },
   { to: "/admin/courses", label: "Courses" },
   { to: "/admin/payments", label: "Transactions" },

@@ -77,17 +77,25 @@ top of it.
       password-change (`change-password`); the admin-dashboard step-up gate itself (locking
       the whole `/admin` shell behind a code, not just this plumbing) is still open — see
       Phase 4's admin-tabs item below.
-- [ ] Admin security-clearance gate — the admin-side consumer of the OTP implementation above
-      (lock screen in front of `/admin`, reused for every destructive admin action). The
-      shared plumbing is done; this is wiring it into the admin shell itself.
+- [x] Admin security-clearance gate, as a reusable `StepUpModal` component wired into the
+      Users tab's suspend/role-change/delete actions via `admin-manage-user`. (The old app also
+      had a separate, independent "local PIN lock screen re-checked every mount" gate in front
+      of the whole `/admin` shell — FUNCTIONAL_SPEC.md §20.1 — which is a different mechanism
+      from the step-up-per-action OTP; not reproduced, since a plaintext-stored PIN was exactly
+      the kind of "security costume" 03-BUSINESS-RULES-REDESIGN.md calls out elsewhere, and
+      `AdminRoute`'s role check already gates entry to `/admin` for real.)
+- [x] Admin Users tab (`/admin/users`): search/filter, suspend/unsuspend + role change + delete
+      (step-up gated), approve-affiliate-partner (not gated, matches old behavior), add user,
+      CSV export.
 - [x] Student-facing account pages: Profile (`/profile`), Account Settings (`/account` —
       identity edit + password change), Payment History (`/payments`), and the general-
       suspension Reactivation flow (`/reactivation`, FUNCTIONAL_SPEC.md §9.1 only — §9.2's
       device-blocked sub-flow is intentionally not reproduced, see
       `03-BUSINESS-RULES-REDESIGN.md` §2).
-- [ ] Remaining admin tabs from the old app not yet built here: Users, Affiliates, Analytics,
-      Media/Pictures, admin-side Notifications, Quotes, Support, System Logs, Settings,
-      WhatsApp Numbers (the last one deferred with chat, same reasoning as below).
+- [ ] Remaining admin tabs from the old app not yet built here: Affiliates, Analytics,
+      Media/Pictures, admin-side Notifications, Quotes, Support, System Logs (mostly covered
+      already by `/admin/audit-log`), Settings, WhatsApp Numbers (the last one deferred with
+      chat, same reasoning as below).
 - [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
 
 ## Phase 5 — Device/session policy, MFA, hardening
