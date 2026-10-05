@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -234,6 +236,10 @@ export default function AdminUsers() {
           <button onClick={exportCsv} className="btn-outline">
             Export CSV
           </button>
+          <Link to="/admin/whatsapp-numbers" className="btn-secondary">
+            <MessageCircle size={16} />
+            WhatsApp Numbers
+          </Link>
           <button
             onClick={() => setShowAddUser(true)}
             className="btn-primary"

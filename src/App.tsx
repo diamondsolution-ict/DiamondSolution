@@ -20,6 +20,9 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminAffiliates from "@/pages/admin/AdminAffiliates";
 import { AdminComingSoon } from "@/pages/admin/AdminComingSoon";
+import AdminWhatsAppNumbers from "@/pages/admin/AdminWhatsAppNumbers";
+import AdminNotifications from "@/pages/admin/AdminNotifications";
+import AdminAnalytics from "@/pages/admin/AdminAnalytics";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminCourses from "@/pages/admin/AdminCourses";
 import AdminQuestions from "@/pages/admin/AdminQuestions";
@@ -71,25 +74,13 @@ export default function App() {
           <Route path="/admin/audit-log" element={<AdminAuditLog />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
 
-          {/* Shells matching the sidebar's full tab set — content not built yet. */}
           <Route
             path="/admin/whatsapp-numbers"
-            element={
-              <AdminComingSoon
-                title="WhatsApp Numbers"
-                description="A dedicated contact-extraction directory for broadcast/outreach is on the way."
-              />
-            }
+            element={<AdminWhatsAppNumbers />}
           />
-          <Route
-            path="/admin/analytics"
-            element={
-              <AdminComingSoon
-                title="Analytics"
-                description="Revenue history, payout history, and engagement analytics charts are on the way."
-              />
-            }
-          />
+
+          {/* Shells matching the sidebar's full tab set — content not built yet. */}
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route
             path="/admin/questions"
             element={
@@ -108,15 +99,7 @@ export default function App() {
               />
             }
           />
-          <Route
-            path="/admin/notifications"
-            element={
-              <AdminComingSoon
-                title="Notifications"
-                description="Broadcasting an announcement to every student is on the way."
-              />
-            }
-          />
+          <Route path="/admin/notifications" element={<AdminNotifications />} />
           <Route
             path="/admin/support"
             element={

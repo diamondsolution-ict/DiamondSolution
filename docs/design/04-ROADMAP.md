@@ -121,11 +121,25 @@ top of it.
       dashboard-style pages (Dashboard, the department browser) so they use the extra desktop
       width instead of staying pinned to the mobile card measure; everything else (forms,
       lists) stays at a readable width rather than stretching edge-to-edge.
-- [ ] Remaining admin tabs with no content yet (shells exist in the sidebar, see above):
-      Analytics, Media/Pictures, admin-side Notifications (broadcast), Support, System Logs
-      (mostly covered already by `/admin/audit-log`), WhatsApp Numbers (deferred with chat,
-      same reasoning as below), a top-level Questions browser (department-filtered course/
-      question list — question management itself already exists per-course via Departments).
+- [x] Admin WhatsApp Numbers tab (`/admin/whatsapp-numbers`): contact directory off
+      `profiles.whatsapp`/`phone`, search, copy-one/copy-all, CSV export, per-row wa.me chat
+      link. No new schema — profiles' existing staff-read RLS already covers it.
+- [x] Admin Notifications (broadcast) tab (`/admin/notifications`): compose → fans out to
+      every user's own `notifications` row (same bell/dropdown, zero client changes) via a new
+      `broadcast_notification()` RPC, with one `admin_broadcasts` row per send as the
+      compose-history record. "Revoke Log" deletes the history row only — matches the old
+      app's actual behavior exactly (it never un-notified anyone already fanned out to either).
+- [x] Admin Analytics tab (`/admin/analytics`), the parts this schema can support: KPI row,
+      12-month revenue history bar chart, Most Active Scholars (7d/30d/90d, from
+      `daily_practice_stats`) via three new RPCs. Visit Frequency/Peak Hours is explicitly
+      NOT built — it needs `login_events` from Phase 5's device/session work, which doesn't
+      exist yet; the tab says so rather than faking a chart with zeros.
+- [ ] Remaining admin tabs with no content yet (shells exist in the sidebar): Media/Pictures
+      (needs Supabase Storage integration — the one real infrastructure lift left), Support
+      (needs chat itself, deferred together per Phase 4's existing reasoning), System Logs
+      (mostly covered already by `/admin/audit-log`), a top-level Questions browser
+      (department-filtered course/question list — question management itself already exists
+      per-course via Departments).
 - [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
 
 ## Phase 5 — Device/session policy, MFA, hardening
