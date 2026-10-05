@@ -31,15 +31,17 @@ usually `eu-west` or similar — check the lowest-latency option Supabase offers
 ```bash
 cd diamondsolution
 supabase link --project-ref <your-project-ref>
-supabase db push             # applies all 7 migrations, in order, to the live project
+supabase db push             # applies all 10 migrations, in order, to the live project
 ```
 
 This creates every table, RLS policy, and function from scratch — `profiles`, `departments`,
 `courses`, `questions`, `payments`, `access_grants`, `study_progress`, `question_attempts`,
-`daily_practice_stats`, the affiliate/referral/payout tables, `notifications`, and all their
-RLS policies and helper functions (`is_admin()`, `leaderboard()`, `record_question_attempt()`,
-etc.). Since no real users exist on the live project yet, this is a clean push — nothing to
-migrate or backfill.
+`daily_practice_stats`, the affiliate/referral/payout tables, `notifications`,
+`admin_actions_log`, `security_otp_tokens`, `rate_limit_hits`, `quotes`,
+`institutional_links`, and all their RLS policies and helper functions (`is_admin()`,
+`leaderboard()`, `record_question_attempt()`, `admin_list_emails()`,
+`admin_activate_affiliate()`, etc.). Since no real users exist on the live project yet, this is
+a clean push — nothing to migrate or backfill.
 
 ## 4. Set Edge Function secrets
 
