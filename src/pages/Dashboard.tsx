@@ -257,7 +257,7 @@ export default function Dashboard() {
       : 0;
 
   return (
-    <Layout title="Dashboard">
+    <Layout title="Dashboard" wide>
       <div className="diamond-gradient card-luxury p-5 text-white">
         <div className="flex items-center gap-2">
           <DiamondLogo size={22} variant="white" layout="icon" />
@@ -316,7 +316,7 @@ export default function Dashboard() {
         <h2 className="font-heading text-sm font-bold text-text-1">
           Study analytics
         </h2>
-        <div className="mt-2 grid grid-cols-2 gap-2">
+        <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
           <Stat label="Time spent (7d)" value={`${weekTimeSpentMinutes}m`} />
           <Stat label="Attempted (7d)" value={weekAttempted} />
           <Stat label="Correct answers" value={weekCorrect} />

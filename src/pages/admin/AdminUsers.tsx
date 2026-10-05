@@ -272,114 +272,151 @@ export default function AdminUsers() {
         </p>
       )}
 
-      <div className="mt-4 space-y-3">
+      <div className="card-luxury mt-4 overflow-x-auto">
         {loading ? (
-          <p className="text-sm text-text-3">Loading…</p>
+          <p className="p-4 text-sm text-text-3">Loading…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-text-3">No users match.</p>
+          <p className="p-4 text-sm text-text-3">No users match.</p>
         ) : (
-          filtered.map((u) => {
-            const isSelf = u.user_id === currentUser?.id;
-            const role = roles[u.user_id] ?? "student";
-            const isPartner = affiliateStatus[u.user_id] === "active";
-            const rowBusy = busyId === u.user_id;
+          <table className="w-full min-w-[840px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-canvas-border bg-canvas-soft text-[10px] font-bold uppercase tracking-wide text-text-3">
+                <th className="px-4 py-3 font-bold">Scholar Profile</th>
+                <th className="px-4 py-3 font-bold">Institutional Dept</th>
+                <th className="px-4 py-3 font-bold">Role</th>
+                <th className="px-4 py-3 font-bold">Affiliate Status</th>
+                <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 font-bold">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-canvas-border">
+              {filtered.map((u) => {
+                const isSelf = u.user_id === currentUser?.id;
+                const role = roles[u.user_id] ?? "student";
+                const isPartner = affiliateStatus[u.user_id] === "active";
+                const rowBusy = busyId === u.user_id;
 
-            return (
-              <div key={u.user_id} className="card-luxury p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-heading font-bold text-text-1">
-                      {u.display_name || "Unnamed"}
-                      {u.username && (
-                        <span className="ml-2 font-mono text-xs text-royal">
-                          @{u.username}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-text-3">
-                      {emails[u.user_id] ?? "—"}
-                    </p>
-                    <p className="mt-1 text-xs text-text-3">
-                      {u.university || "No university set"} ·{" "}
-                      {u.whatsapp || u.phone || "no contact"}
-                    </p>
-                    {u.status === "suspended" && (
-                      <p className="mt-1 text-xs font-semibold text-rose-600">
-                        Suspended: {u.suspension_reason || "No reason given"}
+                return (
+                  <tr key={u.user_id} className="align-top">
+                    <td className="px-4 py-3">
+                      <p className="font-heading font-bold text-text-1">
+                        {u.display_name || "Unnamed"}
                       </p>
-                    )}
-                  </div>
-
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {!isPartner && (
-                      <button
-                        onClick={() => void approvePartner(u.user_id)}
-                        disabled={rowBusy}
-                        className="btn-secondary px-3 py-1.5 text-xs"
-                      >
-                        Approve Partner
-                      </button>
-                    )}
-                    <select
-                      value={role}
-                      disabled={isSelf || rowBusy}
-                      onChange={(e) =>
-                        setPending({
-                          type: "change_role",
-                          userId: u.user_id,
-                          newRole: e.target.value as Role,
-                        })
-                      }
-                      className="rounded-xl border border-canvas-border bg-white px-2 py-1.5 text-xs disabled:opacity-50"
-                    >
-                      <option value="student">Student</option>
-                      <option value="moderator">Moderator</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                    {u.status === "suspended" ? (
-                      <button
-                        onClick={() =>
-                          setPending({ type: "unsuspend", userId: u.user_id })
-                        }
+                      {u.username && (
+                        <p className="font-mono text-xs text-royal">
+                          @{u.username}
+                        </p>
+                      )}
+                      <p className="text-xs text-text-3">
+                        {emails[u.user_id] ?? "—"}
+                      </p>
+                      <p className="text-xs text-text-3">
+                        {u.whatsapp || u.phone || "no contact"}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-xs font-semibold uppercase text-text-2">
+                        {u.university || "No university set"}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={role}
                         disabled={isSelf || rowBusy}
-                        className="btn-secondary px-3 py-1.5 text-xs disabled:opacity-50"
-                      >
-                        Unsuspend
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          const reason =
-                            window.prompt(
-                              "Reason for suspension?",
-                              "Suspended by administrator.",
-                            ) ?? "";
+                        onChange={(e) =>
                           setPending({
-                            type: "suspend",
+                            type: "change_role",
                             userId: u.user_id,
-                            reason,
-                          });
-                        }}
-                        disabled={isSelf || rowBusy}
-                        className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                            newRole: e.target.value as Role,
+                          })
+                        }
+                        className="rounded-xl border border-canvas-border bg-white px-2 py-1.5 text-xs disabled:opacity-50"
                       >
-                        Suspend
-                      </button>
-                    )}
-                    <button
-                      onClick={() =>
-                        setPending({ type: "delete", userId: u.user_id })
-                      }
-                      disabled={isSelf || rowBusy}
-                      className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+                        <option value="student">Student</option>
+                        <option value="moderator">Moderator</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      {isPartner ? (
+                        <span className="badge-royal">Active</span>
+                      ) : (
+                        <button
+                          onClick={() => void approvePartner(u.user_id)}
+                          disabled={rowBusy}
+                          className="btn-secondary px-3 py-1.5 text-xs"
+                        >
+                          Approve Partner
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={
+                          u.status === "suspended"
+                            ? "inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700"
+                            : "inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"
+                        }
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${u.status === "suspended" ? "bg-rose-500" : "bg-emerald-500"}`}
+                        />
+                        {u.status === "suspended" ? "Suspended" : "Active"}
+                      </span>
+                      {u.status === "suspended" && (
+                        <p className="mt-1 max-w-[160px] text-[11px] text-rose-600">
+                          {u.suspension_reason || "No reason given"}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {u.status === "suspended" ? (
+                          <button
+                            onClick={() =>
+                              setPending({ type: "unsuspend", userId: u.user_id })
+                            }
+                            disabled={isSelf || rowBusy}
+                            className="btn-secondary px-2.5 py-1 text-xs disabled:opacity-50"
+                          >
+                            Unsuspend
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              const reason =
+                                window.prompt(
+                                  "Reason for suspension?",
+                                  "Suspended by administrator.",
+                                ) ?? "";
+                              setPending({
+                                type: "suspend",
+                                userId: u.user_id,
+                                reason,
+                              });
+                            }}
+                            disabled={isSelf || rowBusy}
+                            className="rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                          >
+                            Suspend
+                          </button>
+                        )}
+                        <button
+                          onClick={() =>
+                            setPending({ type: "delete", userId: u.user_id })
+                          }
+                          disabled={isSelf || rowBusy}
+                          className="rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 

@@ -102,9 +102,30 @@ top of it.
       social links). Deliberately does NOT include the broader `app_settings` key-value table
       from the design doc's sketch — see that migration's header comment for why bundling it
       now would be worse than the honest hardcoded-with-a-comment state.
-- [ ] Remaining admin tabs from the old app not yet built here: Analytics, Media/Pictures,
-      admin-side Notifications (broadcast), Support, System Logs (mostly covered already by
-      `/admin/audit-log`), WhatsApp Numbers (deferred with chat, same reasoning as below).
+- [x] Admin Dashboard/"Overview" tab (`/admin/dashboard`, now the sidebar's landing page):
+      6 stat cards, Recent Payments, Revenue Breakdown — via two narrow security-definer
+      aggregates (`admin_dashboard_stats()`, `admin_revenue_by_department()`) rather than
+      client-side summation, which would silently undercount past whatever row limit a plain
+      query used. Two of the old app's 7 stats aren't reproduced (see that migration's header
+      comment for why: "Pending Affiliates" doesn't exist in this schema's model, "Support
+      Queries" has nothing to count until chat is built).
+- [x] Full admin shell redesign to match the old app's actual look: a left sidebar (grouped
+      Main/Finance/Content nav with icons) on desktop, collapsing to an off-canvas drawer on
+      mobile (`AdminLayout.tsx`). Every existing admin page inherits this automatically.
+      Nav entries exist for every old-app tab, including ones with no content yet (Analytics,
+      Media/Pictures, admin-side Notifications/broadcast, Support, WhatsApp Numbers, a
+      top-level Questions browser) — those render `AdminComingSoon` rather than a dead link or
+      a missing nav item, so the shell is honest about what's built vs. not.
+- [x] Student-facing desktop layout: `Layout.tsx` gained a persistent top nav bar (shown only
+      at `md:` and up — the bottom tab bar stays mobile-only) and an opt-in `wide` prop for
+      dashboard-style pages (Dashboard, the department browser) so they use the extra desktop
+      width instead of staying pinned to the mobile card measure; everything else (forms,
+      lists) stays at a readable width rather than stretching edge-to-edge.
+- [ ] Remaining admin tabs with no content yet (shells exist in the sidebar, see above):
+      Analytics, Media/Pictures, admin-side Notifications (broadcast), Support, System Logs
+      (mostly covered already by `/admin/audit-log`), WhatsApp Numbers (deferred with chat,
+      same reasoning as below), a top-level Questions browser (department-filtered course/
+      question list — question management itself already exists per-course via Departments).
 - [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
 
 ## Phase 5 — Device/session policy, MFA, hardening

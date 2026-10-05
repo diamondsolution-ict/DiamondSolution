@@ -102,7 +102,7 @@ export default function Profile() {
 
       {isAdmin && (
         <button
-          onClick={() => navigate("/admin/departments")}
+          onClick={() => navigate("/admin/dashboard")}
           className="btn-primary mt-4 flex w-full items-center justify-center gap-2"
         >
           <Shield size={16} />

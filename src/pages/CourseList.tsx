@@ -157,8 +157,8 @@ export default function CourseList() {
 
   if (!departmentId) {
     return (
-      <Layout title="Departments">
-        <div className="space-y-3">
+      <Layout title="Departments" wide>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {departments.map((d) => {
             const granted = grantedDepartmentIds.has(d.id);
             return (

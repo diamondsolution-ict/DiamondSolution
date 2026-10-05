@@ -25,7 +25,7 @@ export default function AdminLogin() {
     }
 
     if (isAdmin || isModerator) {
-      navigate("/admin/departments");
+      navigate("/admin/dashboard");
       return;
     }
 
