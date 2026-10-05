@@ -145,8 +145,11 @@ Netlify setup — that was these variables being unset, and `src/main.tsx` now s
 
 ## 11. Seed real content
 
-Through the now-unlocked `/admin` screens: create at least one department (with
-`department_pricing`), a course, and either hand-enter questions or use the CSV import on the
+Run `supabase/seed/01-departments.sql` then `supabase/seed/02-courses.sql` (same manual
+SQL-Editor-or-`psql -f` process as step 10's admin bootstrap) to populate the five real
+departments/pricing and their course catalog from the old app, so `/register` and `/courses`
+aren't empty. These are catalog entries only — no questions yet. Then, through the now-unlocked
+`/admin` screens: either hand-enter questions per course or use the CSV import on the
 Questions tab if you have the old app's exported question bank.
 
 ## 12. End-to-end smoke test (Paystack test mode)

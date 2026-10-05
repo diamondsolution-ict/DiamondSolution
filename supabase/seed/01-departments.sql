@@ -6,8 +6,11 @@
 -- same way `00-bootstrap-admin.sql` is run (Supabase dashboard → SQL Editor → New query →
 -- paste → Run, or `psql <connection string> -f supabase/seed/01-departments.sql`).
 --
--- Safe to re-run: `on conflict do nothing` on both inserts, keyed off departments.name's
--- existing unique constraint.
+-- Safe to re-run: the departments insert uses `on conflict do nothing` off departments.name's
+-- unique constraint; the pricing insert uses `where not exists` rather than `on conflict`,
+-- because department_pricing's actual unique constraint includes `effective_from`, which
+-- defaults to `now()` — an `on conflict` there would never match on a second run (different
+-- timestamp each time) and would silently insert a duplicate "current" price every re-run.
 --
 -- Deliberately NOT included: `DEPARTMENT_PRICES`' two orphaned entries ("Human Nutrition and
 -- Dietetics", "Veterinary Medicine") that existed in the old app's price map but never
@@ -37,4 +40,7 @@ join (values
   ('Nursing', 'NGN', 10000), ('Nursing', 'USD', 7)
 ) as p(department_name, currency, amount)
   on p.department_name = d.name
-on conflict (department_id, currency, effective_from) do nothing;
+where not exists (
+  select 1 from department_pricing existing
+  where existing.department_id = d.id and existing.currency = p.currency
+);
