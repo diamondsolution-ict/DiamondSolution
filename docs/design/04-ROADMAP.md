@@ -92,10 +92,19 @@ top of it.
       suspension Reactivation flow (`/reactivation`, FUNCTIONAL_SPEC.md §9.1 only — §9.2's
       device-blocked sub-flow is intentionally not reproduced, see
       `03-BUSINESS-RULES-REDESIGN.md` §2).
-- [ ] Remaining admin tabs from the old app not yet built here: Affiliates, Analytics,
-      Media/Pictures, admin-side Notifications, Quotes, Support, System Logs (mostly covered
-      already by `/admin/audit-log`), Settings, WhatsApp Numbers (the last one deferred with
-      chat, same reasoning as below).
+- [x] Admin Affiliates tab (`/admin/affiliates`): Commissions (authorize payment — step-up
+      gated, bookkeeping-only via the new `admin-approve-commission` function) and Partner
+      Registry (read-only, off the existing `affiliate_balances` view) sub-tabs, CSV export.
+- [x] Admin Quotes tab (`/admin/quotes`): publish/delete (not gated, matches old behavior);
+      Dashboard's "Wisdom of the day" now reads from this table, falling back to the previous
+      hardcoded pool when no quotes are published yet.
+- [x] Admin Settings tab (`/admin/settings`): the `institutional_links` singleton (contact/
+      social links). Deliberately does NOT include the broader `app_settings` key-value table
+      from the design doc's sketch — see that migration's header comment for why bundling it
+      now would be worse than the honest hardcoded-with-a-comment state.
+- [ ] Remaining admin tabs from the old app not yet built here: Analytics, Media/Pictures,
+      admin-side Notifications (broadcast), Support, System Logs (mostly covered already by
+      `/admin/audit-log`), WhatsApp Numbers (deferred with chat, same reasoning as below).
 - [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
 
 ## Phase 5 — Device/session policy, MFA, hardening

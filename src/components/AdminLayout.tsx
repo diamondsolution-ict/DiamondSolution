@@ -3,11 +3,14 @@ import { DiamondLogo } from "@/components/DiamondLogo";
 
 const TABS = [
   { to: "/admin/users", label: "Users" },
+  { to: "/admin/affiliates", label: "Affiliates" },
   { to: "/admin/departments", label: "Departments" },
   { to: "/admin/courses", label: "Courses" },
   { to: "/admin/payments", label: "Transactions" },
   { to: "/admin/withdrawals", label: "Withdrawals" },
+  { to: "/admin/quotes", label: "Quotes" },
   { to: "/admin/audit-log", label: "Audit Log" },
+  { to: "/admin/settings", label: "Settings" },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

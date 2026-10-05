@@ -17,12 +17,15 @@ import PaymentHistory from "@/pages/PaymentHistory";
 import Reactivation from "@/pages/Reactivation";
 import { ChatsComingSoon } from "@/pages/ComingSoon";
 import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminAffiliates from "@/pages/admin/AdminAffiliates";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminCourses from "@/pages/admin/AdminCourses";
 import AdminQuestions from "@/pages/admin/AdminQuestions";
 import AdminPayments from "@/pages/admin/AdminPayments";
 import AdminWithdrawals from "@/pages/admin/AdminWithdrawals";
+import AdminQuotes from "@/pages/admin/AdminQuotes";
 import AdminAuditLog from "@/pages/admin/AdminAuditLog";
+import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminLogin from "@/pages/admin/AdminLogin";
 
 export default function App() {
@@ -51,6 +54,7 @@ export default function App() {
 
         <Route element={<AdminRoute />}>
           <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/affiliates" element={<AdminAffiliates />} />
           <Route path="/admin/departments" element={<AdminDepartments />} />
           <Route path="/admin/courses" element={<AdminCourses />} />
           <Route
@@ -59,7 +63,9 @@ export default function App() {
           />
           <Route path="/admin/payments" element={<AdminPayments />} />
           <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
+          <Route path="/admin/quotes" element={<AdminQuotes />} />
           <Route path="/admin/audit-log" element={<AdminAuditLog />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

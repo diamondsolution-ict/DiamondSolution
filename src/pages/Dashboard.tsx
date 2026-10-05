@@ -29,19 +29,40 @@ interface TopRanker {
   accuracy: number;
   attempted: number;
 }
+interface Quote {
+  text: string;
+  author: string;
+}
 
-const QUOTES = [
-  "The secret of getting ahead is getting started. Master your clinical questions one day at a time.",
-  "Discipline beats motivation when exam day actually arrives.",
-  "Every question you attempt today is a patient you'll serve with more confidence tomorrow.",
-  "Consistency compounds — a little practice daily outperforms a single long session.",
-  "Review your misses as closely as your wins; that's where the real learning is.",
+// Fallback pool for when the admin-curated `quotes` table (AdminQuotes.tsx) is empty — never
+// an empty state on the dashboard just because no admin has published one yet.
+const FALLBACK_QUOTES: Quote[] = [
+  {
+    text: "The secret of getting ahead is getting started. Master your clinical questions one day at a time.",
+    author: "Diamond Solution Academy",
+  },
+  {
+    text: "Discipline beats motivation when exam day actually arrives.",
+    author: "Diamond Solution Academy",
+  },
+  {
+    text: "Every question you attempt today is a patient you'll serve with more confidence tomorrow.",
+    author: "Diamond Solution Academy",
+  },
+  {
+    text: "Consistency compounds — a little practice daily outperforms a single long session.",
+    author: "Diamond Solution Academy",
+  },
+  {
+    text: "Review your misses as closely as your wins; that's where the real learning is.",
+    author: "Diamond Solution Academy",
+  },
 ];
 
-function quoteOfTheDay() {
+function quoteOfTheDay(pool: Quote[]): Quote {
   const start = new Date(new Date().getFullYear(), 0, 0);
   const dayOfYear = Math.floor((Date.now() - start.getTime()) / 86_400_000);
-  return QUOTES[dayOfYear % QUOTES.length];
+  return pool[dayOfYear % pool.length];
 }
 
 function greeting() {
@@ -81,6 +102,7 @@ export default function Dashboard() {
   const [grantedIds, setGrantedIds] = useState<Set<string>>(new Set());
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [topRanker, setTopRanker] = useState<TopRanker | null>(null);
+  const [quotePool, setQuotePool] = useState<Quote[]>(FALLBACK_QUOTES);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -98,6 +120,7 @@ export default function Dashboard() {
         { data: grants },
         { data: affiliateRow },
         { data: standings },
+        { data: quoteRows },
       ] = await Promise.all([
         supabase
           .from("daily_practice_stats")
@@ -132,7 +155,10 @@ export default function Dashboard() {
           p_department_id: profile?.department_id ?? null,
           p_limit: 1,
         }),
+        supabase.from("quotes").select("text, author"),
       ]);
+
+      if (quoteRows && quoteRows.length > 0) setQuotePool(quoteRows);
 
       const totalAttempted = (allStats ?? []).reduce(
         (s, r) => s + r.attempted,
@@ -254,8 +280,12 @@ export default function Dashboard() {
         <p className="text-xs font-bold uppercase tracking-wide text-gold">
           Wisdom of the day
         </p>
-        <p className="mt-2 text-sm italic text-text-2">"{quoteOfTheDay()}"</p>
-        <p className="mt-1 text-xs text-text-3">— Diamond Solution Academy</p>
+        <p className="mt-2 text-sm italic text-text-2">
+          "{quoteOfTheDay(quotePool).text}"
+        </p>
+        <p className="mt-1 text-xs text-text-3">
+          — {quoteOfTheDay(quotePool).author}
+        </p>
       </div>
 
       {!loading && resume && (
