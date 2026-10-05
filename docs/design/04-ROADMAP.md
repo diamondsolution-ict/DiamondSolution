@@ -71,14 +71,24 @@ top of it.
 - [x] `admin_actions_log` (the audit-trail half) — every withdrawal-affecting admin action
       (approve/reject/pay-via-Paystack/mark-paid-manually) writes a row; viewable at
       `/admin/audit-log`.
-- [ ] Admin security-clearance (step-up OTP) flow — one shared implementation, used
-      everywhere. **Blocked on a decision, not forgotten**: `request-otp` needs a real
-      email-delivery path (Resend, SendGrid, Supabase's own default SMTP, or a provider
-      already in use elsewhere) that hasn't been chosen yet. Building it against no
-      configured provider would ship code nobody could actually test or receive an email
-      from, so this stays undone until that choice is made — see
-      `06-SUPABASE-DEPLOYMENT-CHECKLIST.md` for where this fits in the go-live sequence once
-      decided.
+- [x] Shared OTP/step-up implementation (`security_otp_tokens`, `request-otp`, `verify-otp`) —
+      the email-delivery provider decision is made (Resend; see
+      `06-SUPABASE-DEPLOYMENT-CHECKLIST.md` §4). Currently used by account-settings
+      password-change (`change-password`); the admin-dashboard step-up gate itself (locking
+      the whole `/admin` shell behind a code, not just this plumbing) is still open — see
+      Phase 4's admin-tabs item below.
+- [ ] Admin security-clearance gate — the admin-side consumer of the OTP implementation above
+      (lock screen in front of `/admin`, reused for every destructive admin action). The
+      shared plumbing is done; this is wiring it into the admin shell itself.
+- [x] Student-facing account pages: Profile (`/profile`), Account Settings (`/account` —
+      identity edit + password change), Payment History (`/payments`), and the general-
+      suspension Reactivation flow (`/reactivation`, FUNCTIONAL_SPEC.md §9.1 only — §9.2's
+      device-blocked sub-flow is intentionally not reproduced, see
+      `03-BUSINESS-RULES-REDESIGN.md` §2).
+- [ ] Remaining admin tabs from the old app not yet built here: Users, Affiliates, Analytics,
+      Media/Pictures, admin-side Notifications, Quotes, Support, System Logs, Settings,
+      WhatsApp Numbers (the last one deferred with chat, same reasoning as below).
+- [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
 
 ## Phase 5 — Device/session policy, MFA, hardening
 

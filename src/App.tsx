@@ -11,7 +11,11 @@ import StudyPage from "@/pages/StudyPage";
 import ActivityLog from "@/pages/ActivityLog";
 import Leaderboard from "@/pages/Leaderboard";
 import Affiliate from "@/pages/Affiliate";
-import { ChatsComingSoon, ProfileComingSoon } from "@/pages/ComingSoon";
+import Profile from "@/pages/Profile";
+import AccountSettings from "@/pages/AccountSettings";
+import PaymentHistory from "@/pages/PaymentHistory";
+import Reactivation from "@/pages/Reactivation";
+import { ChatsComingSoon } from "@/pages/ComingSoon";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminCourses from "@/pages/admin/AdminCourses";
 import AdminQuestions from "@/pages/admin/AdminQuestions";
@@ -28,6 +32,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/reactivation" element={<Reactivation />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
@@ -38,7 +43,9 @@ export default function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/affiliate" element={<Affiliate />} />
           <Route path="/chats" element={<ChatsComingSoon />} />
-          <Route path="/profile" element={<ProfileComingSoon />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/account" element={<AccountSettings />} />
+          <Route path="/payments" element={<PaymentHistory />} />
         </Route>
 
         <Route element={<AdminRoute />}>

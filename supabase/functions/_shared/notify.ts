@@ -4,7 +4,8 @@ type NotificationType =
   | "payment_success"
   | "payment_failed"
   | "commission_earned"
-  | "withdrawal_processed";
+  | "withdrawal_processed"
+  | "account_reactivated";
 
 // Best-effort: a notification row failing to insert should never fail the underlying
 // payment/payout it's describing, so errors here are swallowed, not thrown.

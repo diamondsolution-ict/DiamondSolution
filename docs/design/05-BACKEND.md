@@ -22,7 +22,7 @@ supabase/
       rate-limit.ts        -- checkRateLimit(key, limit, windowSeconds)
       paystack.ts           -- thin fetch wrapper for Paystack's REST API
       otp.ts                -- hashCode(), issueOtp(), verifyOtp() shared by every step-up flow
-      email.ts              -- Brevo client wrapper
+      email.ts              -- Resend client wrapper
     register-session/
     verify-payment/
     paystack-webhook/
@@ -161,8 +161,8 @@ the database could already enforce on its own, no longer does.
   production, so "works on my machine" and "works deployed" use the identical schema/RLS.
 - `supabase functions serve <name> --env-file .env.local` for iterating on one function with
   hot reload; `.env.local` holds the same secret names Supabase's hosted secrets store will
-  hold in production (`PAYSTACK_SECRET_KEY`, `BREVO_API_KEY`, `WHATSAPP_TOKEN`,
-  `GEMINI_API_KEY`, etc.), never committed.
+  hold in production (`PAYSTACK_SECRET_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`,
+  `WHATSAPP_TOKEN`, `GEMINI_API_KEY`, etc.), never committed.
 - Deno's built-in test runner (`deno test`) covers each function's request validation and
   business logic against a local Supabase instance; pgTAP (`supabase/tests/pgtap/`) covers
   every RLS invariant (the Dirty-Dozen successor from `02-DATA-MODEL-AND-SECURITY.md` §8).

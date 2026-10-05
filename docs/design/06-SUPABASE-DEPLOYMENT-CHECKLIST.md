@@ -44,14 +44,22 @@ migrate or backfill.
 ## 4. Set Edge Function secrets
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically
-by Supabase — nothing to do for those. The one secret you do need to set by hand:
+by Supabase — nothing to do for those. The secrets you do need to set by hand:
 
 ```bash
 supabase secrets set PAYSTACK_SECRET_KEY=sk_test_xxxxxxxxxxxx
+supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx
+supabase secrets set RESEND_FROM_EMAIL=noreply@yourdomain.com
 ```
 
 Start with your Paystack **test** secret key so you can do a full dry run before touching real
 money. Get it from the Paystack dashboard → Settings → API Keys & Webhooks.
+
+`RESEND_API_KEY` is the email-delivery provider chosen to unblock the account-settings
+password-change OTP flow (and the admin step-up gate once that's built) — get it from
+resend.com → API Keys. `RESEND_FROM_EMAIL` must be an address on a domain you've verified in
+Resend (their dashboard walks through the DNS records); sending from an unverified domain
+fails outright, so verify the domain before the end-to-end smoke test in step 12.
 
 ## 5. Deploy the Edge Functions
 
@@ -59,6 +67,9 @@ money. Get it from the Paystack dashboard → Settings → API Keys & Webhooks.
 supabase functions deploy verify-payment
 supabase functions deploy paystack-webhook
 supabase functions deploy request-payout
+supabase functions deploy request-otp
+supabase functions deploy verify-otp
+supabase functions deploy change-password
 ```
 
 (`_shared/` is bundled automatically into each function — no separate deploy step for it.)
@@ -145,6 +156,12 @@ Questions tab if you have the old app's exported question bank.
 - If you set up a referral code first and sign the test account up via that link, confirm a
   `commissions` row and a "You earned a commission" notification appear on the referrer's
   account once the payment succeeds.
+- On that same test account, go to `/account` → Security Override, change the password, and
+  confirm the OTP email actually arrives (proves `RESEND_API_KEY`/`RESEND_FROM_EMAIL` and
+  domain verification are wired correctly) and that the new password signs in.
+- Manually set that account's `profiles.status` to `suspended` in the SQL Editor, reload the
+  app, confirm it's redirected to `/reactivation`, pay the reactivation fee with the same test
+  card, and confirm `profiles.status` flips back to `active` and the app unlocks immediately.
 
 ## 13. Go live with real payments
 

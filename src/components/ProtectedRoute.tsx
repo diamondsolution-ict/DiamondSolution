@@ -2,7 +2,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 export function ProtectedRoute() {
-  const { user, loading } = useAuth();
+  const { user, isSuspended, loading } = useAuth();
 
   if (loading) {
     return (
@@ -14,6 +14,13 @@ export function ProtectedRoute() {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Reactivation.tsx lives outside this guard (a suspended account is still authenticated,
+  // just blocked) — every other protected page redirects there until the account is active
+  // again, matching the old app's "only path back in" behavior for FUNCTIONAL_SPEC.md §9.
+  if (isSuspended) {
+    return <Navigate to="/reactivation" replace />;
   }
 
   return <Outlet />;

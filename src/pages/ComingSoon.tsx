@@ -27,12 +27,3 @@ export function ChatsComingSoon() {
     />
   );
 }
-
-export function ProfileComingSoon() {
-  return (
-    <ComingSoon
-      title="Profile"
-      description="Editing your name, university, WhatsApp number, and password from here is on the way."
-    />
-  );
-}
