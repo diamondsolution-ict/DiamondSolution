@@ -91,37 +91,40 @@ paying — the client-triggered `verify-payment` call and this webhook both land
 idempotent `processDepartmentAccessPayment`, so whichever arrives first wins and the second is
 a safe no-op.
 
-## 7. Connect Cloudflare Pages to the repo
+## 7. Connect Netlify to the repo
 
-This project moved off Netlify (its team ran out of operational credits and auto-deploys got
-stuck, separate from this repo's own code). Cloudflare Pages dashboard → **Create a project** →
-**Connect to Git** → pick `DiamondAppSolutions/DiamondSolution`, branch `main`:
+This project briefly evaluated moving to Cloudflare Pages after the original Netlify account
+ran out of operational credits, but that's resolved now (a personal Netlify account, no longer
+credit-limited) — back on Netlify. Netlify dashboard → **Add a new site** → **Import an
+existing project** → connect to Git → pick `diamondsolution-ict/DiamondSolution`, branch
+`main`:
 
 - **Build command**: `npm run build`
-- **Build output directory**: `dist`
-- **Root directory**: leave as the repo root (`/`)
+- **Publish directory**: `dist`
+- **Base directory**: leave as the repo root (`/`)
 
-`public/_redirects` is already in the repo (`/* /index.html 200`) so client-side routing (direct
-loads of `/dashboard`, `/admin/login`, etc.) works the same way `netlify.toml`'s redirect did —
-no extra config needed for that part. `netlify.toml` itself is left in place but inert; nothing
-reads it once the project is wired to Cloudflare instead.
+`netlify.toml` is already in the repo with exactly this build command/publish dir plus the SPA
+redirect (`/* -> /index.html`, status 200) that makes a direct load of `/dashboard`,
+`/admin/login`, etc. work instead of 404ing — Netlify reads it automatically, nothing further
+to configure for that part. (`public/_redirects` also exists from the brief Cloudflare
+evaluation; Netlify would honor either, but `netlify.toml` takes precedence and already covers
+the same rule, so no conflict.)
 
 ## 8. Configure Auth URLs
 
-Dashboard → **Authentication** → **URL Configuration**:
+Supabase dashboard → **Authentication** → **URL Configuration**:
 
-- **Site URL**: your Cloudflare Pages domain, e.g. `https://diamondsolution.pages.dev` (or your
-  custom domain once one's attached)
-- **Redirect URLs**: add the same domain (and the `*.diamondsolution.pages.dev` preview-deploy
-  pattern Cloudflare generates per branch/PR, if you want preview deploys to work too)
+- **Site URL**: your Netlify domain, e.g. `https://diamondsolution.netlify.app` (or your custom
+  domain once one's attached)
+- **Redirect URLs**: add the same domain (and Netlify's per-deploy-preview URL pattern if you
+  want deploy previews to work too)
 
 Without this, the email-confirmation link a new user receives redirects to `localhost` instead
 of your real site.
 
-## 9. Set Cloudflare Pages environment variables and redeploy
+## 9. Set Netlify environment variables and redeploy
 
-Cloudflare Pages project → **Settings** → **Environment variables**, set for both Production
-and Preview:
+Netlify site → **Site configuration** → **Environment variables**, set:
 
 - `VITE_SUPABASE_URL` — from Supabase dashboard → Project Settings → API
 - `VITE_SUPABASE_ANON_KEY` — same page
@@ -129,10 +132,11 @@ and Preview:
   key from step 4
 
 These are baked in at **build time**, not read at runtime — after setting them, trigger a new
-deploy (**Deployments** → **Retry deployment**, or just push a commit), a page refresh alone
-won't pick them up. This is also the actual fix for the blank-page issue you saw on the old
-Netlify setup — that was these variables being unset, and `src/main.tsx` now shows a clear
-"Configuration missing" message instead of a blank screen if they're ever missing again.
+deploy (**Deploys** → **Trigger deploy** → **Deploy site**, or just push a commit), a page
+refresh alone won't pick them up. This is also the actual fix for the blank-page issue on the
+old credit-limited Netlify setup — that was these variables being unset (or the account not
+building at all), and `src/main.tsx` now shows a clear "Configuration missing" message instead
+of a blank screen if they're ever missing again.
 
 ## 10. Bootstrap your own admin account
 
