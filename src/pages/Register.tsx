@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { validatePassword } from "@/lib/passwordPolicy";
@@ -142,18 +142,11 @@ export default function Register() {
             </Field>
 
             <Field label="Department">
-              <select
+              <DepartmentCombobox
+                departments={departments}
                 value={form.departmentId}
-                onChange={(e) => update("departmentId", e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Select a department</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(id) => update("departmentId", id)}
+              />
             </Field>
 
             <Field label="WhatsApp number">
@@ -236,6 +229,87 @@ function Field({
     <div>
       <label className="block text-sm font-medium text-text-2">{label}</label>
       {children}
+    </div>
+  );
+}
+
+function DepartmentCombobox({
+  departments,
+  value,
+  onChange,
+}: {
+  departments: Department[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const selected = departments.find((d) => d.id === value) ?? null;
+  const [query, setQuery] = useState(selected?.name ?? "");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Keep the visible text in sync if the selection changes from outside (e.g. departments
+  // finish loading after a value was already set).
+  useEffect(() => {
+    setQuery(selected?.name ?? "");
+  }, [selected]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        // Typed text that doesn't match a real department shouldn't silently keep a stale
+        // selection — snap back to whatever's actually chosen (or empty).
+        setQuery(selected?.name ?? "");
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [selected]);
+
+  const matches = departments.filter((d) =>
+    d.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+
+  return (
+    <div className="relative mt-1" ref={ref}>
+      <input
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          if (value) onChange("");
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="Select a department"
+        className={`${inputClass} mt-0`}
+        autoComplete="off"
+      />
+      {open && (
+        <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-canvas-border bg-white shadow-lg">
+          {matches.length === 0 ? (
+            <p className="px-3 py-2 text-sm text-text-3">No match found.</p>
+          ) : (
+            matches.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => {
+                  onChange(d.id);
+                  setQuery(d.name);
+                  setOpen(false);
+                }}
+                className={`block w-full px-3 py-2 text-left text-sm transition-colors ${
+                  d.id === value
+                    ? "bg-royal font-semibold text-white"
+                    : "text-text-1 hover:bg-royal-soft"
+                }`}
+              >
+                {d.name}
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
