@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { validatePassword } from "@/lib/passwordPolicy";
 import { DiamondLogo } from "@/components/DiamondLogo";
 import { AuthTabs } from "@/components/AuthTabs";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Department {
   id: string;
@@ -13,6 +14,7 @@ interface Department {
 export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { language, t } = useLanguage();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [form, setForm] = useState({
     displayName: "",
@@ -49,7 +51,7 @@ export default function Register() {
     setInfo(null);
 
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("register.passwordMismatch"));
       return;
     }
     const passwordError = validatePassword(form.password);
@@ -73,7 +75,7 @@ export default function Register() {
           department_id: form.departmentId || null,
           whatsapp: form.whatsapp ? `+234${form.whatsapp}` : "",
           phone: form.whatsapp ? `+234${form.whatsapp}` : "",
-          language: "en",
+          language,
           referral_code: form.referralCode || null,
         },
       },
@@ -88,7 +90,7 @@ export default function Register() {
     if (data.session) {
       navigate("/dashboard");
     } else {
-      setInfo("Check your email to confirm your account, then sign in.");
+      setInfo(t("register.checkEmail"));
     }
   }
 
@@ -114,7 +116,7 @@ export default function Register() {
               </p>
             )}
 
-            <Field label="Full name">
+            <Field label={t("register.fullName")}>
               <input
                 required
                 value={form.displayName}
@@ -123,7 +125,7 @@ export default function Register() {
               />
             </Field>
 
-            <Field label="Username">
+            <Field label={t("register.username")}>
               <input
                 required
                 value={form.username}
@@ -132,24 +134,26 @@ export default function Register() {
               />
             </Field>
 
-            <Field label="Institution / University (full name)">
+            <Field label={t("register.institution")}>
               <input
-                placeholder="e.g. University of Ibadan"
+                placeholder={t("register.institutionPlaceholder")}
                 value={form.university}
                 onChange={(e) => update("university", e.target.value)}
                 className={inputClass}
               />
             </Field>
 
-            <Field label="Department">
+            <Field label={t("register.department")}>
               <DepartmentCombobox
                 departments={departments}
                 value={form.departmentId}
                 onChange={(id) => update("departmentId", id)}
+                placeholder={t("register.departmentPlaceholder")}
+                noMatchLabel={t("register.departmentNoMatch")}
               />
             </Field>
 
-            <Field label="WhatsApp number">
+            <Field label={t("register.whatsapp")}>
               <div className="mt-1 flex gap-2">
                 <span className="flex items-center gap-1 rounded-xl border border-canvas-border bg-canvas-soft px-3 text-sm text-text-2">
                   🇳🇬 +234
@@ -165,7 +169,7 @@ export default function Register() {
               </div>
             </Field>
 
-            <Field label="Email">
+            <Field label={t("register.email")}>
               <input
                 type="email"
                 required
@@ -175,7 +179,7 @@ export default function Register() {
               />
             </Field>
 
-            <Field label="Password">
+            <Field label={t("register.password")}>
               <input
                 type="password"
                 required
@@ -185,7 +189,7 @@ export default function Register() {
               />
             </Field>
 
-            <Field label="Confirm password">
+            <Field label={t("register.confirmPassword")}>
               <input
                 type="password"
                 required
@@ -200,15 +204,13 @@ export default function Register() {
               disabled={loading}
               className="btn-primary w-full"
             >
-              {loading ? "Creating account…" : "Create account"}
+              {loading ? t("register.creating") : t("register.createAccount")}
             </button>
           </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-text-3">
-          Diamond Solution is an independent study platform and is not
-          affiliated with, endorsed by, or sponsored by any professional
-          licensing or certification board.
+          {t("register.disclaimer")}
         </p>
       </div>
     </div>
@@ -237,10 +239,14 @@ function DepartmentCombobox({
   departments,
   value,
   onChange,
+  placeholder,
+  noMatchLabel,
 }: {
   departments: Department[];
   value: string;
   onChange: (id: string) => void;
+  placeholder: string;
+  noMatchLabel: string;
 }) {
   const selected = departments.find((d) => d.id === value) ?? null;
   const [query, setQuery] = useState(selected?.name ?? "");
@@ -280,14 +286,14 @@ function DepartmentCombobox({
           if (value) onChange("");
         }}
         onFocus={() => setOpen(true)}
-        placeholder="Select a department"
+        placeholder={placeholder}
         className={`${inputClass} mt-0`}
         autoComplete="off"
       />
       {open && (
         <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-canvas-border bg-white shadow-lg">
           {matches.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-text-3">No match found.</p>
+            <p className="px-3 py-2 text-sm text-text-3">{noMatchLabel}</p>
           ) : (
             matches.map((d) => (
               <button

@@ -217,7 +217,18 @@ top of it.
 
 ## Phase 6 — i18n, translation caching, polish
 
-- [ ] English/French string tables (same two-language scope as before).
+- [x] English/French string tables — scoped, not exhaustive: the pre-auth funnel (Splash,
+      Login, Register, AuthTabs — the pages every visitor sees before deciding whether to sign
+      up, so highest-leverage regardless of what language a student studies in) and the
+      persistent nav chrome (`Layout.tsx`'s sidebar/bottom nav, on every authenticated page).
+      New `LanguageContext` (`useLanguage()`/`t()`), a working EN/FR toggle on Splash (was a
+      static placeholder since the student desktop sidebar work), and a Language card on
+      `/account` for already-signed-in users. Preference persists to `localStorage`
+      immediately and to `profiles.language` (already existed in the schema, just unused until
+      now) once signed in, reconciling from the profile on load without racing a change just
+      made in the same tab. Deeper page content — Dashboard, admin, course/question text —
+      stays English-only; translating that honestly needs either hand-written copy per page or
+      the item below, neither of which is built yet.
 - [ ] `question_translations` caching for the admin "translate to French" feature (Gemini),
       so it's a one-time generation per question, not a per-view API call.
 - [ ] Visual/brand pass — this is also the point to decide the new platform's own voice,

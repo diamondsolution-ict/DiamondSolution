@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { NotificationBell } from "@/components/NotificationBell";
 import { DiamondLogo } from "@/components/DiamondLogo";
 
@@ -23,14 +24,15 @@ interface LayoutProps {
 }
 
 const NAV = [
-  { to: "/dashboard", label: "Home", icon: Home },
-  { to: "/courses", label: "Departments", icon: BookOpen },
-  { to: "/chats", label: "Chats", icon: MessageCircle },
-  { to: "/profile", label: "User", icon: User },
+  { to: "/dashboard", labelKey: "nav.home", icon: Home },
+  { to: "/courses", labelKey: "nav.departments", icon: BookOpen },
+  { to: "/chats", labelKey: "nav.chats", icon: MessageCircle },
+  { to: "/profile", labelKey: "nav.user", icon: User },
 ];
 
 export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
   const { isAdmin, signOut } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
   const contentMaxWidth = wide ? "max-w-none" : "max-w-3xl";
 
@@ -44,7 +46,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
         </div>
 
         <nav className="flex-1 space-y-1 px-4">
-          {NAV.map(({ to, label, icon: Icon }) => {
+          {NAV.map(({ to, labelKey, icon: Icon }) => {
             const active = location.pathname.startsWith(to);
             return (
               <Link
@@ -57,7 +59,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
                 }`}
               >
                 <Icon size={17} />
-                {label}
+                {t(labelKey)}
               </Link>
             );
           })}
@@ -71,7 +73,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
               }`}
             >
               <Shield size={17} />
-              Admin
+              {t("nav.admin")}
             </Link>
           )}
         </nav>
@@ -79,10 +81,10 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
         <div className="m-4 rounded-2xl bg-white/10 p-4">
           <Sparkles size={18} className="text-gold" />
           <p className="mt-2 text-sm font-bold text-white">
-            Small steps make big progress!
+            {t("layout.motivation.title")}
           </p>
           <p className="mt-1 text-xs text-slate-300">
-            Consistency compounds — keep your streak going.
+            {t("layout.motivation.subtitle")}
           </p>
         </div>
       </aside>
@@ -106,7 +108,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
               <button
                 onClick={() => void signOut()}
                 className="rounded-full p-1.5 text-text-3 hover:bg-canvas-soft"
-                title="Sign out"
+                title={t("common.signOut")}
               >
                 <LogOut size={18} />
               </button>
@@ -120,7 +122,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
       </div>
 
       <nav className="fixed bottom-4 left-1/2 flex -translate-x-1/2 gap-0.5 rounded-2xl border border-canvas-border bg-navy px-1.5 py-2 shadow-lg md:hidden">
-        {NAV.map(({ to, label, icon: Icon }) => {
+        {NAV.map(({ to, labelKey, icon: Icon }) => {
           const active = location.pathname.startsWith(to);
           return (
             <Link
@@ -133,7 +135,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
               }`}
             >
               <Icon size={17} />
-              {label}
+              {t(labelKey)}
             </Link>
           );
         })}
@@ -147,7 +149,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
             }`}
           >
             <Shield size={17} />
-            Admin
+            {t("nav.admin")}
           </Link>
         )}
       </nav>

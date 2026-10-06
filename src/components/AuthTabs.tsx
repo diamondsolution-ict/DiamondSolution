@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function AuthTabs({ active }: { active: "signin" | "register" }) {
+  const { t } = useLanguage();
   return (
     <div className="mb-4 flex border-b border-canvas-border">
       <Link
@@ -11,7 +13,7 @@ export function AuthTabs({ active }: { active: "signin" | "register" }) {
             : "text-text-3 hover:text-text-2"
         }`}
       >
-        Sign in
+        {t("authtabs.signin")}
       </Link>
       <Link
         to="/register"
@@ -21,7 +23,7 @@ export function AuthTabs({ active }: { active: "signin" | "register" }) {
             : "text-text-3 hover:text-text-2"
         }`}
       >
-        Register
+        {t("authtabs.register")}
       </Link>
     </div>
   );

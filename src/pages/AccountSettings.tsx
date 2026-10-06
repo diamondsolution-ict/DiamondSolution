@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { Gift, Globe, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { Layout } from "@/components/Layout";
 import { validatePassword } from "@/lib/passwordPolicy";
 
@@ -16,6 +17,7 @@ interface TotpFactor {
 
 export default function AccountSettings() {
   const { user, profile, refreshProfile } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const navigate = useNavigate();
 
   const [identity, setIdentity] = useState({
@@ -54,9 +56,7 @@ export default function AccountSettings() {
     // `data.totp` only ever contains verified factors (that's its type) — `data.all` filtered
     // to totp is the only way to also see an unverified, mid-enrollment one.
     setTotpFactors(
-      (data?.all ?? []).filter(
-        (f) => f.factor_type === "totp",
-      ) as TotpFactor[],
+      (data?.all ?? []).filter((f) => f.factor_type === "totp") as TotpFactor[],
     );
   }
 
@@ -327,6 +327,38 @@ export default function AccountSettings() {
             {identitySaving ? "Saving…" : "Save identity"}
           </button>
         </form>
+      </div>
+
+      <div className="card-luxury mt-4 p-5">
+        <h2 className="font-heading text-sm font-bold text-text-1">Language</h2>
+        <p className="mt-2 text-sm text-text-3">
+          Applies to the sign-in/registration pages and the main navigation.
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <Globe size={16} className="text-text-3" />
+          <div className="flex overflow-hidden rounded-xl border border-canvas-border">
+            <button
+              onClick={() => void setLanguage("en")}
+              className={`px-4 py-1.5 text-xs font-semibold transition-colors ${
+                language === "en"
+                  ? "bg-royal text-white"
+                  : "bg-white text-text-2 hover:bg-canvas-soft"
+              }`}
+            >
+              English
+            </button>
+            <button
+              onClick={() => void setLanguage("fr")}
+              className={`px-4 py-1.5 text-xs font-semibold transition-colors ${
+                language === "fr"
+                  ? "bg-royal text-white"
+                  : "bg-white text-text-2 hover:bg-canvas-soft"
+              }`}
+            >
+              Français
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="card-luxury mt-4 p-5">

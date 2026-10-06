@@ -3,9 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { DiamondLogo } from "@/components/DiamondLogo";
 import { AuthTabs } from "@/components/AuthTabs";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export default function Login() {
               </p>
             )}
 
-            <Field label="Email">
+            <Field label={t("login.email")}>
               <input
                 type="email"
                 required
@@ -56,7 +58,7 @@ export default function Login() {
               />
             </Field>
 
-            <Field label="Password">
+            <Field label={t("login.password")}>
               <input
                 type="password"
                 required
@@ -71,25 +73,23 @@ export default function Login() {
               disabled={loading}
               className="btn-primary w-full"
             >
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? t("login.signingIn") : t("login.signIn")}
             </button>
           </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-text-3">
-          Staff?{" "}
+          {t("login.staffPrompt")}{" "}
           <Link
             to="/admin/login"
             className="font-semibold text-royal hover:underline"
           >
-            Admin sign in
+            {t("login.adminSignIn")}
           </Link>
         </p>
 
         <p className="mt-3 text-center text-xs text-text-3">
-          Diamond Solution is an independent study platform and is not
-          affiliated with, endorsed by, or sponsored by any professional
-          licensing or certification board.
+          {t("login.disclaimer")}
         </p>
       </div>
     </div>

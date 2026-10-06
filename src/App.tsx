@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { ProtectedRoute, AdminRoute } from "@/components/ProtectedRoute";
 import Splash from "@/pages/Splash";
 import Login from "@/pages/Login";
@@ -38,59 +39,70 @@ import AdminLogin from "@/pages/admin/AdminLogin";
 export default function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/" element={<Splash />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/reactivation" element={<Reactivation />} />
+      <LanguageProvider>
+        <Routes>
+          <Route path="/" element={<Splash />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/reactivation" element={<Reactivation />} />
 
-        <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/courses" element={<CourseList />} />
-          <Route path="/courses/:id" element={<CourseDetail />} />
-          <Route path="/courses/:id/study" element={<StudyPage />} />
-          <Route path="/activity-log" element={<ActivityLog />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/affiliate" element={<Affiliate />} />
-          <Route path="/chats" element={<Chat />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/account" element={<AccountSettings />} />
-          <Route path="/payments" element={<PaymentHistory />} />
-        </Route>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/courses" element={<CourseList />} />
+            <Route path="/courses/:id" element={<CourseDetail />} />
+            <Route path="/courses/:id/study" element={<StudyPage />} />
+            <Route path="/activity-log" element={<ActivityLog />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/affiliate" element={<Affiliate />} />
+            <Route path="/chats" element={<Chat />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/account" element={<AccountSettings />} />
+            <Route path="/payments" element={<PaymentHistory />} />
+          </Route>
 
-        <Route element={<AdminRoute />}>
-          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/affiliates" element={<AdminAffiliates />} />
-          <Route path="/admin/departments" element={<AdminDepartments />} />
-          <Route path="/admin/courses" element={<AdminCourses />} />
-          <Route
-            path="/admin/courses/:courseId/questions"
-            element={<AdminQuestions />}
-          />
-          <Route path="/admin/payments" element={<AdminPayments />} />
-          <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
-          <Route path="/admin/quotes" element={<AdminQuotes />} />
-          <Route path="/admin/audit-log" element={<AdminAuditLog />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route element={<AdminRoute />}>
+            <Route
+              path="/admin"
+              element={<Navigate to="/admin/dashboard" replace />}
+            />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/affiliates" element={<AdminAffiliates />} />
+            <Route path="/admin/departments" element={<AdminDepartments />} />
+            <Route path="/admin/courses" element={<AdminCourses />} />
+            <Route
+              path="/admin/courses/:courseId/questions"
+              element={<AdminQuestions />}
+            />
+            <Route path="/admin/payments" element={<AdminPayments />} />
+            <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
+            <Route path="/admin/quotes" element={<AdminQuotes />} />
+            <Route path="/admin/audit-log" element={<AdminAuditLog />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
 
-          <Route
-            path="/admin/whatsapp-numbers"
-            element={<AdminWhatsAppNumbers />}
-          />
+            <Route
+              path="/admin/whatsapp-numbers"
+              element={<AdminWhatsAppNumbers />}
+            />
 
-          <Route path="/admin/analytics" element={<AdminAnalytics />} />
-          <Route path="/admin/questions" element={<AdminQuestionsBrowser />} />
-          <Route path="/admin/media" element={<AdminMedia />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            <Route
+              path="/admin/questions"
+              element={<AdminQuestionsBrowser />}
+            />
+            <Route path="/admin/media" element={<AdminMedia />} />
 
-          <Route path="/admin/notifications" element={<AdminNotifications />} />
-          <Route path="/admin/support" element={<AdminSupport />} />
-        </Route>
+            <Route
+              path="/admin/notifications"
+              element={<AdminNotifications />}
+            />
+            <Route path="/admin/support" element={<AdminSupport />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </LanguageProvider>
     </AuthProvider>
   );
 }
