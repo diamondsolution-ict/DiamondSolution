@@ -24,6 +24,7 @@ import AdminWhatsAppNumbers from "@/pages/admin/AdminWhatsAppNumbers";
 import AdminNotifications from "@/pages/admin/AdminNotifications";
 import AdminAnalytics from "@/pages/admin/AdminAnalytics";
 import AdminMedia from "@/pages/admin/AdminMedia";
+import AdminQuestionsBrowser from "@/pages/admin/AdminQuestionsBrowser";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminCourses from "@/pages/admin/AdminCourses";
 import AdminQuestions from "@/pages/admin/AdminQuestions";
@@ -80,18 +81,11 @@ export default function App() {
             element={<AdminWhatsAppNumbers />}
           />
 
-          {/* Shells matching the sidebar's full tab set — content not built yet. */}
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
-          <Route
-            path="/admin/questions"
-            element={
-              <AdminComingSoon
-                title="Questions"
-                description="A department-filtered course/question browser is on the way — manage questions per-course from the Departments tab for now."
-              />
-            }
-          />
+          <Route path="/admin/questions" element={<AdminQuestionsBrowser />} />
           <Route path="/admin/media" element={<AdminMedia />} />
+
+          {/* Shell matching the sidebar's full tab set — content not built yet (needs chat). */}
           <Route path="/admin/notifications" element={<AdminNotifications />} />
           <Route
             path="/admin/support"

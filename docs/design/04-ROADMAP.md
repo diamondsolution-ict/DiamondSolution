@@ -146,11 +146,15 @@ top of it.
       `/courses` now show the uploaded picture (falling back to an initial-letter avatar).
       Course-card images aren't surfaced anywhere in the student UI yet — nothing currently
       renders a course-level image, so that's a separate follow-up, not bundled here.
-- [ ] Remaining admin tabs with no content yet (shells exist in the sidebar): Support (needs
-      chat itself, deferred together per Phase 4's existing reasoning), System Logs (mostly
-      covered already by `/admin/audit-log`), a top-level Questions browser (department-
-      filtered course/question list — question management itself already exists per-course
-      via Departments).
+- [x] Top-level admin Questions browser (`/admin/questions`): department filter + search +
+      course chip grid, clicking a chip opens the existing per-course question manager
+      (`/admin/courses/:courseId/questions`) — no new schema, just a browse/filter front end
+      over courses already in the DB.
+- [x] "System Logs" sidebar entry just points directly at the existing `/admin/audit-log` —
+      that tab already *is* the security/audit trail (admin_actions_log), so a separate page
+      would only duplicate it.
+- [ ] One admin tab left with no content: Support (needs chat itself — deferred together per
+      Phase 4's existing reasoning; nothing to build here until that exists).
 - [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
 
 ## Phase 5 — Device/session policy, MFA, hardening
