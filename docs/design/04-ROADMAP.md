@@ -58,12 +58,22 @@ top of it.
 - [x] `notifications` (in-app only — bell icon + unread badge, auto-created on payment
       success/failure, commission earned, and withdrawal outcomes). No Realtime subscription
       used for this; a fetch-on-open dropdown was enough for a bounded, per-user list.
-- [ ] `chat_threads`, `chat_messages` (+ Realtime subscription for live chat and unread
-      badges — the one place Realtime would actually be used). Deferred on purpose — the old
-      app's bottom nav had a "Chats" tab the new one doesn't yet, and this is that gap.
-- [ ] WhatsApp admin-notify Edge Function (best-effort, same pattern as before). Deferred
-      together with chat — in the old app this function only exists to relay a chat message to
-      the admin's WhatsApp, so it has nothing to do until chat itself is built.
+- [x] `chat_threads`, `chat_messages` (+ Realtime subscription for live chat — the one place
+      Realtime is actually used in this app). One thread per student with "the admin"
+      collectively, matching the old app's actual routing (never to a specific admin). Two
+      security-definer RPCs (`send_chat_message`, `send_chat_message_as_admin`) are the only
+      write path — no direct insert policy on either table, so unread counts/`last_message_at`
+      can't drift out of sync with a client-side write. Verified against a scratch local
+      Postgres before commit: idempotent thread creation (second message reuses the same
+      thread, confirmed via row count), unread-count bump on both sides, and RLS actually
+      blocking a direct `insert` that bypasses the RPC (tested as a non-superuser role).
+      Student-facing `/chats` (`Chat.tsx`) and admin `/admin/support` (`AdminSupport.tsx`,
+      two-pane thread list + conversation) both ship; `ComingSoon.tsx`/`AdminComingSoon.tsx`
+      are deleted now that their only caller is gone.
+- [ ] WhatsApp admin-notify Edge Function (best-effort, same pattern as before). Still
+      deferred — no WhatsApp provider is configured, and in the old app this function only
+      exists to relay a chat message to the admin's WhatsApp, which is a notify-on-top-of-chat
+      feature rather than something chat itself needs to work.
 - [x] The tabbed admin back office — built as several focused screens instead of one
       ~5,000-line file (Departments, Courses, Questions, Transactions, Withdrawals, Audit Log),
       each a separate component with its own one-time-fetch-on-mount data loading. No
@@ -108,14 +118,14 @@ top of it.
       client-side summation, which would silently undercount past whatever row limit a plain
       query used. Two of the old app's 7 stats aren't reproduced (see that migration's header
       comment for why: "Pending Affiliates" doesn't exist in this schema's model, "Support
-      Queries" has nothing to count until chat is built).
+      Queries" wasn't counted since chat didn't exist yet when that migration landed — now
+      that `chat_threads.admin_unread_count` exists, that stat could be added as a follow-up,
+      but isn't bundled into this entry retroactively).
 - [x] Full admin shell redesign to match the old app's actual look: a left sidebar (grouped
       Main/Finance/Content nav with icons) on desktop, collapsing to an off-canvas drawer on
       mobile (`AdminLayout.tsx`). Every existing admin page inherits this automatically.
-      Nav entries exist for every old-app tab, including ones with no content yet (Analytics,
-      Media/Pictures, admin-side Notifications/broadcast, Support, WhatsApp Numbers, a
-      top-level Questions browser) — those render `AdminComingSoon` rather than a dead link or
-      a missing nav item, so the shell is honest about what's built vs. not.
+      Nav entries exist for every old-app tab; as of this phase all of them have real content
+      (the last one, Support, shipped with chat — see this phase's chat entry above).
 - [x] Student-facing desktop layout, revised twice: first a top nav bar, then rebuilt as a
       left sidebar (navy, logo + nav links + a motivational footer card) to match a reference
       design the user supplied — desktop only; the bottom tab bar stays mobile-only and
@@ -153,8 +163,8 @@ top of it.
 - [x] "System Logs" sidebar entry just points directly at the existing `/admin/audit-log` —
       that tab already *is* the security/audit trail (admin_actions_log), so a separate page
       would only duplicate it.
-- [ ] One admin tab left with no content: Support (needs chat itself — deferred together per
-      Phase 4's existing reasoning; nothing to build here until that exists).
+- [x] Support (`/admin/support`) — the last admin tab with no content now has one; see this
+      phase's chat entry above.
 - [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
 
 ## Phase 5 — Device/session policy, MFA, hardening

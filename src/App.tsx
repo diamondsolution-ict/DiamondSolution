@@ -15,14 +15,14 @@ import Profile from "@/pages/Profile";
 import AccountSettings from "@/pages/AccountSettings";
 import PaymentHistory from "@/pages/PaymentHistory";
 import Reactivation from "@/pages/Reactivation";
-import { ChatsComingSoon } from "@/pages/ComingSoon";
+import Chat from "@/pages/Chat";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminAffiliates from "@/pages/admin/AdminAffiliates";
-import { AdminComingSoon } from "@/pages/admin/AdminComingSoon";
 import AdminWhatsAppNumbers from "@/pages/admin/AdminWhatsAppNumbers";
 import AdminNotifications from "@/pages/admin/AdminNotifications";
 import AdminAnalytics from "@/pages/admin/AdminAnalytics";
+import AdminSupport from "@/pages/admin/AdminSupport";
 import AdminMedia from "@/pages/admin/AdminMedia";
 import AdminQuestionsBrowser from "@/pages/admin/AdminQuestionsBrowser";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
@@ -53,7 +53,7 @@ export default function App() {
           <Route path="/activity-log" element={<ActivityLog />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/affiliate" element={<Affiliate />} />
-          <Route path="/chats" element={<ChatsComingSoon />} />
+          <Route path="/chats" element={<Chat />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/account" element={<AccountSettings />} />
           <Route path="/payments" element={<PaymentHistory />} />
@@ -85,17 +85,8 @@ export default function App() {
           <Route path="/admin/questions" element={<AdminQuestionsBrowser />} />
           <Route path="/admin/media" element={<AdminMedia />} />
 
-          {/* Shell matching the sidebar's full tab set — content not built yet (needs chat). */}
           <Route path="/admin/notifications" element={<AdminNotifications />} />
-          <Route
-            path="/admin/support"
-            element={
-              <AdminComingSoon
-                title="Support"
-                description="Live two-pane student support chat is on the way (bundled with the student-facing Chat feature)."
-              />
-            }
-          />
+          <Route path="/admin/support" element={<AdminSupport />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
