@@ -177,7 +177,15 @@ top of it.
       functions — records and grants access immediately if it turns out to actually be a
       success that was never recorded, covering "I paid but it's not showing" support cases
       without needing direct Paystack dashboard access.
-- [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
+- [x] Onboarding tour (`OnboardingTour.tsx`, mounted on Dashboard) — rewritten rather than
+      transplanted: the old copy leaned on "$DL" asset redistribution (no equivalent in this
+      app) and a much colder "institutional protocol" tone than the rest of this app's copy.
+      Five steps describing what's actually here (daily practice, leaderboard, refer & earn,
+      chat support — the last one is now literally true). Same shape as the old one (auto-
+      advances every 6s, once per browser tab session via sessionStorage, skippable), plus a
+      manual Next/Get Started button the old version didn't have. No new dependency — built
+      with plain CSS transitions instead of the old app's `motion/react`, which isn't installed
+      here and nothing else in this app uses.
 
 ## Phase 5 — Device/session policy, MFA, hardening
 
