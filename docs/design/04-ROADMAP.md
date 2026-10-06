@@ -191,8 +191,24 @@ top of it.
 
 - [ ] `login_sessions`, `login_events`, the sign-in Auth hook enforcing
       `max_concurrent_sessions` (§2 of the business-rules doc).
-- [ ] Optional TOTP MFA via Supabase Auth; WebAuthn passkey registration as the "quick unlock"
-      replacement, if wanted.
+- [x] TOTP MFA via Supabase Auth, as the real "quick unlock" replacing the old app's PIN-lock
+      (03-BUSINESS-RULES-REDESIGN.md calls the PIN a "security costume"). WebAuthn
+      passkeys were the original plan here, but Supabase's passkey support for this is new
+      (beta, May 2026) and explicitly "may change without notice" — too risky to build this
+      live app's auth security on right now, so TOTP (Supabase's long-stable MFA method) ships
+      first; passkeys can follow once that beta stabilizes. New "Authenticator App" card on
+      `/account` (enroll via QR code or manual secret entry, list/remove connected factors) and
+      a TOTP fast-path in `StepUpModal` (used by the admin Users/Affiliates step-up gates):
+      when a verified factor exists, it defaults to a 6-digit authenticator code instead of
+      waiting on an email round-trip, with "Use email instead" as a fallback. A proven TOTP
+      check (`supabase.auth.mfa.challenge`/`verify`, which upgrades the session to aal2) is
+      bridged into the exact same kind of capability token the email-OTP path produces via a
+      new `mfa-stepup-token` Edge Function (checks the session's `aal` claim, then
+      `issueStepUpTokenFromMfa()`), so every existing step-up-gated function
+      (`admin-manage-user`, ...) needed zero changes. Caught and fixed a real bug during this
+      work's own screenshot testing: `supabase.auth.mfa.enroll()` already returns a
+      ready-to-use `data:image/svg+xml;utf-8,<svg>…` string for the QR code (GoTrueClient
+      prepends that itself) — wrapping it in another `data:` URI produced a broken image.
 - [ ] Full pgTAP RLS test suite covering every invariant (the Dirty-Dozen successor), gating
       CI.
 - [ ] Error tracking (Sentry free tier) + a basic uptime check on the Edge Functions.
