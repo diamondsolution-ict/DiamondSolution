@@ -258,196 +258,208 @@ export default function Dashboard() {
 
   return (
     <Layout title="Dashboard" wide>
-      <div className="diamond-gradient card-luxury p-5 text-white">
-        <div className="flex items-center gap-2">
-          <DiamondLogo size={22} variant="white" layout="icon" />
-          <span className="font-heading text-sm font-bold">
-            Diamond Solution
-          </span>
-        </div>
-        <p className="mt-3 text-xs text-white/70">{greeting()},</p>
-        <p className="font-heading text-xl font-bold">
-          {greetingName(profile, user?.email)}
-        </p>
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <HeroStat label="Points" value={points} />
-          <HeroStat label="Accuracy" value={`${accuracy}%`} />
-          <HeroStat label="Attempted" value={attempted} />
-        </div>
-      </div>
-
-      <div className="card-luxury mt-4 p-5">
-        <p className="text-xs font-bold uppercase tracking-wide text-gold">
-          Wisdom of the day
-        </p>
-        <p className="mt-2 text-sm italic text-text-2">
-          "{quoteOfTheDay(quotePool).text}"
-        </p>
-        <p className="mt-1 text-xs text-text-3">
-          — {quoteOfTheDay(quotePool).author}
-        </p>
-      </div>
-
-      {!loading && resume && (
-        <button
-          onClick={() => navigate(`/courses/${resume.course_id}`)}
-          className="diamond-gradient card-luxury mt-4 flex w-full items-center gap-4 p-5 text-left text-white"
-        >
-          <ProgressRing percent={resumePercent} />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs uppercase tracking-wide text-white/70">
-              Recently practiced
+      <div className="lg:grid lg:grid-cols-3 lg:items-start lg:gap-6">
+        {/* Main column */}
+        <div className="lg:col-span-2">
+          <div className="diamond-gradient card-luxury p-5 text-white">
+            <div className="flex items-center gap-2">
+              <DiamondLogo size={22} variant="white" layout="icon" />
+              <span className="font-heading text-sm font-bold">
+                Diamond Solution
+              </span>
+            </div>
+            <p className="mt-3 text-xs text-white/70">{greeting()},</p>
+            <p className="font-heading text-xl font-bold">
+              {greetingName(profile, user?.email)}
             </p>
-            <p className="mt-1 truncate font-heading text-base font-bold">
-              {resume.course_title}
-            </p>
-            <p className="mt-1 text-xs text-white/80">
-              {resume.current_order} of {resume.totalQuestions} questions
-              completed
-            </p>
-            <span className="mt-2 inline-block rounded-full bg-gold px-3 py-1 text-xs font-bold text-navy">
-              Resume quiz →
-            </span>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <HeroStat label="Points" value={points} />
+              <HeroStat label="Accuracy" value={`${accuracy}%`} />
+              <HeroStat label="Attempted" value={attempted} />
+            </div>
           </div>
-        </button>
-      )}
 
-      <div className="mt-6">
-        <h2 className="font-heading text-sm font-bold text-text-1">
-          Study analytics
-        </h2>
-        <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
-          <Stat label="Time spent (7d)" value={`${weekTimeSpentMinutes}m`} />
-          <Stat label="Attempted (7d)" value={weekAttempted} />
-          <Stat label="Correct answers" value={weekCorrect} />
-          <Stat label="Average score" value={`${weekAccuracy}%`} />
-        </div>
-      </div>
+          <div className="card-luxury mt-4 p-5">
+            <p className="text-xs font-bold uppercase tracking-wide text-gold">
+              Wisdom of the day
+            </p>
+            <p className="mt-2 text-sm italic text-text-2">
+              "{quoteOfTheDay(quotePool).text}"
+            </p>
+            <p className="mt-1 text-xs text-text-3">
+              — {quoteOfTheDay(quotePool).author}
+            </p>
+          </div>
 
-      <div className="card-luxury mt-4 p-5">
-        <h2 className="font-heading text-sm font-bold text-text-1">
-          Daily time spent &amp; practice volume
-        </h2>
-        <div className="mt-3 flex items-end gap-2" style={{ height: 80 }}>
-          {week.map((d) => (
-            <div
-              key={d.date}
-              className="flex flex-1 flex-col items-center gap-1"
-            >
-              <div
-                className="w-full rounded-t bg-royal"
-                style={{
-                  height: `${Math.max(4, (d.attempted / maxAttempted) * 64)}px`,
-                }}
-                title={`${d.attempted} attempted, ${d.correct} correct`}
-              />
-              <span className="text-[10px] text-text-3">
-                {format(new Date(d.date), "EEE")}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-3 grid grid-cols-7 gap-1">
-          {week.map((d) => (
-            <div
-              key={d.date}
-              className="rounded-lg bg-canvas-soft py-1.5 text-center"
-            >
-              <p className="text-[10px] font-semibold text-text-2">
-                {Math.round(d.studyDuration / 60)}m
-              </p>
-              <p className="text-[10px] text-text-3">{d.attempted}q</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <h2 className="font-heading text-sm font-bold text-text-1">
-          Departments
-        </h2>
-        <div className="mt-2 flex gap-3 overflow-x-auto pb-2">
-          {departments.map((d) => (
+          {!loading && resume && (
             <button
-              key={d.id}
-              onClick={() => navigate(`/courses?department=${d.id}`)}
-              className="card-luxury flex w-32 shrink-0 flex-col items-start p-3 text-left"
+              onClick={() => navigate(`/courses/${resume.course_id}`)}
+              className="diamond-gradient card-luxury mt-4 flex w-full items-center gap-4 p-5 text-left text-white"
             >
-              <span className="font-heading text-sm font-bold text-text-1">
-                {d.name}
-              </span>
-              {grantedIds.has(d.id) && (
-                <span className="badge-royal mt-2">Active</span>
-              )}
+              <ProgressRing percent={resumePercent} />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs uppercase tracking-wide text-white/70">
+                  Recently practiced
+                </p>
+                <p className="mt-1 truncate font-heading text-base font-bold">
+                  {resume.course_title}
+                </p>
+                <p className="mt-1 text-xs text-white/80">
+                  {resume.current_order} of {resume.totalQuestions} questions
+                  completed
+                </p>
+                <span className="mt-2 inline-block rounded-full bg-gold px-3 py-1 text-xs font-bold text-navy">
+                  Resume quiz →
+                </span>
+              </div>
             </button>
-          ))}
-        </div>
-      </div>
+          )}
 
-      <div className="mt-6 grid grid-cols-4 gap-2">
-        <QuickAction label="Study" onClick={() => navigate("/courses")} />
-        <QuickAction
-          label="Leaderboard"
-          onClick={() => navigate("/leaderboard")}
-        />
-        <QuickAction
-          label="Activity"
-          onClick={() => navigate("/activity-log")}
-        />
-        <QuickAction label="Affiliate" onClick={() => navigate("/affiliate")} />
-      </div>
-
-      <button
-        onClick={() => navigate("/affiliate")}
-        className="diamond-gradient card-luxury mt-4 w-full p-5 text-left text-white"
-      >
-        <p className="text-xs font-bold uppercase tracking-wide text-gold">
-          Revenue program
-        </p>
-        <p className="mt-1 font-heading text-xl font-bold">
-          Refer &amp; earn 25%
-        </p>
-        <p className="mt-1 text-sm text-white/80">
-          Share your referral code and earn on every successful enrollment.
-        </p>
-        <span className="mt-3 inline-block rounded-full border border-white/30 bg-white/10 px-4 py-2 font-mono text-sm tracking-wider text-gold">
-          {referralCode ?? "Become an affiliate →"}
-        </span>
-      </button>
-
-      {topRanker && (
-        <div className="card-luxury mt-4 p-5">
-          <div className="flex items-center justify-between">
+          <div className="mt-6">
             <h2 className="font-heading text-sm font-bold text-text-1">
-              Top this week
+              Study analytics
             </h2>
-            <button
-              onClick={() => navigate("/leaderboard")}
-              className="text-xs font-semibold text-royal hover:underline"
-            >
-              See full rankings →
-            </button>
-          </div>
-          <div className="mt-3 flex items-center gap-3">
-            <span className="badge-gold flex h-8 w-8 items-center justify-center rounded-full font-bold">
-              1
-            </span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-text-1">
-                {topRanker.user_id === user?.id
-                  ? "You"
-                  : topRanker.display_name}
-              </p>
-              <p className="text-xs text-text-3">
-                {topRanker.accuracy}% accuracy · {topRanker.attempted} q's
-              </p>
+            <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
+              <Stat label="Time spent (7d)" value={`${weekTimeSpentMinutes}m`} />
+              <Stat label="Attempted (7d)" value={weekAttempted} />
+              <Stat label="Correct answers" value={weekCorrect} />
+              <Stat label="Average score" value={`${weekAccuracy}%`} />
             </div>
-            <span className="font-heading text-sm font-bold text-royal">
-              {topRanker.points} pts
-            </span>
+          </div>
+
+          <div className="card-luxury mt-4 p-5">
+            <h2 className="font-heading text-sm font-bold text-text-1">
+              Daily time spent &amp; practice volume
+            </h2>
+            <div className="mt-3 flex items-end gap-2" style={{ height: 80 }}>
+              {week.map((d) => (
+                <div
+                  key={d.date}
+                  className="flex flex-1 flex-col items-center gap-1"
+                >
+                  <div
+                    className="w-full rounded-t bg-royal"
+                    style={{
+                      height: `${Math.max(4, (d.attempted / maxAttempted) * 64)}px`,
+                    }}
+                    title={`${d.attempted} attempted, ${d.correct} correct`}
+                  />
+                  <span className="text-[10px] text-text-3">
+                    {format(new Date(d.date), "EEE")}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-7 gap-1">
+              {week.map((d) => (
+                <div
+                  key={d.date}
+                  className="rounded-lg bg-canvas-soft py-1.5 text-center"
+                >
+                  <p className="text-[10px] font-semibold text-text-2">
+                    {Math.round(d.studyDuration / 60)}m
+                  </p>
+                  <p className="text-[10px] text-text-3">{d.attempted}q</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <h2 className="font-heading text-sm font-bold text-text-1">
+              Departments
+            </h2>
+            <div className="mt-2 flex gap-3 overflow-x-auto pb-2">
+              {departments.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => navigate(`/courses?department=${d.id}`)}
+                  className="card-luxury flex w-32 shrink-0 flex-col items-start p-3 text-left"
+                >
+                  <span className="font-heading text-sm font-bold text-text-1">
+                    {d.name}
+                  </span>
+                  {grantedIds.has(d.id) && (
+                    <span className="badge-royal mt-2">Active</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-4 gap-2">
+            <QuickAction label="Study" onClick={() => navigate("/courses")} />
+            <QuickAction
+              label="Leaderboard"
+              onClick={() => navigate("/leaderboard")}
+            />
+            <QuickAction
+              label="Activity"
+              onClick={() => navigate("/activity-log")}
+            />
+            <QuickAction
+              label="Affiliate"
+              onClick={() => navigate("/affiliate")}
+            />
           </div>
         </div>
-      )}
+
+        {/* Right rail */}
+        <div className="mt-4 lg:col-span-1 lg:mt-0">
+          <button
+            onClick={() => navigate("/affiliate")}
+            className="diamond-gradient card-luxury w-full p-5 text-left text-white"
+          >
+            <p className="text-xs font-bold uppercase tracking-wide text-gold">
+              Revenue program
+            </p>
+            <p className="mt-1 font-heading text-xl font-bold">
+              Refer &amp; earn 25%
+            </p>
+            <p className="mt-1 text-sm text-white/80">
+              Share your referral code and earn on every successful
+              enrollment.
+            </p>
+            <span className="mt-3 inline-block rounded-full border border-white/30 bg-white/10 px-4 py-2 font-mono text-sm tracking-wider text-gold">
+              {referralCode ?? "Become an affiliate →"}
+            </span>
+          </button>
+
+          {topRanker && (
+            <div className="card-luxury mt-4 p-5">
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading text-sm font-bold text-text-1">
+                  Top this week
+                </h2>
+                <button
+                  onClick={() => navigate("/leaderboard")}
+                  className="text-xs font-semibold text-royal hover:underline"
+                >
+                  See full rankings →
+                </button>
+              </div>
+              <div className="mt-3 flex items-center gap-3">
+                <span className="badge-gold flex h-8 w-8 items-center justify-center rounded-full font-bold">
+                  1
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-text-1">
+                    {topRanker.user_id === user?.id
+                      ? "You"
+                      : topRanker.display_name}
+                  </p>
+                  <p className="text-xs text-text-3">
+                    {topRanker.accuracy}% accuracy · {topRanker.attempted} q's
+                  </p>
+                </div>
+                <span className="font-heading text-sm font-bold text-royal">
+                  {topRanker.points} pts
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </Layout>
   );
 }

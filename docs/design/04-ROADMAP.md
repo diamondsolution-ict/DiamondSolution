@@ -116,11 +116,15 @@ top of it.
       Media/Pictures, admin-side Notifications/broadcast, Support, WhatsApp Numbers, a
       top-level Questions browser) — those render `AdminComingSoon` rather than a dead link or
       a missing nav item, so the shell is honest about what's built vs. not.
-- [x] Student-facing desktop layout: `Layout.tsx` gained a persistent top nav bar (shown only
-      at `md:` and up — the bottom tab bar stays mobile-only) and an opt-in `wide` prop for
-      dashboard-style pages (Dashboard, the department browser) so they use the extra desktop
-      width instead of staying pinned to the mobile card measure; everything else (forms,
-      lists) stays at a readable width rather than stretching edge-to-edge.
+- [x] Student-facing desktop layout, revised twice: first a top nav bar, then rebuilt as a
+      left sidebar (navy, logo + nav links + a motivational footer card) to match a reference
+      design the user supplied — desktop only; the bottom tab bar stays mobile-only and
+      mobile's card order is untouched (verified by screenshot, not just by eye — the sidebar
+      split initially reshuffled mobile's card order since `wide`'s two-column grouping was a
+      single flat stack below `lg:`, fixed by keeping "Wisdom of the day" in the main-column
+      source position rather than the right rail). `wide` prop still gates which pages use the
+      extra width (Dashboard's main+rail grid, the department browser's card grid) vs. staying
+      at a readable measure (forms, lists).
 - [x] Admin WhatsApp Numbers tab (`/admin/whatsapp-numbers`): contact directory off
       `profiles.whatsapp`/`phone`, search, copy-one/copy-all, CSV export, per-row wa.me chat
       link. No new schema — profiles' existing staff-read RLS already covers it.
