@@ -9,6 +9,7 @@ interface Department {
   id: string;
   name: string;
   slug: string;
+  image_path: string | null;
 }
 interface PriceRow {
   department_id: string;
@@ -47,7 +48,7 @@ export default function CourseList() {
         await Promise.all([
           supabase
             .from("departments")
-            .select("id, name, slug")
+            .select("id, name, slug, image_path")
             .eq("status", "active")
             .order("name"),
           supabase
@@ -161,13 +162,28 @@ export default function CourseList() {
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {departments.map((d) => {
             const granted = grantedDepartmentIds.has(d.id);
+            const imageUrl = d.image_path
+              ? supabase.storage.from("media").getPublicUrl(d.image_path).data
+                  .publicUrl
+              : null;
             return (
               <button
                 key={d.id}
                 onClick={() => setSearchParams({ department: d.id })}
-                className="card-luxury flex w-full items-center justify-between p-4 text-left"
+                className="card-luxury flex w-full items-center gap-3 p-4 text-left"
               >
-                <span className="font-heading font-bold text-text-1">
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-royal-soft font-heading text-sm font-bold text-royal">
+                    {d.name.charAt(0)}
+                  </div>
+                )}
+                <span className="flex-1 font-heading font-bold text-text-1">
                   {d.name}
                 </span>
                 {granted && <span className="badge-royal">Authorized</span>}

@@ -23,6 +23,7 @@ import { AdminComingSoon } from "@/pages/admin/AdminComingSoon";
 import AdminWhatsAppNumbers from "@/pages/admin/AdminWhatsAppNumbers";
 import AdminNotifications from "@/pages/admin/AdminNotifications";
 import AdminAnalytics from "@/pages/admin/AdminAnalytics";
+import AdminMedia from "@/pages/admin/AdminMedia";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminCourses from "@/pages/admin/AdminCourses";
 import AdminQuestions from "@/pages/admin/AdminQuestions";
@@ -90,15 +91,7 @@ export default function App() {
               />
             }
           />
-          <Route
-            path="/admin/media"
-            element={
-              <AdminComingSoon
-                title="Pictures & Media"
-                description="A unified department/course picture manager is on the way."
-              />
-            }
-          />
+          <Route path="/admin/media" element={<AdminMedia />} />
           <Route path="/admin/notifications" element={<AdminNotifications />} />
           <Route
             path="/admin/support"

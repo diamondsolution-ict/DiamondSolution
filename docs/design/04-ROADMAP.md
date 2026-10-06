@@ -134,12 +134,19 @@ top of it.
       `daily_practice_stats`) via three new RPCs. Visit Frequency/Peak Hours is explicitly
       NOT built — it needs `login_events` from Phase 5's device/session work, which doesn't
       exist yet; the tab says so rather than faking a chart with zeros.
-- [ ] Remaining admin tabs with no content yet (shells exist in the sidebar): Media/Pictures
-      (needs Supabase Storage integration — the one real infrastructure lift left), Support
-      (needs chat itself, deferred together per Phase 4's existing reasoning), System Logs
-      (mostly covered already by `/admin/audit-log`), a top-level Questions browser
-      (department-filtered course/question list — question management itself already exists
-      per-course via Departments).
+- [x] Admin Pictures & Media tab (`/admin/media`): Departments/Courses sub-tabs, picture
+      upload for each, backed by a new public `media` Storage bucket (RLS: public read,
+      staff-only write) — the first real Storage usage in the app. `departments.image_path`/
+      `courses.image_path` already existed as columns waiting for this. Wired into the one
+      actual display surface so it isn't a dead feature: the department browse cards on
+      `/courses` now show the uploaded picture (falling back to an initial-letter avatar).
+      Course-card images aren't surfaced anywhere in the student UI yet — nothing currently
+      renders a course-level image, so that's a separate follow-up, not bundled here.
+- [ ] Remaining admin tabs with no content yet (shells exist in the sidebar): Support (needs
+      chat itself, deferred together per Phase 4's existing reasoning), System Logs (mostly
+      covered already by `/admin/audit-log`), a top-level Questions browser (department-
+      filtered course/question list — question management itself already exists per-course
+      via Departments).
 - [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
 
 ## Phase 5 — Device/session policy, MFA, hardening

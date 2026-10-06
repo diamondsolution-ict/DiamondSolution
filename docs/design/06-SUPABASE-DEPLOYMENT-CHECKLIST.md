@@ -31,17 +31,24 @@ usually `eu-west` or similar — check the lowest-latency option Supabase offers
 ```bash
 cd diamondsolution
 supabase link --project-ref <your-project-ref>
-supabase db push             # applies all 10 migrations, in order, to the live project
+supabase db push             # applies all 14 migrations, in order, to the live project
 ```
 
 This creates every table, RLS policy, and function from scratch — `profiles`, `departments`,
 `courses`, `questions`, `payments`, `access_grants`, `study_progress`, `question_attempts`,
 `daily_practice_stats`, the affiliate/referral/payout tables, `notifications`,
 `admin_actions_log`, `security_otp_tokens`, `rate_limit_hits`, `quotes`,
-`institutional_links`, and all their RLS policies and helper functions (`is_admin()`,
-`leaderboard()`, `record_question_attempt()`, `admin_list_emails()`,
-`admin_activate_affiliate()`, etc.). Since no real users exist on the live project yet, this is
-a clean push — nothing to migrate or backfill.
+`institutional_links`, `admin_broadcasts`, and all their RLS policies and helper functions
+(`is_admin()`, `leaderboard()`, `record_question_attempt()`, `admin_list_emails()`,
+`admin_activate_affiliate()`, `admin_dashboard_stats()`, `broadcast_notification()`, etc.).
+Since no real users exist on the live project yet, this is a clean push — nothing to migrate
+or backfill.
+
+It also provisions a public Storage bucket named `media` (department/course card pictures,
+5MB limit, JPEG/PNG/WebP only) with RLS on `storage.objects` — public read, staff-only write —
+so the Admin Pictures & Media tab works immediately with no separate dashboard step. Nothing
+in this bucket is access-controlled beyond that; it's public-browsable marketing imagery, same
+posture as the department catalog itself.
 
 ## 4. Set Edge Function secrets
 
