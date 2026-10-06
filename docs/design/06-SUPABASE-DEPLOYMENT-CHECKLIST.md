@@ -211,6 +211,28 @@ separate webhook configs (check the Paystack dashboard — it usually doesn't, b
 glance). Do one real, low-value transaction yourself post-deploy to confirm the live keys work
 end-to-end before telling anyone else the platform is open.
 
+## 14. Turn on error tracking (optional, recommended)
+
+- [sentry.io](https://sentry.io) → new project → React → copy the DSN from Client Keys.
+- Add `VITE_SENTRY_DSN=https://...` to Netlify's environment variables and redeploy — the app
+  only initializes Sentry when this is set, so skipping this step is safe (no behavior change,
+  just no error reports).
+- Trigger a real error once deployed (e.g. temporarily throw inside a component) and confirm
+  it shows up in the Sentry dashboard, then revert the test throw.
+- A free Sentry project's event quota is enough for this app's expected traffic for a long
+  while — revisit if it's ever actually exceeded.
+
+Server-side (Edge Function) error tracking isn't wired up — Supabase's own Function logs
+(Dashboard → Edge Functions → a function → Logs) are the only visibility into those for now.
+
+## 15. Set up an uptime check (optional)
+
+A free account on something like [UptimeRobot](https://uptimerobot.com) or
+[Better Uptime](https://betteruptime.com), pointed at the deployed frontend URL and/or a
+cheap Edge Function (e.g. `verify-payment` with a deliberately-invalid body, which should
+reply fast with a 400 rather than timing out) — catches "the whole site/API is down" before a
+student reports it. Nothing in the repo depends on this; it's an external dashboard, not code.
+
 ---
 
 Everything above is a one-time setup. After this, the only recurring step is `supabase db

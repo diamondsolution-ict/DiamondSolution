@@ -209,9 +209,38 @@ top of it.
       work's own screenshot testing: `supabase.auth.mfa.enroll()` already returns a
       ready-to-use `data:image/svg+xml;utf-8,<svg>…` string for the QR code (GoTrueClient
       prepends that itself) — wrapping it in another `data:` URI produced a broken image.
-- [ ] Full pgTAP RLS test suite covering every invariant (the Dirty-Dozen successor), gating
-      CI.
-- [ ] Error tracking (Sentry free tier) + a basic uptime check on the Edge Functions.
+- [x] pgTAP RLS test suite, first pass — not "every invariant" yet, but the CI wiring already
+      existed (`.github/workflows/ci.yml`'s `database` job: `supabase start` → `supabase db
+      reset` → the RLS-enabled-on-every-table gate → `supabase test db`, which was built ahead
+      of any actual test files and auto-detects `supabase/tests/pgtap/*.sql`) and was sitting
+      with zero tests in it. Three files land now, covering 02-DATA-MODEL-AND-SECURITY.md §9's
+      three explicitly-named examples plus this session's own chat work:
+      `01_no_client_writes_to_sensitive_tables.sql` (user_roles/payments/access_grants/
+      commissions all have a select policy and deliberately no write policy at all — neither a
+      student nor an admin can write any of them directly, only the service_role Edge
+      Functions can), `02_access_grants_expiry.sql` (an expired grant doesn't satisfy
+      `has_department_access()`), `03_chat_isolation.sql` (a student can't read another
+      student's thread/messages, and can't insert into `chat_messages` directly, bypassing
+      `send_chat_message()`). Written carefully (direct `request.jwt.claims`/
+      `request.jwt.claim.sub` GUC manipulation to simulate each test user, no third-party
+      pgTAP helper extension) and reasoned through twice over — caught and fixed two real bugs
+      before they'd have shown up as a confusing CI failure: UPDATE-vs-INSERT RLS semantics
+      differ (a blocked UPDATE matching zero rows is not an error, unlike a blocked INSERT's
+      `WITH CHECK` failure, so those tests had to switch to an attempt-then-assert-unchanged
+      pattern instead of `throws_ok`), and a role-switched-too-early ordering bug (inserting
+      into `auth.users` after already switching to the `authenticated` role, which can't write
+      there). None of this could be executed in the sandbox this was built in (no Docker to
+      run `supabase start`) — next real CI run is the first actual confirmation; add more
+      tests incrementally from here rather than treating this as the finished suite.
+- [x] Frontend error tracking (Sentry) — `@sentry/react`, entirely opt-in via `VITE_SENTRY_DSN`
+      (unset means `Sentry.init()` is never called, not called with an empty DSN — no behavior
+      change for the sandbox or any deploy that hasn't configured it). A `Sentry.ErrorBoundary`
+      around the app also gives every deploy a friendly "Something went wrong" + reload screen
+      instead of a blank white one on an uncaught render error, independent of whether Sentry
+      itself is configured. See `06-SUPABASE-DEPLOYMENT-CHECKLIST.md` §14 for the Sentry
+      project setup (needs the user's own account) and §15 for an uptime check (also external,
+      no code to write). Edge Function (server-side) error tracking is NOT wired up — Supabase's
+      own Function logs are the only visibility there for now.
 - [ ] Load-shape review against the free-tier limits with realistic 1,000-user numbers before
       calling it launch-ready (see checklist below).
 
