@@ -165,6 +165,18 @@ top of it.
       would only duplicate it.
 - [x] Support (`/admin/support`) — the last admin tab with no content now has one; see this
       phase's chat entry above.
+- [x] Payment tracking/recovery, prompted by the live Paystack key going live before the
+      device/session hardening pass: `paystack-webhook` previously only acted on
+      `charge.success`, so a charge Paystack itself reports as failed left no row in `payments`
+      at all unless the student's own browser happened to call `verify-payment` first — now
+      `charge.failed` is handled too, through the same `processDepartmentAccessPayment`/
+      `processReactivationPayment` path (already records a non-"success" status as `failed`
+      with a reason, so no new business logic was needed). New `admin-recheck-payment` Edge
+      Function + a "Recheck a transaction" box on `/admin/payments`: paste a Paystack reference,
+      it re-verifies live against Paystack and — reusing the same idempotent processing
+      functions — records and grants access immediately if it turns out to actually be a
+      success that was never recorded, covering "I paid but it's not showing" support cases
+      without needing direct Paystack dashboard access.
 - [ ] Onboarding tour (old app's `OnboardingTour.tsx`) — not yet ported.
 
 ## Phase 5 — Device/session policy, MFA, hardening

@@ -17,8 +17,14 @@ Deno.serve(async (req) => {
 
   const event = JSON.parse(rawBody);
 
-  if (event.event !== "charge.success") {
-    // Not an error — Paystack sends many event types; we only act on this one.
+  // Also act on charge.failed — previously only charge.success was handled, so a charge
+  // Paystack itself reports as failed (card declined, insufficient funds, etc.) left no row
+  // in `payments` at all unless the student's own browser happened to call verify-payment
+  // first. processDepartmentAccessPayment/processReactivationPayment already record a
+  // non-"success" Paystack status as status='failed' with a reason — this just makes sure
+  // that path actually gets reached for a failure Paystack pushes to us. Every other event
+  // type (refunds, disputes, transfers, ...) is still ignored.
+  if (event.event !== "charge.success" && event.event !== "charge.failed") {
     return jsonResponse({ received: true });
   }
 

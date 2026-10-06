@@ -81,6 +81,7 @@ supabase functions deploy verify-otp
 supabase functions deploy change-password
 supabase functions deploy admin-manage-user
 supabase functions deploy admin-approve-commission
+supabase functions deploy admin-recheck-payment
 ```
 
 (`_shared/` is bundled automatically into each function — no separate deploy step for it.)

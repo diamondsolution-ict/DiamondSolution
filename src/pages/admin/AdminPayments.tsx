@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -31,50 +31,90 @@ export default function AdminPayments() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [recheckRef, setRecheckRef] = useState("");
+  const [rechecking, setRechecking] = useState(false);
+  const [recheckResult, setRecheckResult] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const { data: paymentRows } = await supabase
+      .from("payments")
+      .select(
+        "id, user_id, provider, provider_reference, department_id, amount, currency, status, created_at, verified_at, raw_provider_response",
+      )
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    setPayments(paymentRows ?? []);
+
+    const userIds = [...new Set((paymentRows ?? []).map((p) => p.user_id))];
+    const deptIds = [
+      ...new Set(
+        (paymentRows ?? []).map((p) => p.department_id).filter(Boolean),
+      ),
+    ] as string[];
+
+    const [{ data: profiles }, { data: depts }] = await Promise.all([
+      userIds.length > 0
+        ? supabase
+            .from("profiles")
+            .select("user_id, display_name")
+            .in("user_id", userIds)
+        : Promise.resolve({ data: [] }),
+      deptIds.length > 0
+        ? supabase.from("departments").select("id, name").in("id", deptIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    setProfileNames(
+      Object.fromEntries(
+        (profiles ?? []).map((p) => [p.user_id, p.display_name ?? "Unnamed"]),
+      ),
+    );
+    setDepartmentNames(
+      Object.fromEntries((depts ?? []).map((d) => [d.id, d.name])),
+    );
+    setLoading(false);
+  }
+
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const { data: paymentRows } = await supabase
-        .from("payments")
-        .select(
-          "id, user_id, provider, provider_reference, department_id, amount, currency, status, created_at, verified_at, raw_provider_response",
-        )
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      setPayments(paymentRows ?? []);
-
-      const userIds = [...new Set((paymentRows ?? []).map((p) => p.user_id))];
-      const deptIds = [
-        ...new Set(
-          (paymentRows ?? []).map((p) => p.department_id).filter(Boolean),
-        ),
-      ] as string[];
-
-      const [{ data: profiles }, { data: depts }] = await Promise.all([
-        userIds.length > 0
-          ? supabase
-              .from("profiles")
-              .select("user_id, display_name")
-              .in("user_id", userIds)
-          : Promise.resolve({ data: [] }),
-        deptIds.length > 0
-          ? supabase.from("departments").select("id, name").in("id", deptIds)
-          : Promise.resolve({ data: [] }),
-      ]);
-
-      setProfileNames(
-        Object.fromEntries(
-          (profiles ?? []).map((p) => [p.user_id, p.display_name ?? "Unnamed"]),
-        ),
-      );
-      setDepartmentNames(
-        Object.fromEntries((depts ?? []).map((d) => [d.id, d.name])),
-      );
-      setLoading(false);
-    }
     void load();
   }, []);
+
+  async function handleRecheck(e: FormEvent) {
+    e.preventDefault();
+    const reference = recheckRef.trim();
+    if (!reference || rechecking) return;
+    setRechecking(true);
+    setRecheckResult(null);
+
+    const { data, error } = await supabase.functions.invoke(
+      "admin-recheck-payment",
+      { body: { reference } },
+    );
+
+    if (error || !data?.success) {
+      setRecheckResult({
+        ok: false,
+        message: data?.error ?? error?.message ?? "Recheck failed.",
+      });
+    } else {
+      setRecheckResult({
+        ok: true,
+        message:
+          data.paystackStatus === "success"
+            ? data.alreadyProcessed
+              ? "Paystack confirms this was successful — already recorded, nothing changed."
+              : "Paystack confirms this was successful — recorded now and access granted."
+            : `Paystack reports this transaction as "${data.paystackStatus}" — recorded as failed.`,
+      });
+      await load();
+    }
+    setRechecking(false);
+  }
 
   const filtered = payments.filter((p) => {
     if (status !== "all" && p.status !== status) return false;
@@ -125,6 +165,37 @@ export default function AdminPayments() {
         <button onClick={handleExport} className="btn-outline text-sm">
           Export CSV
         </button>
+      </div>
+
+      <div className="card-luxury mt-4 p-4">
+        <p className="text-sm font-semibold text-text-1">Recheck a transaction</p>
+        <p className="mt-0.5 text-xs text-text-3">
+          A student says they paid but it's not reflecting? Paste the Paystack reference below
+          to check it live against Paystack — a confirmed success is recorded and access is
+          granted immediately if it wasn't already.
+        </p>
+        <form onSubmit={handleRecheck} className="mt-3 flex flex-wrap gap-2">
+          <input
+            value={recheckRef}
+            onChange={(e) => setRecheckRef(e.target.value)}
+            placeholder="Paystack reference…"
+            className="min-w-[220px] flex-1 rounded-xl border border-canvas-border bg-white px-3 py-2 font-mono text-sm text-text-1 focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+          />
+          <button
+            type="submit"
+            disabled={rechecking || !recheckRef.trim()}
+            className="btn-primary text-sm disabled:opacity-50"
+          >
+            {rechecking ? "Checking…" : "Recheck"}
+          </button>
+        </form>
+        {recheckResult && (
+          <p
+            className={`mt-2 text-sm font-medium ${recheckResult.ok ? "text-emerald-700" : "text-rose-600"}`}
+          >
+            {recheckResult.message}
+          </p>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
