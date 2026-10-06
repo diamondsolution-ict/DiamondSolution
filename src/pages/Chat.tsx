@@ -79,8 +79,17 @@ export default function Chat() {
   }, [threadId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    // "smooth" silently no-ops in some mobile browsers/WebViews (reduced-motion settings,
+    // low-power throttling) — leaves the view stuck wherever it first rendered, with the
+    // latest message/input below the fold. "instant" has none of those failure modes.
+    //
+    // `loading` is also a dependency, not just `messages`: on first load, setMessages() runs
+    // while `loading` is still true, so the message list (and this effect's scroll marker)
+    // isn't mounted yet on the render where `messages` actually changes. Without `loading`
+    // here, the effect never re-fires on the later render where the marker finally mounts,
+    // leaving the view stuck at the top of the conversation instead of the latest message.
+    bottomRef.current?.scrollIntoView({ behavior: "instant" });
+  }, [messages, loading]);
 
   async function handleSend(e: FormEvent) {
     e.preventDefault();
@@ -106,7 +115,7 @@ export default function Chat() {
 
   return (
     <Layout title="Chat with Support">
-      <div className="card-luxury flex h-[calc(100vh-180px)] flex-col overflow-hidden p-0">
+      <div className="card-luxury flex h-[calc(100dvh-200px)] flex-col overflow-hidden p-0 md:h-[calc(100dvh-104px)]">
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <p className="text-center text-sm text-text-3">Loading…</p>

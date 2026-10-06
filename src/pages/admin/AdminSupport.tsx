@@ -141,7 +141,9 @@ export default function AdminSupport() {
   }, [activeId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // "smooth" silently no-ops in some browsers (reduced-motion settings, low-power
+    // throttling) — "instant" has none of those failure modes. See Chat.tsx for the same fix.
+    bottomRef.current?.scrollIntoView({ behavior: "instant" });
   }, [messages]);
 
   async function handleSend(e: FormEvent) {
