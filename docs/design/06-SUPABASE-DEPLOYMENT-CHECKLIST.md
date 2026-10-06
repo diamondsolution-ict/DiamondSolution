@@ -159,9 +159,23 @@ of a blank screen if they're ever missing again.
 Run `supabase/seed/01-departments.sql` then `supabase/seed/02-courses.sql` (same manual
 SQL-Editor-or-`psql -f` process as step 10's admin bootstrap) to populate the five real
 departments/pricing and their course catalog from the old app, so `/register` and `/courses`
-aren't empty. These are catalog entries only — no questions yet. Then, through the now-unlocked
-`/admin` screens: either hand-enter questions per course or use the CSV import on the
-Questions tab if you have the old app's exported question bank.
+aren't empty. These are catalog entries only — no questions yet.
+
+To get real questions in, pick one:
+
+- **One-off, a few courses**: `/admin/questions` → pick a course → either hand-enter via the
+  "Add question" form, or **Import CSV** (there's a **Download template** button for the exact
+  column layout). The old app's own Admin → Questions tab has a per-course **Export CSV** button
+  that writes that same format, so you can export from the old app and import straight into the
+  matching course here.
+- **All courses at once**: `scripts/migrate-questions-from-firebase.mjs` reads every course's
+  questions directly out of the old app's Firestore and inserts them into the matching Supabase
+  course in one run (matched by department + level + course title). Needs a Firebase
+  service-account key for the old project and this project's Supabase service-role key — see the
+  script's header comment for exact steps. Run `--dry-run` first; it prints which old courses
+  matched, which don't exist in the new catalog (the new catalog deliberately dropped some
+  duplicate-category courses — see `supabase/seed/02-courses.sql`'s header), and any questions
+  it couldn't import cleanly, so you can fix those up by hand afterward.
 
 ## 12. End-to-end smoke test (Paystack test mode)
 
