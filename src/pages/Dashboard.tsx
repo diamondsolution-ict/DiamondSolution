@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
+import {
+  BookOpen,
+  BarChart3,
+  Gift,
+  ListChecks,
+  Quote,
+  Sparkles,
+  Trophy,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -10,6 +19,7 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 interface Department {
   id: string;
   name: string;
+  image_path: string | null;
 }
 interface DayStat {
   date: string;
@@ -138,7 +148,7 @@ export default function Dashboard() {
           .limit(1),
         supabase
           .from("departments")
-          .select("id, name")
+          .select("id, name, image_path")
           .eq("status", "active")
           .order("name"),
         supabase
@@ -283,7 +293,8 @@ export default function Dashboard() {
             </div>
 
             <div className="card-luxury mt-4 p-5">
-              <p className="text-xs font-bold uppercase tracking-wide text-gold">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gold">
+                <Quote size={13} />
                 Wisdom of the day
               </p>
               <p className="mt-2 text-sm italic text-text-2">
@@ -319,7 +330,8 @@ export default function Dashboard() {
             )}
 
             <div className="mt-6">
-              <h2 className="font-heading text-sm font-bold text-text-1">
+              <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+                <BarChart3 size={16} className="text-royal" />
                 Study analytics
               </h2>
               <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -372,38 +384,64 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-6">
-              <h2 className="font-heading text-sm font-bold text-text-1">
+              <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+                <BookOpen size={16} className="text-royal" />
                 Departments
               </h2>
               <div className="mt-2 flex gap-3 overflow-x-auto pb-2">
-                {departments.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => navigate(`/courses?department=${d.id}`)}
-                    className="card-luxury flex w-32 shrink-0 flex-col items-start p-3 text-left"
-                  >
-                    <span className="font-heading text-sm font-bold text-text-1">
-                      {d.name}
-                    </span>
-                    {grantedIds.has(d.id) && (
-                      <span className="badge-royal mt-2">Active</span>
-                    )}
-                  </button>
-                ))}
+                {departments.map((d) => {
+                  const imageUrl = d.image_path
+                    ? supabase.storage.from("media").getPublicUrl(
+                        d.image_path,
+                      ).data.publicUrl
+                    : null;
+                  return (
+                    <button
+                      key={d.id}
+                      onClick={() => navigate(`/courses?department=${d.id}`)}
+                      className="card-luxury flex w-32 shrink-0 flex-col items-start gap-2 p-3 text-left"
+                    >
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt=""
+                          className="h-10 w-10 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="diamond-gradient flex h-10 w-10 items-center justify-center rounded-xl">
+                          <BookOpen size={16} className="text-white/70" />
+                        </div>
+                      )}
+                      <span className="font-heading text-sm font-bold text-text-1">
+                        {d.name}
+                      </span>
+                      {grantedIds.has(d.id) && (
+                        <span className="badge-royal">Active</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <div className="mt-6 grid grid-cols-4 gap-2">
-              <QuickAction label="Study" onClick={() => navigate("/courses")} />
               <QuickAction
+                icon={BookOpen}
+                label="Study"
+                onClick={() => navigate("/courses")}
+              />
+              <QuickAction
+                icon={Trophy}
                 label="Leaderboard"
                 onClick={() => navigate("/leaderboard")}
               />
               <QuickAction
+                icon={ListChecks}
                 label="Activity"
                 onClick={() => navigate("/activity-log")}
               />
               <QuickAction
+                icon={Gift}
                 label="Affiliate"
                 onClick={() => navigate("/affiliate")}
               />
@@ -416,7 +454,10 @@ export default function Dashboard() {
               onClick={() => navigate("/affiliate")}
               className="diamond-gradient card-luxury w-full p-5 text-left text-white"
             >
-              <p className="text-xs font-bold uppercase tracking-wide text-gold">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
+                <Sparkles size={18} className="text-gold" />
+              </div>
+              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-gold">
                 Revenue program
               </p>
               <p className="mt-1 font-heading text-xl font-bold">
@@ -434,7 +475,8 @@ export default function Dashboard() {
             {topRanker && (
               <div className="card-luxury mt-4 p-5">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-heading text-sm font-bold text-text-1">
+                  <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+                    <Trophy size={16} className="text-gold" />
                     Top this week
                   </h2>
                   <button
@@ -530,14 +572,20 @@ function ProgressRing({ percent }: { percent: number }) {
 }
 
 function QuickAction({
+  icon: Icon,
   label,
   onClick,
 }: {
+  icon: typeof BookOpen;
   label: string;
   onClick: () => void;
 }) {
   return (
-    <button onClick={onClick} className="btn-secondary py-3 text-xs">
+    <button
+      onClick={onClick}
+      className="btn-secondary flex-col gap-1 py-3 text-xs"
+    >
+      <Icon size={18} />
       {label}
     </button>
   );

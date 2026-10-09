@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePaystackPayment } from "react-paystack";
+import { BookOpen, FolderOpen, Lock, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -193,7 +194,12 @@ export default function CourseList() {
             );
           })}
           {departments.length === 0 && (
-            <p className="text-sm text-text-3">No departments available yet.</p>
+            <div className="card-luxury col-span-full flex flex-col items-center gap-2 p-10 text-center">
+              <FolderOpen size={28} className="text-text-3" />
+              <p className="text-sm text-text-3">
+                No departments available yet.
+              </p>
+            </div>
           )}
         </div>
       </Layout>
@@ -207,7 +213,10 @@ export default function CourseList() {
     >
       {!hasAccess ? (
         <div className="card-luxury p-8 text-center">
-          <h2 className="font-heading text-lg font-bold text-text-1">
+          <div className="diamond-gradient mx-auto flex h-14 w-14 items-center justify-center rounded-2xl">
+            <Lock size={22} className="text-gold" />
+          </div>
+          <h2 className="mt-4 font-heading text-lg font-bold text-text-1">
             Restricted
           </h2>
           <p className="mt-2 text-sm text-text-3">
@@ -231,18 +240,30 @@ export default function CourseList() {
       ) : loading ? (
         <p className="text-sm text-text-3">Loading…</p>
       ) : courses.length === 0 ? (
-        <p className="text-sm text-text-3">
-          No courses in this department yet.
-        </p>
+        <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+          <BookOpen size={28} className="text-text-3" />
+          <p className="text-sm text-text-3">
+            No courses in this department yet.
+          </p>
+        </div>
       ) : (
         <div className="space-y-3">
+          {hasAccess && (
+            <div className="badge-gold inline-flex items-center gap-1.5">
+              <Sparkles size={12} />
+              Lifetime access active
+            </div>
+          )}
           {courses.map((c) => (
             <button
               key={c.id}
               onClick={() => navigate(`/courses/${c.id}`)}
-              className="card-luxury flex w-full items-center justify-between p-4 text-left"
+              className="card-luxury flex w-full items-center gap-3 p-4 text-left"
             >
-              <span className="font-heading font-bold text-text-1">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-royal-soft">
+                <BookOpen size={18} className="text-royal" />
+              </div>
+              <span className="flex-1 font-heading font-bold text-text-1">
                 {c.title}
               </span>
               <span className="badge-royal">{levelLabel(c.level_id)}</span>

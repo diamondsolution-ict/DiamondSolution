@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { BookOpen, FileQuestion, Lock, PlayCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -10,6 +11,7 @@ interface Course {
   description: string | null;
   department_id: string;
   level_id: string;
+  image_path: string | null;
 }
 interface OutlineSection {
   id: string;
@@ -42,7 +44,7 @@ export default function CourseDetail() {
 
       const { data: courseRow } = await supabase
         .from("courses")
-        .select("id, title, description, department_id, level_id")
+        .select("id, title, description, department_id, level_id, image_path")
         .eq("id", id)
         .is("deleted_at", null)
         .maybeSingle();
@@ -121,9 +123,28 @@ export default function CourseDetail() {
     );
   }
 
+  const courseImageUrl = course.image_path
+    ? supabase.storage.from("media").getPublicUrl(course.image_path).data
+        .publicUrl
+    : null;
+
   return (
     <Layout title={course.title} onBack={() => navigate(-1)}>
-      <div className="flex gap-2">
+      {courseImageUrl ? (
+        <div className="h-36 w-full overflow-hidden rounded-2xl">
+          <img
+            src={courseImageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ) : (
+        <div className="diamond-gradient flex h-24 w-full items-center justify-center rounded-2xl">
+          <BookOpen size={32} className="text-white/40" />
+        </div>
+      )}
+
+      <div className="mt-4 flex gap-2">
         <span className="badge-gold">{meta?.departmentName}</span>
         <span className="badge-royal">{meta?.levelLabel}</span>
       </div>
@@ -134,7 +155,8 @@ export default function CourseDetail() {
       </blockquote>
 
       {!hasAccess ? (
-        <div className="card-luxury mt-6 p-6 text-center">
+        <div className="card-luxury mt-6 flex flex-col items-center gap-2 p-6 text-center">
+          <Lock size={24} className="text-text-3" />
           <p className="text-sm text-text-3">
             You need access to {meta?.departmentName} to study this course.
           </p>
@@ -142,28 +164,31 @@ export default function CourseDetail() {
             onClick={() =>
               navigate(`/courses?department=${course.department_id}`)
             }
-            className="btn-primary mt-4 w-full"
+            className="btn-primary mt-2 w-full"
           >
             Go to department
           </button>
         </div>
       ) : (
         <div className="diamond-gradient card-luxury mt-6 p-6 text-white">
-          <p className="text-sm text-white/80">
+          <p className="flex items-center gap-1.5 text-sm text-white/80">
+            <FileQuestion size={15} />
             {meta?.questionCount} question(s) available
           </p>
           <button
             onClick={() => navigate(`/courses/${course.id}/study`)}
             disabled={!meta?.questionCount}
-            className="btn-gold mt-4 w-full disabled:opacity-50"
+            className="btn-gold mt-4 flex w-full items-center justify-center gap-2 disabled:opacity-50"
           >
+            <PlayCircle size={16} />
             {meta?.questionCount ? "Start studying" : "No questions yet"}
           </button>
         </div>
       )}
 
       <div className="mt-8">
-        <h2 className="font-heading text-base font-bold text-text-1">
+        <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+          <BookOpen size={16} className="text-royal" />
           Course outline
         </h2>
         {outline.length === 0 ? (
@@ -172,14 +197,20 @@ export default function CourseDetail() {
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
-            {outline.map((section) => (
+            {outline.map((section, i) => (
               <li
                 key={section.id}
-                className="card-luxury p-3 text-sm text-text-2"
+                className="card-luxury flex items-center gap-3 p-3 text-sm text-text-2"
               >
-                {section.title}{" "}
-                <span className="text-text-3">
-                  (Q{section.start_question_order}–{section.end_question_order})
+                <span className="badge-royal flex h-6 w-6 shrink-0 items-center justify-center rounded-full p-0">
+                  {i + 1}
+                </span>
+                <span>
+                  {section.title}{" "}
+                  <span className="text-text-3">
+                    (Q{section.start_question_order}–
+                    {section.end_question_order})
+                  </span>
                 </span>
               </li>
             ))}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { startOfWeek, endOfWeek, format } from "date-fns";
+import { Crown, Medal, Target, Trophy, Zap } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -20,6 +21,21 @@ interface Row {
 interface Department {
   id: string;
   name: string;
+}
+
+const AVATAR_GRADIENTS = [
+  "from-royal to-royal-dark",
+  "from-emerald-500 to-emerald-700",
+  "from-amber-500 to-amber-700",
+  "from-purple-500 to-purple-700",
+  "from-rose-500 to-rose-700",
+  "from-sky-500 to-sky-700",
+];
+
+function avatarGradient(key: string): string {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
 }
 
 export default function Leaderboard() {
@@ -107,6 +123,7 @@ export default function Leaderboard() {
     "bg-slate-300 text-navy",
     "bg-amber-700 text-white",
   ];
+  const rankIcon = [Crown, Medal, Medal];
 
   return (
     <Layout title="Leaderboard" onBack={() => navigate("/dashboard")}>
@@ -148,34 +165,53 @@ export default function Leaderboard() {
         ))}
       </div>
 
-      <p className="mb-4 text-xs text-text-3">
+      <div className="mb-4 flex items-center gap-1.5 text-xs text-text-3">
+        <Zap size={13} className="text-gold" />
         Formula: (Attempts × 2) + (Correct × 0.5)
-      </p>
+      </div>
 
       {loading ? (
         <p className="text-sm text-text-3">Calculating standings…</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-text-3">No rankings recorded yet.</p>
+        <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+          <Trophy size={28} className="text-text-3" />
+          <p className="font-heading text-sm font-bold text-text-1">
+            No rankings yet
+          </p>
+          <p className="text-sm text-text-3">
+            Be the first to practice this week and claim the top spot.
+          </p>
+        </div>
       ) : (
         <>
           <div className="mb-4 grid grid-cols-3 gap-2">
-            {top3.map((r, i) => (
-              <div key={r.user_id} className="card-luxury p-3 text-center">
-                <span
-                  className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${rankStyle[i]}`}
-                >
-                  {i + 1}
-                </span>
-                <p className="mt-2 truncate font-heading text-sm font-bold text-text-1">
-                  {r.display_name}
-                </p>
-                <p className="truncate text-xs text-text-3">{r.university}</p>
-                <p className="mt-1 text-sm font-bold text-royal">
-                  {r.points} pts
-                </p>
-                <p className="text-xs text-text-3">{r.accuracy}% accuracy</p>
-              </div>
-            ))}
+            {top3.map((r, i) => {
+              const RankIcon = rankIcon[i];
+              return (
+                <div key={r.user_id} className="card-luxury p-3 text-center">
+                  <div
+                    className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br text-base font-bold text-white ${avatarGradient(r.user_id)}`}
+                  >
+                    {r.display_name.charAt(0).toUpperCase()}
+                  </div>
+                  <span
+                    className={`relative -mt-4 mx-auto flex h-6 w-6 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold ${rankStyle[i]}`}
+                  >
+                    <RankIcon size={12} />
+                  </span>
+                  <p className="mt-1 truncate font-heading text-sm font-bold text-text-1">
+                    {r.display_name}
+                  </p>
+                  <p className="truncate text-xs text-text-3">
+                    {r.university}
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-royal">
+                    {r.points} pts
+                  </p>
+                  <p className="text-xs text-text-3">{r.accuracy}% accuracy</p>
+                </div>
+              );
+            })}
           </div>
 
           <div className="space-y-1">
@@ -185,14 +221,20 @@ export default function Leaderboard() {
                 className="flex items-center justify-between rounded-xl px-3 py-2 odd:bg-canvas-soft/60"
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-5 text-sm font-semibold text-text-3">
+                  <span className="w-5 text-center text-sm font-semibold text-text-3">
                     {i + 4}
                   </span>
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-bold text-white ${avatarGradient(r.user_id)}`}
+                  >
+                    {r.display_name.charAt(0).toUpperCase()}
+                  </div>
                   <div>
                     <p className="text-sm font-medium text-text-1">
                       {r.display_name}
                     </p>
-                    <p className="text-xs text-text-3">
+                    <p className="flex items-center gap-1 text-xs text-text-3">
+                      <Target size={11} />
                       {r.correct} correct of {r.attempted}
                     </p>
                   </div>

@@ -1,5 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { format } from "date-fns";
+import {
+  CheckCircle2,
+  Clock,
+  Inbox,
+  Receipt,
+  Search,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 import { downloadCSV } from "@/lib/csv";
@@ -133,6 +142,11 @@ export default function AdminPayments() {
     failed: "bg-rose-50 text-rose-700 border-rose-200",
     pending: "bg-amber-50 text-amber-700 border-amber-200",
   };
+  const statusIcon: Record<string, typeof CheckCircle2> = {
+    success: CheckCircle2,
+    failed: XCircle,
+    pending: Clock,
+  };
 
   function handleExport() {
     const headers = [
@@ -168,7 +182,10 @@ export default function AdminPayments() {
       </div>
 
       <div className="card-luxury mt-4 p-4">
-        <p className="text-sm font-semibold text-text-1">Recheck a transaction</p>
+        <p className="flex items-center gap-2 text-sm font-semibold text-text-1">
+          <ShieldCheck size={16} className="text-royal" />
+          Recheck a transaction
+        </p>
         <p className="mt-0.5 text-xs text-text-3">
           A student says they paid but it's not reflecting? Paste the Paystack reference below
           to check it live against Paystack — a confirmed success is recorded and access is
@@ -214,22 +231,32 @@ export default function AdminPayments() {
             </button>
           ),
         )}
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search reference, payer, department…"
-          className="ml-auto min-w-[220px] rounded-xl border border-canvas-border bg-white px-3 py-1.5 text-sm focus:border-royal focus:outline-none"
-        />
+        <div className="relative ml-auto min-w-[220px]">
+          <Search
+            size={14}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-3"
+          />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search reference, payer, department…"
+            className="w-full rounded-xl border border-canvas-border bg-white py-1.5 pl-9 pr-3 text-sm focus:border-royal focus:outline-none"
+          />
+        </div>
       </div>
 
       <div className="mt-4 space-y-2">
         {loading ? (
           <p className="text-sm text-text-3">Loading…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-text-3">No transactions match.</p>
+          <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+            <Inbox size={28} className="text-text-3" />
+            <p className="text-sm text-text-3">No transactions match.</p>
+          </div>
         ) : (
           filtered.map((p) => {
             const isOpen = expanded === p.id;
+            const StatusIcon = statusIcon[p.status];
             const failureReason =
               p.status === "failed"
                 ? (p.raw_provider_response?._failure_reason as
@@ -239,9 +266,12 @@ export default function AdminPayments() {
               <div key={p.id} className="card-luxury p-4">
                 <button
                   onClick={() => setExpanded(isOpen ? null : p.id)}
-                  className="flex w-full items-center justify-between gap-3 text-left"
+                  className="flex w-full items-center gap-3 text-left"
                 >
-                  <div className="min-w-0">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-royal-soft">
+                    <Receipt size={15} className="text-royal" />
+                  </div>
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-text-1">
                       {profileNames[p.user_id] ?? "Unknown"}
                       {p.department_id && (
@@ -261,8 +291,9 @@ export default function AdminPayments() {
                       {Number(p.amount).toLocaleString()}
                     </p>
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-semibold capitalize ${statusStyle[p.status]}`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold capitalize ${statusStyle[p.status]}`}
                     >
+                      <StatusIcon size={11} />
                       {p.status}
                     </span>
                   </div>

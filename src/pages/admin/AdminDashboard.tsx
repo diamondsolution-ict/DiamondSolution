@@ -7,6 +7,10 @@ import {
   HandCoins,
   Link2,
   Clock,
+  Receipt,
+  PieChart,
+  Inbox,
+  TrendingUp,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -151,7 +155,8 @@ export default function AdminDashboard() {
           <div className="mt-6 grid gap-4 lg:grid-cols-5">
             <div className="card-luxury p-5 lg:col-span-3">
               <div className="flex items-center justify-between">
-                <h2 className="font-heading text-sm font-bold text-text-1">
+                <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+                  <Receipt size={16} className="text-royal" />
                   Recent Payments
                 </h2>
                 <Link
@@ -162,15 +167,21 @@ export default function AdminDashboard() {
                 </Link>
               </div>
               {recent.length === 0 ? (
-                <p className="mt-4 text-sm text-text-3">No payments yet.</p>
+                <div className="mt-4 flex flex-col items-center gap-2 py-6 text-center">
+                  <Inbox size={24} className="text-text-3" />
+                  <p className="text-sm text-text-3">No payments yet.</p>
+                </div>
               ) : (
                 <div className="mt-3 divide-y divide-canvas-border">
                   {recent.map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center justify-between py-2.5 text-sm"
+                      className="flex items-center gap-3 py-2.5 text-sm"
                     >
-                      <div className="min-w-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal-soft text-xs font-bold text-royal">
+                        {(p.display_name ?? "A").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-text-1">
                           {p.display_name ?? "Academic Partner"}
                         </p>
@@ -199,11 +210,15 @@ export default function AdminDashboard() {
             </div>
 
             <div className="card-luxury p-5 lg:col-span-2">
-              <h2 className="font-heading text-sm font-bold text-text-1">
+              <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+                <PieChart size={16} className="text-royal" />
                 Revenue Breakdown
               </h2>
               {revenue.length === 0 ? (
-                <p className="mt-4 text-sm text-text-3">No revenue yet.</p>
+                <div className="mt-4 flex flex-col items-center gap-2 py-6 text-center">
+                  <TrendingUp size={24} className="text-text-3" />
+                  <p className="text-sm text-text-3">No revenue yet.</p>
+                </div>
               ) : (
                 <div className="mt-3 space-y-3">
                   {revenue.map((r) => (

@@ -8,6 +8,8 @@ import {
   Gift,
   HelpCircle,
   LogOut,
+  GraduationCap,
+  Phone,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -21,8 +23,8 @@ export default function Profile() {
   return (
     <Layout title="Profile">
       <div className="card-luxury flex flex-col items-center gap-2 p-6 text-center">
-        <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-royal-soft">
-          <span className="font-heading text-xl font-bold text-royal">
+        <div className="diamond-gradient relative flex h-16 w-16 items-center justify-center rounded-full shadow-lg">
+          <span className="font-heading text-xl font-bold text-white">
             {displayName.charAt(0).toUpperCase()}
           </span>
           <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gold text-navy">
@@ -48,17 +50,23 @@ export default function Profile() {
           Verification
         </h2>
         <div className="mt-3 space-y-3 text-sm">
-          <div>
-            <p className="text-text-3">Institution</p>
-            <p className="font-semibold text-text-1">
-              {profile?.university || "Not set"}
-            </p>
+          <div className="flex items-start gap-2.5">
+            <GraduationCap size={16} className="mt-0.5 shrink-0 text-royal" />
+            <div>
+              <p className="text-text-3">Institution</p>
+              <p className="font-semibold text-text-1">
+                {profile?.university || "Not set"}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-text-3">Contact</p>
-            <p className="font-semibold text-text-1">
-              {profile?.phone || profile?.whatsapp || "Not configured"}
-            </p>
+          <div className="flex items-start gap-2.5">
+            <Phone size={16} className="mt-0.5 shrink-0 text-royal" />
+            <div>
+              <p className="text-text-3">Contact</p>
+              <p className="font-semibold text-text-1">
+                {profile?.phone || profile?.whatsapp || "Not configured"}
+              </p>
+            </div>
           </div>
         </div>
       </div>

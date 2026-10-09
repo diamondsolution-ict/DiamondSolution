@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
+import { Coins, Link2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 import { StepUpModal } from "@/components/StepUpModal";
@@ -188,14 +189,20 @@ export default function AdminAffiliates() {
       ) : subTab === "commissions" ? (
         <div className="mt-4 space-y-2">
           {commissions.length === 0 && (
-            <p className="text-sm text-text-3">No commissions yet.</p>
+            <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+              <Coins size={28} className="text-text-3" />
+              <p className="text-sm text-text-3">No commissions yet.</p>
+            </div>
           )}
           {commissions.map((c) => (
             <div
               key={c.id}
-              className="card-luxury flex items-center justify-between p-4"
+              className="card-luxury flex items-center gap-3 p-4"
             >
-              <div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-pale">
+                <Coins size={15} className="text-gold-dark" />
+              </div>
+              <div className="flex-1">
                 <p className="font-semibold text-text-1">
                   {names[c.referrer_user_id] ?? c.referrer_user_id}
                 </p>
@@ -225,20 +232,29 @@ export default function AdminAffiliates() {
       ) : (
         <div className="mt-4 space-y-2">
           {affiliates.length === 0 && (
-            <p className="text-sm text-text-3">No partners yet.</p>
+            <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+              <Users size={28} className="text-text-3" />
+              <p className="text-sm text-text-3">No partners yet.</p>
+            </div>
           )}
           {affiliates.map((a) => {
             const b = balancesFor(a.user_id);
             return (
               <div key={a.user_id} className="card-luxury p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-text-1">
-                      {names[a.user_id] ?? a.user_id}
-                    </p>
-                    <p className="font-mono text-xs text-royal">
-                      {a.referral_code}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-royal-soft text-xs font-bold text-royal">
+                      {(names[a.user_id] ?? "P").charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-text-1">
+                        {names[a.user_id] ?? a.user_id}
+                      </p>
+                      <p className="flex items-center gap-1 font-mono text-xs text-royal">
+                        <Link2 size={11} />
+                        {a.referral_code}
+                      </p>
+                    </div>
                   </div>
                   <span className="badge-royal capitalize">{a.status}</span>
                 </div>

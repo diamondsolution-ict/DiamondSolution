@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import {
+  CheckCircle2,
+  Lightbulb,
+  ListChecks,
+  SkipForward,
+  XCircle,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -80,6 +87,12 @@ export default function ActivityLog() {
     incorrect: "text-rose-600",
     skipped: "text-amber-600",
   };
+  const resultIcon: Record<string, typeof CheckCircle2> = {
+    correct: CheckCircle2,
+    applied: CheckCircle2,
+    incorrect: XCircle,
+    skipped: SkipForward,
+  };
 
   return (
     <Layout title="Revision Center" onBack={() => navigate("/dashboard")}>
@@ -102,14 +115,21 @@ export default function ActivityLog() {
       {loading && attempts.length === 0 ? (
         <p className="text-sm text-text-3">Loading…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-text-3">
-          No activity yet — start studying to see it here.
-        </p>
+        <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+          <ListChecks size={28} className="text-text-3" />
+          <p className="font-heading text-sm font-bold text-text-1">
+            No activity yet
+          </p>
+          <p className="text-sm text-text-3">
+            Start studying to see your attempts here.
+          </p>
+        </div>
       ) : (
         <div className="space-y-2">
           {filtered.map((a) => {
             const q = a.questions;
             const isOpen = expanded === a.id;
+            const ResultIcon = resultIcon[a.result];
             return (
               <div key={a.id} className="card-luxury p-4">
                 <button
@@ -126,8 +146,9 @@ export default function ActivityLog() {
                     </p>
                   </div>
                   <span
-                    className={`shrink-0 text-xs font-bold capitalize ${resultBadge[a.result]}`}
+                    className={`flex shrink-0 items-center gap-1 text-xs font-bold capitalize ${resultBadge[a.result]}`}
                   >
+                    <ResultIcon size={14} />
                     {a.result}
                   </span>
                 </button>
@@ -164,8 +185,12 @@ export default function ActivityLog() {
                       </ul>
                     )}
                     {q.explanation && (
-                      <div className="mt-3 rounded-xl bg-canvas-soft p-3 text-sm text-text-2">
-                        {q.explanation}
+                      <div className="mt-3 flex items-start gap-2 rounded-xl bg-canvas-soft p-3 text-sm text-text-2">
+                        <Lightbulb
+                          size={15}
+                          className="mt-0.5 shrink-0 text-gold"
+                        />
+                        <span>{q.explanation}</span>
                       </div>
                     )}
                   </div>
