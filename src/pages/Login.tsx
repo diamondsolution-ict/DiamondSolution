@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { LogIn, Lock, Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DiamondLogo } from "@/components/DiamondLogo";
 import { AuthTabs } from "@/components/AuthTabs";
@@ -49,30 +50,43 @@ export default function Login() {
             )}
 
             <Field label={t("login.email")}>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={inputClass}
-              />
+              <div className="relative">
+                <Mail
+                  size={15}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-3"
+                />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={`${inputClass} pl-9`}
+                />
+              </div>
             </Field>
 
             <Field label={t("login.password")}>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputClass}
-              />
+              <div className="relative">
+                <Lock
+                  size={15}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-3"
+                />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${inputClass} pl-9`}
+                />
+              </div>
             </Field>
 
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full"
+              className="btn-primary flex w-full items-center justify-center gap-2"
             >
+              <LogIn size={16} />
               {loading ? t("login.signingIn") : t("login.signIn")}
             </button>
           </form>

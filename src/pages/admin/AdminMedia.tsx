@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FolderOpen, Images, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -86,7 +87,10 @@ export default function AdminMedia() {
   return (
     <AdminLayout>
       <div className="diamond-gradient card-luxury p-6 text-white">
-        <span className="badge-gold">Media &amp; Visual Assets Hub</span>
+        <span className="badge-gold">
+          <Images size={13} />
+          Media &amp; Visual Assets Hub
+        </span>
         <h1 className="mt-2 font-heading text-xl font-bold">
           Department &amp; Course Picture Manager
         </h1>
@@ -112,12 +116,18 @@ export default function AdminMedia() {
         ))}
       </div>
 
-      <input
-        placeholder={`Search ${subTab}…`}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="mt-4 w-full max-w-sm rounded-xl border border-canvas-border bg-white px-3 py-2 text-sm text-text-1 focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
-      />
+      <div className="relative mt-4 max-w-sm">
+        <Search
+          size={14}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-3"
+        />
+        <input
+          placeholder={`Search ${subTab}…`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-xl border border-canvas-border bg-white py-2 pl-9 pr-3 text-sm text-text-1 focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+        />
+      </div>
 
       {loading ? (
         <p className="mt-4 text-sm text-text-3">Loading…</p>
@@ -140,7 +150,10 @@ export default function AdminMedia() {
             </div>
           ))}
           {filteredDepartments.length === 0 && (
-            <p className="text-sm text-text-3">No departments match.</p>
+            <div className="card-luxury col-span-full flex flex-col items-center gap-2 p-10 text-center">
+              <FolderOpen size={28} className="text-text-3" />
+              <p className="text-sm text-text-3">No departments match.</p>
+            </div>
           )}
         </div>
       ) : (
@@ -163,7 +176,10 @@ export default function AdminMedia() {
             </div>
           ))}
           {filteredCourses.length === 0 && (
-            <p className="text-sm text-text-3">No courses match.</p>
+            <div className="card-luxury col-span-full flex flex-col items-center gap-2 p-10 text-center">
+              <FolderOpen size={28} className="text-text-3" />
+              <p className="text-sm text-text-3">No courses match.</p>
+            </div>
           )}
         </div>
       )}

@@ -1,4 +1,15 @@
 import { useEffect, useState, type FormEvent } from "react";
+import {
+  Facebook,
+  Instagram,
+  Mail,
+  MessageCircle,
+  Save,
+  Send,
+  Settings,
+  Twitter,
+  type LucideIcon,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -21,13 +32,48 @@ const EMPTY_LINKS: Links = {
   support_email: "",
 };
 
-const FIELDS: { key: keyof Links; label: string; placeholder: string }[] = [
-  { key: "telegram", label: "Telegram Handle", placeholder: "@diamondsolution" },
-  { key: "whatsapp", label: "WhatsApp Interface", placeholder: "+2348012345678" },
-  { key: "support_email", label: "Support Email Archive", placeholder: "support@diamondsolution.com" },
-  { key: "twitter", label: "Twitter (X) Command", placeholder: "@diamondsolution" },
-  { key: "facebook", label: "Facebook Network", placeholder: "facebook.com/diamondsolution" },
-  { key: "instagram", label: "Instagram Feed", placeholder: "@diamondsolution" },
+const FIELDS: {
+  key: keyof Links;
+  label: string;
+  placeholder: string;
+  icon: LucideIcon;
+}[] = [
+  {
+    key: "telegram",
+    label: "Telegram Handle",
+    placeholder: "@diamondsolution",
+    icon: Send,
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp Interface",
+    placeholder: "+2348012345678",
+    icon: MessageCircle,
+  },
+  {
+    key: "support_email",
+    label: "Support Email Archive",
+    placeholder: "support@diamondsolution.com",
+    icon: Mail,
+  },
+  {
+    key: "twitter",
+    label: "Twitter (X) Command",
+    placeholder: "@diamondsolution",
+    icon: Twitter,
+  },
+  {
+    key: "facebook",
+    label: "Facebook Network",
+    placeholder: "facebook.com/diamondsolution",
+    icon: Facebook,
+  },
+  {
+    key: "instagram",
+    label: "Instagram Feed",
+    placeholder: "@diamondsolution",
+    icon: Instagram,
+  },
 ];
 
 export default function AdminSettings() {
@@ -86,7 +132,10 @@ export default function AdminSettings() {
 
   return (
     <AdminLayout>
-      <h1 className="font-heading text-2xl font-bold text-text-1">Settings</h1>
+      <h1 className="flex items-center gap-2 font-heading text-2xl font-bold text-text-1">
+        <Settings size={22} className="text-royal" />
+        Settings
+      </h1>
       <p className="mt-1 text-sm text-text-3">
         Contact links shown across the public-facing site.
       </p>
@@ -98,7 +147,8 @@ export default function AdminSettings() {
           <div className="grid gap-4 sm:grid-cols-2">
             {FIELDS.map((f) => (
               <div key={f.key}>
-                <label className="block text-sm font-medium text-text-2">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-text-2">
+                  <f.icon size={13} className="text-text-3" />
                   {f.label}
                 </label>
                 <input
@@ -124,7 +174,12 @@ export default function AdminSettings() {
             </p>
           )}
 
-          <button type="submit" disabled={saving} className="btn-primary">
+          <button
+            type="submit"
+            disabled={saving}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Save size={15} />
             {saving ? "Saving…" : "Save settings"}
           </button>
         </form>

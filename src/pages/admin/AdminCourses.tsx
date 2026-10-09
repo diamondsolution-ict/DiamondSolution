@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { ArrowRight, BookOpen, BookPlus, ListChecks } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 
@@ -152,7 +153,8 @@ export default function AdminCourses() {
             onSubmit={handleCreate}
             className="card-luxury mt-6 space-y-4 p-6"
           >
-            <h2 className="font-heading text-base font-bold text-text-1">
+            <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+              <BookPlus size={17} className="text-royal" />
               Add course
             </h2>
 
@@ -222,7 +224,12 @@ export default function AdminCourses() {
               />
             </div>
 
-            <button type="submit" disabled={saving} className="btn-primary">
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn-primary flex items-center gap-2"
+            >
+              <BookPlus size={15} />
               {saving ? "Creating…" : "Create course"}
             </button>
           </form>
@@ -231,17 +238,23 @@ export default function AdminCourses() {
             {loading ? (
               <p className="text-sm text-text-3">Loading…</p>
             ) : courses.length === 0 ? (
-              <p className="text-sm text-text-3">
-                No courses yet — add one above.
-              </p>
+              <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+                <BookOpen size={28} className="text-text-3" />
+                <p className="text-sm text-text-3">
+                  No courses yet — add one above.
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {courses.map((c) => (
                   <div
                     key={c.id}
-                    className="card-luxury flex items-center justify-between p-4"
+                    className="card-luxury flex items-center gap-3 p-4"
                   >
-                    <div>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-royal-soft">
+                      <BookOpen size={17} className="text-royal" />
+                    </div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-heading font-bold text-text-1">
                         {c.title}
                       </p>
@@ -252,9 +265,10 @@ export default function AdminCourses() {
                     </div>
                     <Link
                       to={`/admin/courses/${c.id}/questions`}
-                      className="text-sm font-semibold text-royal hover:underline"
+                      className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
                     >
-                      Manage questions →
+                      <ListChecks size={13} />
+                      Manage questions <ArrowRight size={13} />
                     </Link>
                   </div>
                 ))}

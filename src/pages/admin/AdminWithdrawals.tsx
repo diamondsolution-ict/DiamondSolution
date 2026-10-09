@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
+import {
+  CheckCircle2,
+  Clock,
+  Inbox,
+  Landmark,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 
@@ -126,6 +134,11 @@ export default function AdminWithdrawals() {
     failed: "bg-rose-50 text-rose-700 border-rose-200",
     pending: "bg-amber-50 text-amber-700 border-amber-200",
   };
+  const statusIcon: Record<string, typeof CheckCircle2> = {
+    success: CheckCircle2,
+    failed: XCircle,
+    pending: Clock,
+  };
 
   return (
     <AdminLayout>
@@ -161,16 +174,27 @@ export default function AdminWithdrawals() {
         {loading ? (
           <p className="text-sm text-text-3">Loading…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-text-3">No withdrawals match.</p>
+          <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+            <Inbox size={28} className="text-text-3" />
+            <p className="text-sm text-text-3">No withdrawals match.</p>
+          </div>
         ) : (
           filtered.map((w) => {
             const canAutoPay =
               w.currency === "NGN" &&
               w.payout_methods?.method === "bank_transfer";
+            const StatusIcon = statusIcon[w.status];
             return (
               <div key={w.id} className="card-luxury p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-royal-soft">
+                    {w.payout_methods?.method === "bank_transfer" ? (
+                      <Landmark size={15} className="text-royal" />
+                    ) : (
+                      <Wallet size={15} className="text-royal" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-text-1">
                       {names[w.user_id] ?? "Unknown"}
                     </p>
@@ -189,8 +213,9 @@ export default function AdminWithdrawals() {
                       {Number(w.amount).toLocaleString()}
                     </p>
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-semibold capitalize ${statusStyle[w.status]}`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold capitalize ${statusStyle[w.status]}`}
                     >
+                      <StatusIcon size={11} />
                       {w.status}
                     </span>
                   </div>

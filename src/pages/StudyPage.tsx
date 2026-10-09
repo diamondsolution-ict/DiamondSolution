@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  BookX,
+  CheckCircle2,
+  Lightbulb,
+  Lock,
+  PartyPopper,
+  Timer,
+  Trophy,
+  XCircle,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -256,9 +266,14 @@ export default function StudyPage() {
         title="Restricted"
         onBack={() => navigate(`/courses/${courseId}`)}
       >
-        <p className="text-sm text-text-3">
-          You don't have access to this course.
-        </p>
+        <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-50">
+            <Lock size={22} className="text-rose-500" />
+          </div>
+          <p className="text-sm text-text-3">
+            You don't have access to this course.
+          </p>
+        </div>
       </Layout>
     );
   }
@@ -269,9 +284,12 @@ export default function StudyPage() {
         title={courseTitle}
         onBack={() => navigate(`/courses/${courseId}`)}
       >
-        <p className="text-sm text-text-3">
-          No study content available for this course yet.
-        </p>
+        <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+          <BookX size={28} className="text-text-3" />
+          <p className="text-sm text-text-3">
+            No study content available for this course yet.
+          </p>
+        </div>
       </Layout>
     );
   }
@@ -287,7 +305,10 @@ export default function StudyPage() {
         onBack={() => navigate(`/courses/${courseId}`)}
       >
         <div className="card-luxury p-8 text-center">
-          <h2 className="font-heading text-2xl font-bold text-text-1">
+          <div className="diamond-gradient mx-auto flex h-14 w-14 items-center justify-center rounded-full">
+            <Trophy size={26} className="text-white" />
+          </div>
+          <h2 className="mt-4 font-heading text-2xl font-bold text-text-1">
             {totalCorrect} / {totalSubmitted || questions.length}
           </h2>
           <p className="mt-1 text-sm text-text-3">{pct}% compliance</p>
@@ -346,7 +367,10 @@ export default function StudyPage() {
         onBack={() => navigate(`/courses/${courseId}`)}
       >
         <div className="card-luxury p-8 text-center">
-          <h2 className="font-heading text-lg font-bold text-text-1">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+            <PartyPopper size={24} className="text-emerald-600" />
+          </div>
+          <h2 className="mt-4 font-heading text-lg font-bold text-text-1">
             Section complete
           </h2>
           <p className="mt-1 text-sm text-text-3">{sectionComplete.title}</p>
@@ -380,12 +404,13 @@ export default function StudyPage() {
           Question {currentIndex + 1} of {questions.length}
         </span>
         <span
-          className={`rounded-full px-2.5 py-1 font-semibold ${
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold ${
             secondsLeft <= 10
               ? "animate-pulse bg-rose-100 text-rose-700"
               : "bg-canvas-soft text-text-2"
           }`}
         >
+          <Timer size={13} />
           {secondsLeft}s
         </span>
       </div>
@@ -423,6 +448,15 @@ export default function StudyPage() {
                   }`}
                 >
                   <span className="font-semibold">{opt.label}.</span> {opt.body}
+                  {(showCorrect || showWrong) && (
+                    <span className="ml-2 inline-flex items-center">
+                      {showCorrect ? (
+                        <CheckCircle2 size={15} className="text-emerald-600" />
+                      ) : (
+                        <XCircle size={15} className="text-rose-600" />
+                      )}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -431,7 +465,10 @@ export default function StudyPage() {
           <div className="mt-4">
             {submitted && (
               <div className="diamond-gradient rounded-xl p-4 text-sm text-white">
-                <p className="font-semibold">Expected response</p>
+                <p className="flex items-center gap-2 font-semibold">
+                  <CheckCircle2 size={15} />
+                  Expected response
+                </p>
                 <p className="mt-1 text-white/90">
                   {question.expected_answer || "No expected answer recorded."}
                 </p>
@@ -442,7 +479,10 @@ export default function StudyPage() {
 
         {submitted && question.explanation && (
           <div className="mt-4 rounded-xl bg-navy p-4 text-sm text-white">
-            <p className="font-semibold">Explanation</p>
+            <p className="flex items-center gap-2 font-semibold">
+              <Lightbulb size={15} />
+              Explanation
+            </p>
             <p className="mt-1 text-white/90">{question.explanation}</p>
           </div>
         )}

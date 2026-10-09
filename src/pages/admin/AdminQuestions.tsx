@@ -6,6 +6,14 @@ import {
   type FormEvent,
 } from "react";
 import { useParams } from "react-router-dom";
+import {
+  CheckCircle2,
+  Download,
+  FilePlus,
+  FileQuestion,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 import { parseCSV, downloadCSV } from "@/lib/csv";
@@ -318,21 +326,27 @@ export default function AdminQuestions() {
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button onClick={downloadTemplate} className="btn-outline text-sm">
+        <button
+          onClick={downloadTemplate}
+          className="btn-outline flex items-center gap-1.5 text-sm"
+        >
+          <Download size={14} />
           Download template
         </button>
         <button
           onClick={handleExport}
           disabled={questions.length === 0}
-          className="btn-outline text-sm disabled:opacity-50"
+          className="btn-outline flex items-center gap-1.5 text-sm disabled:opacity-50"
         >
+          <Download size={14} />
           Export CSV
         </button>
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={importing}
-          className="btn-secondary text-sm"
+          className="btn-secondary flex items-center gap-1.5 text-sm"
         >
+          <Upload size={14} />
           {importing ? "Importing…" : "Import CSV"}
         </button>
         <input
@@ -345,7 +359,8 @@ export default function AdminQuestions() {
       </div>
 
       <form onSubmit={handleCreate} className="card-luxury mt-6 space-y-4 p-6">
-        <h2 className="font-heading text-base font-bold text-text-1">
+        <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+          <FilePlus size={17} className="text-royal" />
           Add question
         </h2>
 
@@ -437,7 +452,12 @@ export default function AdminQuestions() {
           />
         </div>
 
-        <button type="submit" disabled={saving} className="btn-primary">
+        <button
+          type="submit"
+          disabled={saving}
+          className="btn-primary flex items-center gap-2"
+        >
+          <FilePlus size={15} />
           {saving ? "Adding…" : "Add question"}
         </button>
       </form>
@@ -445,6 +465,13 @@ export default function AdminQuestions() {
       <div className="mt-8 space-y-3">
         {loading ? (
           <p className="text-sm text-text-3">Loading…</p>
+        ) : questions.length === 0 ? (
+          <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+            <FileQuestion size={28} className="text-text-3" />
+            <p className="text-sm text-text-3">
+              No questions yet — add one above.
+            </p>
+          </div>
         ) : (
           questions.map((q, i) => (
             <div key={q.id} className="card-luxury p-4">
@@ -454,8 +481,9 @@ export default function AdminQuestions() {
                 </p>
                 <button
                   onClick={() => void handleRemove(q.id)}
-                  className="shrink-0 text-xs font-semibold text-rose-600 hover:underline"
+                  className="flex shrink-0 items-center gap-1 text-xs font-semibold text-rose-600 hover:underline"
                 >
+                  <Trash2 size={12} />
                   Remove
                 </button>
               </div>
@@ -464,8 +492,11 @@ export default function AdminQuestions() {
                   {q.options.map((o) => (
                     <li
                       key={o.id}
-                      className={o.is_correct ? "font-semibold text-royal" : ""}
+                      className={`flex items-center gap-1.5 ${o.is_correct ? "font-semibold text-royal" : ""}`}
                     >
+                      {o.is_correct && (
+                        <CheckCircle2 size={13} className="text-royal" />
+                      )}
                       {o.label}. {o.body}
                     </li>
                   ))}

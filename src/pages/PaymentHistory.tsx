@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import {
+  CheckCircle2,
+  Clock,
+  Receipt,
+  RefreshCcw,
+  XCircle,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -61,15 +68,21 @@ export default function PaymentHistory() {
       {loading && payments.length === 0 ? (
         <p className="text-sm text-text-3">Loading…</p>
       ) : payments.length === 0 ? (
-        <p className="text-sm text-text-3">No payments yet.</p>
+        <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+          <Receipt size={28} className="text-text-3" />
+          <p className="text-sm text-text-3">No payments yet.</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {payments.map((p) => (
             <div
               key={p.id}
-              className="card-luxury flex items-center justify-between p-4"
+              className="card-luxury flex items-center gap-3 p-4"
             >
-              <div className="min-w-0">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-royal-soft">
+                <Receipt size={15} className="text-royal" />
+              </div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-text-1">
                   {p.departments?.name ?? PURPOSE_LABEL[p.purpose]}
                 </p>
@@ -97,8 +110,9 @@ export default function PaymentHistory() {
             void loadPage(next);
           }}
           disabled={loading}
-          className="btn-outline mt-4 w-full"
+          className="btn-outline mt-4 flex w-full items-center justify-center gap-2"
         >
+          <RefreshCcw size={14} />
           {loading ? "Loading…" : "Load more"}
         </button>
       )}
@@ -111,7 +125,14 @@ function StatusBadge({ status }: { status: string }) {
     status === "success"
       ? "badge-royal"
       : status === "failed"
-        ? "bg-rose-100 text-rose-700 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+        ? "inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700"
         : "badge-gold";
-  return <span className={classes}>{status}</span>;
+  const Icon =
+    status === "success" ? CheckCircle2 : status === "failed" ? XCircle : Clock;
+  return (
+    <span className={classes}>
+      <Icon size={11} />
+      {status}
+    </span>
+  );
 }

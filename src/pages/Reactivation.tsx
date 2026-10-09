@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { usePaystackPayment } from "react-paystack";
+import { CreditCard, LogOut, ShieldAlert } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
@@ -83,7 +84,10 @@ export default function Reactivation() {
   return (
     <div className="diamond-mesh flex min-h-screen items-center justify-center px-4">
       <div className="card-luxury w-full max-w-md p-6 text-center">
-        <h1 className="font-heading text-xl font-bold text-text-1">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
+          <ShieldAlert size={26} className="text-rose-500" />
+        </div>
+        <h1 className="mt-4 font-heading text-xl font-bold text-text-1">
           Access Suspended
         </h1>
         <p className="mt-2 text-sm text-text-3">
@@ -110,15 +114,17 @@ export default function Reactivation() {
         <button
           onClick={handlePay}
           disabled={paying}
-          className="btn-primary mt-5 w-full"
+          className="btn-primary mt-5 flex w-full items-center justify-center gap-2"
         >
+          <CreditCard size={16} />
           {paying ? "Confirming payment…" : "Authorize Reactivation"}
         </button>
 
         <button
           onClick={() => void supabase.auth.signOut()}
-          className="mt-3 w-full text-sm font-semibold text-text-3 hover:underline"
+          className="mt-3 flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-text-3 hover:underline"
         >
+          <LogOut size={14} />
           Sign out instead
         </button>
       </div>

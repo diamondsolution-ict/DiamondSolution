@@ -1,5 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Copy, Check } from "lucide-react";
+import {
+  Banknote,
+  Check,
+  CheckCircle2,
+  Clock,
+  Coins,
+  Copy,
+  Gift,
+  History,
+  Landmark,
+  Users,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -286,7 +299,10 @@ export default function Affiliate() {
     return (
       <Layout title="Affiliate">
         <div className="card-luxury p-6">
-          <h2 className="font-heading text-lg font-bold text-text-1">
+          <div className="diamond-gradient flex h-12 w-12 items-center justify-center rounded-full">
+            <Gift size={22} className="text-white" />
+          </div>
+          <h2 className="mt-4 font-heading text-lg font-bold text-text-1">
             Earn by referring friends
           </h2>
           <p className="mt-2 text-sm text-text-3">
@@ -334,13 +350,17 @@ export default function Affiliate() {
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         {balances.length === 0 && (
-          <p className="col-span-2 text-sm text-text-3">
-            No earnings yet — share your link to get started.
-          </p>
+          <div className="card-luxury col-span-2 flex flex-col items-center gap-2 p-8 text-center">
+            <Coins size={26} className="text-text-3" />
+            <p className="text-sm text-text-3">
+              No earnings yet — share your link to get started.
+            </p>
+          </div>
         )}
         {balances.map((b) => (
           <div key={b.currency} className="card-luxury p-4">
-            <p className="text-xs uppercase tracking-wide text-text-3">
+            <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-text-3">
+              <Wallet size={12} />
               {b.currency} balance
             </p>
             <p className="font-heading text-xl font-bold text-royal">
@@ -366,7 +386,8 @@ export default function Affiliate() {
       )}
 
       <div className="card-luxury mt-4 p-5">
-        <h2 className="font-heading text-sm font-bold text-text-1">
+        <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+          <Banknote size={16} className="text-royal" />
           Request a withdrawal
         </h2>
         <form onSubmit={requestWithdrawal} className="mt-3 space-y-3">
@@ -409,14 +430,19 @@ export default function Affiliate() {
               </option>
             ))}
           </select>
-          <button type="submit" className="btn-primary w-full">
+          <button
+            type="submit"
+            className="btn-primary flex w-full items-center justify-center gap-2"
+          >
+            <Banknote size={15} />
             Request withdrawal
           </button>
         </form>
       </div>
 
       <div className="card-luxury mt-4 p-5">
-        <h2 className="font-heading text-sm font-bold text-text-1">
+        <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+          <Landmark size={16} className="text-royal" />
           Add a payout method
         </h2>
         <form onSubmit={addPayoutMethod} className="mt-3 space-y-3">
@@ -479,14 +505,19 @@ export default function Affiliate() {
             }
             className={inputClass}
           />
-          <button type="submit" className="btn-secondary w-full">
+          <button
+            type="submit"
+            className="btn-secondary flex w-full items-center justify-center gap-2"
+          >
+            <Landmark size={15} />
             Add payout method
           </button>
         </form>
       </div>
 
       <div className="card-luxury mt-4 p-5">
-        <h2 className="font-heading text-sm font-bold text-text-1">
+        <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+          <History size={16} className="text-royal" />
           Withdrawal history
         </h2>
         {withdrawals.length === 0 && (
@@ -508,7 +539,8 @@ export default function Affiliate() {
       </div>
 
       <div className="card-luxury mt-4 p-5">
-        <h2 className="font-heading text-sm font-bold text-text-1">
+        <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+          <Users size={16} className="text-royal" />
           Referral earnings
         </h2>
         {commissions.length === 0 && (
@@ -520,7 +552,10 @@ export default function Affiliate() {
               key={c.id}
               className="flex items-center justify-between py-2 text-sm"
             >
-              <span className="text-text-2">
+              <span className="flex items-center gap-2 text-text-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-royal-soft text-[10px] font-bold text-royal">
+                  {(names.get(c.referred_user_id) ?? "?").charAt(0).toUpperCase()}
+                </span>
                 {names.get(c.referred_user_id) ?? "A referral"}
               </span>
               <span className="font-semibold text-royal">
@@ -539,9 +574,16 @@ function StatusBadge({ status }: { status: string }) {
     status === "success"
       ? "badge-royal"
       : status === "failed"
-        ? "bg-rose-100 text-rose-700 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+        ? "inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700"
         : "badge-gold";
-  return <span className={classes}>{status}</span>;
+  const Icon =
+    status === "success" ? CheckCircle2 : status === "failed" ? XCircle : Clock;
+  return (
+    <span className={classes}>
+      <Icon size={11} />
+      {status}
+    </span>
+  );
 }
 
 const inputClass =

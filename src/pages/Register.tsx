@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Building2,
+  GraduationCap,
+  Lock,
+  Mail,
+  MessageCircle,
+  User,
+  UserPlus,
+  type LucideIcon,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { validatePassword } from "@/lib/passwordPolicy";
 import { DiamondLogo } from "@/components/DiamondLogo";
@@ -116,7 +126,7 @@ export default function Register() {
               </p>
             )}
 
-            <Field label={t("register.fullName")}>
+            <Field label={t("register.fullName")} icon={User}>
               <input
                 required
                 value={form.displayName}
@@ -125,7 +135,7 @@ export default function Register() {
               />
             </Field>
 
-            <Field label={t("register.username")}>
+            <Field label={t("register.username")} icon={User}>
               <input
                 required
                 value={form.username}
@@ -134,7 +144,7 @@ export default function Register() {
               />
             </Field>
 
-            <Field label={t("register.institution")}>
+            <Field label={t("register.institution")} icon={Building2}>
               <input
                 placeholder={t("register.institutionPlaceholder")}
                 value={form.university}
@@ -143,7 +153,7 @@ export default function Register() {
               />
             </Field>
 
-            <Field label={t("register.department")}>
+            <Field label={t("register.department")} icon={GraduationCap}>
               <DepartmentCombobox
                 departments={departments}
                 value={form.departmentId}
@@ -153,7 +163,7 @@ export default function Register() {
               />
             </Field>
 
-            <Field label={t("register.whatsapp")}>
+            <Field label={t("register.whatsapp")} icon={MessageCircle}>
               <div className="mt-1 flex gap-2">
                 <span className="flex items-center gap-1 rounded-xl border border-canvas-border bg-canvas-soft px-3 text-sm text-text-2">
                   🇳🇬 +234
@@ -169,7 +179,7 @@ export default function Register() {
               </div>
             </Field>
 
-            <Field label={t("register.email")}>
+            <Field label={t("register.email")} icon={Mail}>
               <input
                 type="email"
                 required
@@ -179,7 +189,7 @@ export default function Register() {
               />
             </Field>
 
-            <Field label={t("register.password")}>
+            <Field label={t("register.password")} icon={Lock}>
               <input
                 type="password"
                 required
@@ -189,7 +199,7 @@ export default function Register() {
               />
             </Field>
 
-            <Field label={t("register.confirmPassword")}>
+            <Field label={t("register.confirmPassword")} icon={Lock}>
               <input
                 type="password"
                 required
@@ -202,8 +212,9 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full"
+              className="btn-primary flex w-full items-center justify-center gap-2"
             >
+              <UserPlus size={16} />
               {loading ? t("register.creating") : t("register.createAccount")}
             </button>
           </form>
@@ -222,14 +233,19 @@ const inputClass =
 
 function Field({
   label,
+  icon: Icon,
   children,
 }: {
   label: string;
+  icon?: LucideIcon;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-text-2">{label}</label>
+      <label className="flex items-center gap-1.5 text-sm font-medium text-text-2">
+        {Icon && <Icon size={13} className="text-text-3" />}
+        {label}
+      </label>
       {children}
     </div>
   );

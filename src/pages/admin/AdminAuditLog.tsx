@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
+import { History, ScrollText } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 
@@ -52,7 +53,10 @@ export default function AdminAuditLog() {
 
   return (
     <AdminLayout>
-      <h1 className="font-heading text-2xl font-bold text-text-1">Audit Log</h1>
+      <h1 className="flex items-center gap-2 font-heading text-2xl font-bold text-text-1">
+        <ScrollText size={22} className="text-royal" />
+        Audit Log
+      </h1>
       <p className="mt-1 text-sm text-text-3">
         Every withdrawal-affecting admin action, who did it, and when. Full OTP
         step-up confirmation for destructive admin actions is a Phase 5 item
@@ -64,29 +68,37 @@ export default function AdminAuditLog() {
         {loading ? (
           <p className="text-sm text-text-3">Loading…</p>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-text-3">No admin actions logged yet.</p>
+          <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+            <History size={28} className="text-text-3" />
+            <p className="text-sm text-text-3">No admin actions logged yet.</p>
+          </div>
         ) : (
           rows.map((r) => (
-            <div key={r.id} className="card-luxury p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-text-1">
-                  {names[r.actor_user_id] ?? "Unknown"}{" "}
-                  <span className="font-normal text-text-3">
-                    — {r.action.replace(/_/g, " ")}
-                  </span>
-                </p>
-                <p className="text-xs text-text-3">
-                  {format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss")}
-                </p>
+            <div key={r.id} className="card-luxury flex gap-3 p-4">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal-soft text-xs font-bold text-royal">
+                {(names[r.actor_user_id] ?? "?").charAt(0).toUpperCase()}
               </div>
-              {r.target_table && (
-                <p className="mt-1 font-mono text-xs text-text-3">
-                  {r.target_table}:{r.target_id}
-                </p>
-              )}
-              {r.reason && (
-                <p className="mt-1 text-xs text-text-2">{r.reason}</p>
-              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-text-1">
+                    {names[r.actor_user_id] ?? "Unknown"}{" "}
+                    <span className="font-normal text-text-3">
+                      — {r.action.replace(/_/g, " ")}
+                    </span>
+                  </p>
+                  <p className="shrink-0 text-xs text-text-3">
+                    {format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss")}
+                  </p>
+                </div>
+                {r.target_table && (
+                  <p className="mt-1 font-mono text-xs text-text-3">
+                    {r.target_table}:{r.target_id}
+                  </p>
+                )}
+                {r.reason && (
+                  <p className="mt-1 text-xs text-text-2">{r.reason}</p>
+                )}
+              </div>
             </div>
           ))
         )}

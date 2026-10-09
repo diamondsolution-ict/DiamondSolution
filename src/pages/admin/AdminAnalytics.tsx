@@ -1,4 +1,15 @@
 import { useEffect, useState } from "react";
+import {
+  Activity,
+  BarChart3,
+  Clock3,
+  DollarSign,
+  RefreshCcw,
+  ShieldAlert,
+  Trophy,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 
@@ -76,24 +87,28 @@ export default function AdminAnalytics() {
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <KpiCard
+              icon={DollarSign}
               label="Live Revenue (MTD)"
               value={`₦${dashStats.revenue_ngn.toLocaleString()}`}
               sub="All-time success"
               color="text-emerald-600"
             />
             <KpiCard
+              icon={Users}
               label="Scholarly Access"
               value={dashStats.total_students.toLocaleString()}
               sub="Institutional connections"
               color="text-royal"
             />
             <KpiCard
+              icon={Trophy}
               label="Avg Enrollment"
               value={`₦${Math.round(overview.avg_enrollment_ngn).toLocaleString()}`}
               sub="Mean tuition value"
               color="text-royal"
             />
             <KpiCard
+              icon={ShieldAlert}
               label="Suspension Rate"
               value={`${overview.suspension_rate}%`}
               sub="Violation deactivations"
@@ -103,7 +118,8 @@ export default function AdminAnalytics() {
 
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             <div className="card-luxury p-5">
-              <h2 className="font-heading text-sm font-bold text-royal">
+              <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-royal">
+                <BarChart3 size={15} />
                 Revenue History (Annual)
               </h2>
               <div
@@ -131,7 +147,8 @@ export default function AdminAnalytics() {
             </div>
 
             <div className="card-luxury p-5">
-              <h2 className="font-heading text-sm font-bold text-text-1">
+              <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+                <Clock3 size={15} className="text-royal" />
                 Visit Frequency / Peak Hours
               </h2>
               <p className="mt-4 text-sm text-text-3">
@@ -144,7 +161,8 @@ export default function AdminAnalytics() {
           <div className="card-luxury mt-6 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="font-heading text-sm font-bold text-text-1">
+                <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+                  <Activity size={15} className="text-royal" />
                   Engagement Analytics
                 </h2>
                 <p className="text-xs text-text-3">
@@ -168,8 +186,9 @@ export default function AdminAnalytics() {
                 ))}
                 <button
                   onClick={() => void load(period)}
-                  className="rounded-lg px-3 py-1 text-xs font-semibold text-royal"
+                  className="flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-semibold text-royal"
                 >
+                  <RefreshCcw size={12} />
                   Refresh
                 </button>
               </div>
@@ -230,11 +249,13 @@ export default function AdminAnalytics() {
 }
 
 function KpiCard({
+  icon: Icon,
   label,
   value,
   sub,
   color,
 }: {
+  icon: LucideIcon;
   label: string;
   value: string;
   sub: string;
@@ -242,10 +263,13 @@ function KpiCard({
 }) {
   return (
     <div className="card-luxury p-4">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-text-3">
-        {label}
-      </p>
-      <p className={`font-heading text-xl font-bold ${color}`}>{value}</p>
+      <div className="flex items-center gap-1.5">
+        <Icon size={13} className={color} />
+        <p className="text-[10px] font-bold uppercase tracking-wide text-text-3">
+          {label}
+        </p>
+      </div>
+      <p className={`mt-1 font-heading text-xl font-bold ${color}`}>{value}</p>
       <p className="text-[11px] text-text-3">{sub}</p>
     </div>
   );

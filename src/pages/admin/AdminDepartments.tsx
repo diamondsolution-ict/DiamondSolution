@@ -1,5 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  FolderPlus,
+  GraduationCap,
+  Layers,
+  LayoutGrid,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 
@@ -134,7 +141,8 @@ export default function AdminDepartments() {
       </p>
 
       <form onSubmit={handleCreate} className="card-luxury mt-6 space-y-4 p-6">
-        <h2 className="font-heading text-base font-bold text-text-1">
+        <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+          <FolderPlus size={17} className="text-royal" />
           Add department
         </h2>
 
@@ -182,7 +190,12 @@ export default function AdminDepartments() {
           />
         </div>
 
-        <button type="submit" disabled={saving} className="btn-primary">
+        <button
+          type="submit"
+          disabled={saving}
+          className="btn-primary flex items-center gap-2"
+        >
+          <FolderPlus size={15} />
           {saving ? "Creating…" : "Create department"}
         </button>
       </form>
@@ -191,28 +204,35 @@ export default function AdminDepartments() {
         {loading ? (
           <p className="text-sm text-text-3">Loading…</p>
         ) : departments.length === 0 ? (
-          <p className="text-sm text-text-3">
-            No departments yet — add one above.
-          </p>
+          <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+            <LayoutGrid size={28} className="text-text-3" />
+            <p className="text-sm text-text-3">
+              No departments yet — add one above.
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
             {departments.map((d) => (
               <div
                 key={d.id}
-                className="card-luxury flex items-center justify-between p-4"
+                className="card-luxury flex items-center gap-3 p-4"
               >
-                <div>
+                <div className="diamond-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+                  <GraduationCap size={17} className="text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
                   <p className="font-heading font-bold text-text-1">{d.name}</p>
-                  <p className="text-sm text-text-3">
+                  <p className="flex items-center gap-1 text-sm text-text-3">
+                    <Layers size={12} />
                     {priceFor(d.id)} ·{" "}
                     {levelsFor(d.id).join(", ") || "no levels"}
                   </p>
                 </div>
                 <Link
                   to={`/admin/courses?department=${d.id}`}
-                  className="text-sm font-semibold text-royal hover:underline"
+                  className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
                 >
-                  Manage courses →
+                  Manage courses <ArrowRight size={13} />
                 </Link>
               </div>
             ))}
