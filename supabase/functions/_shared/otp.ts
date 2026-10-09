@@ -99,39 +99,6 @@ export async function verifyOtp(args: {
   return { token: row.id };
 }
 
-// The TOTP-authenticator-app alternative to issueOtp/verifyOtp's email round-trip — the actual
-// "quick unlock" the old app's PIN-lock was meant to be (03-BUSINESS-RULES-REDESIGN.md calls
-// the PIN itself a "security costume"; this is the real replacement). The client has already
-// proven a second factor directly against Supabase Auth (supabase.auth.mfa.challenge/verify,
-// which upgrades their session to aal2) before this is ever called — the caller
-// (mfa-stepup-token Edge Function) checks that aal2 claim itself, so by the time this runs,
-// identity is already proven. This just mints the same kind of capability token verifyOtp
-// mints, pre-consumed, so consumeStepUpToken and every existing step-up-gated function
-// (admin-manage-user, ...) work completely unchanged regardless of which path produced the
-// token. code_hash is a fixed marker, never looked up — unlike the email path, nothing here is
-// ever matched against a submitted code.
-export async function issueStepUpTokenFromMfa(args: {
-  userId: string;
-  purpose: OtpPurpose;
-}): Promise<{ token: string }> {
-  const db = serviceClient();
-  const { data: row, error } = await db
-    .from("security_otp_tokens")
-    .insert({
-      user_id: args.userId,
-      purpose: args.purpose,
-      code_hash: "verified-via-totp-mfa",
-      expires_at: new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString(),
-      consumed_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-  if (error || !row) {
-    throw new HttpError(500, error?.message ?? "Failed to issue step-up token.");
-  }
-  return { token: row.id };
-}
-
 // Spends the capability token returned by verifyOtp. Single-use (step_up_used_at), bounded to
 // STEP_UP_TOKEN_TTL_MINUTES after the OTP was actually verified — a verified-but-unused token
 // left open indefinitely would itself be a standing credential.

@@ -191,24 +191,16 @@ top of it.
 
 - [ ] `login_sessions`, `login_events`, the sign-in Auth hook enforcing
       `max_concurrent_sessions` (§2 of the business-rules doc).
-- [x] TOTP MFA via Supabase Auth, as the real "quick unlock" replacing the old app's PIN-lock
-      (03-BUSINESS-RULES-REDESIGN.md calls the PIN a "security costume"). WebAuthn
-      passkeys were the original plan here, but Supabase's passkey support for this is new
-      (beta, May 2026) and explicitly "may change without notice" — too risky to build this
-      live app's auth security on right now, so TOTP (Supabase's long-stable MFA method) ships
-      first; passkeys can follow once that beta stabilizes. New "Authenticator App" card on
-      `/account` (enroll via QR code or manual secret entry, list/remove connected factors) and
-      a TOTP fast-path in `StepUpModal` (used by the admin Users/Affiliates step-up gates):
-      when a verified factor exists, it defaults to a 6-digit authenticator code instead of
-      waiting on an email round-trip, with "Use email instead" as a fallback. A proven TOTP
-      check (`supabase.auth.mfa.challenge`/`verify`, which upgrades the session to aal2) is
-      bridged into the exact same kind of capability token the email-OTP path produces via a
-      new `mfa-stepup-token` Edge Function (checks the session's `aal` claim, then
-      `issueStepUpTokenFromMfa()`), so every existing step-up-gated function
-      (`admin-manage-user`, ...) needed zero changes. Caught and fixed a real bug during this
-      work's own screenshot testing: `supabase.auth.mfa.enroll()` already returns a
-      ready-to-use `data:image/svg+xml;utf-8,<svg>…` string for the QR code (GoTrueClient
-      prepends that itself) — wrapping it in another `data:` URI produced a broken image.
+- [ ] MFA / "quick unlock" for admin step-up actions — built and then reverted. TOTP via
+      Supabase Auth shipped briefly (an "Authenticator App" card on `/account`, a TOTP
+      fast-path in `StepUpModal`, a `mfa-stepup-token` Edge Function bridging a proven TOTP
+      check into the same capability token the email-OTP path produces), but was pulled back
+      out at the user's request in favor of trying a different second-factor method later —
+      the two real alternatives (SMS or WhatsApp OTP) both need a paid third-party provider
+      account the user hasn't set up yet, so for now the step-up gate (admin Users/Affiliates
+      destructive actions) is back to email-OTP only, same as before this was ever attempted.
+      WebAuthn passkeys are still the eventual plan here once Supabase's passkey support
+      (beta as of May 2026, explicitly "may change without notice") stabilizes.
 - [x] pgTAP RLS test suite, first pass — not "every invariant" yet, but the CI wiring already
       existed (`.github/workflows/ci.yml`'s `database` job: `supabase start` → `supabase db
       reset` → the RLS-enabled-on-every-table gate → `supabase test db`, which was built ahead

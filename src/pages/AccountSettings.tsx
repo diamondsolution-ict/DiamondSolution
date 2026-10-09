@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, Globe, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { Gift, Globe } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -8,12 +8,6 @@ import { Layout } from "@/components/Layout";
 import { validatePassword } from "@/lib/passwordPolicy";
 
 type PasswordStep = "form" | "otp";
-
-interface TotpFactor {
-  id: string;
-  friendly_name: string | null;
-  status: "verified" | "unverified";
-}
 
 export default function AccountSettings() {
   const { user, profile, refreshProfile } = useAuth();
@@ -39,115 +33,6 @@ export default function AccountSettings() {
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordInfo, setPasswordInfo] = useState<string | null>(null);
-
-  const [totpFactors, setTotpFactors] = useState<TotpFactor[]>([]);
-  const [enrollment, setEnrollment] = useState<{
-    factorId: string;
-    qrCode: string;
-    secret: string;
-  } | null>(null);
-  const [totpCode, setTotpCode] = useState("");
-  const [mfaBusy, setMfaBusy] = useState(false);
-  const [mfaError, setMfaError] = useState<string | null>(null);
-  const [mfaInfo, setMfaInfo] = useState<string | null>(null);
-
-  async function loadTotpFactors() {
-    const { data } = await supabase.auth.mfa.listFactors();
-    // `data.totp` only ever contains verified factors (that's its type) — `data.all` filtered
-    // to totp is the only way to also see an unverified, mid-enrollment one.
-    setTotpFactors(
-      (data?.all ?? []).filter((f) => f.factor_type === "totp") as TotpFactor[],
-    );
-  }
-
-  useEffect(() => {
-    void loadTotpFactors();
-  }, []);
-
-  async function startEnroll() {
-    setMfaError(null);
-    setMfaInfo(null);
-    setMfaBusy(true);
-
-    // Clean up any abandoned attempt first — mfa.enroll() always creates a fresh unverified
-    // factor, and Supabase doesn't dedupe those, so a second attempt after closing the QR
-    // code without finishing would otherwise just pile up orphaned factors.
-    const unverified = totpFactors.filter((f) => f.status === "unverified");
-    for (const f of unverified) {
-      await supabase.auth.mfa.unenroll({ factorId: f.id });
-    }
-
-    const { data, error } = await supabase.auth.mfa.enroll({
-      factorType: "totp",
-      friendlyName: "Authenticator app",
-    });
-    setMfaBusy(false);
-    if (error || !data) {
-      setMfaError(error?.message ?? "Couldn't start setup.");
-      return;
-    }
-    setEnrollment({
-      factorId: data.id,
-      qrCode: data.totp.qr_code,
-      secret: data.totp.secret,
-    });
-  }
-
-  async function confirmEnroll(e: FormEvent) {
-    e.preventDefault();
-    if (!enrollment) return;
-    setMfaBusy(true);
-    setMfaError(null);
-
-    const { data: challenge, error: challengeError } =
-      await supabase.auth.mfa.challenge({ factorId: enrollment.factorId });
-    if (challengeError || !challenge) {
-      setMfaBusy(false);
-      setMfaError(challengeError?.message ?? "Couldn't verify — try again.");
-      return;
-    }
-
-    const { error: verifyError } = await supabase.auth.mfa.verify({
-      factorId: enrollment.factorId,
-      challengeId: challenge.id,
-      code: totpCode,
-    });
-    setMfaBusy(false);
-
-    if (verifyError) {
-      setMfaError(
-        "Incorrect code — check your authenticator app and try again.",
-      );
-      return;
-    }
-
-    setEnrollment(null);
-    setTotpCode("");
-    setMfaInfo("Authenticator app connected.");
-    await loadTotpFactors();
-  }
-
-  async function cancelEnroll() {
-    if (enrollment) {
-      await supabase.auth.mfa.unenroll({ factorId: enrollment.factorId });
-    }
-    setEnrollment(null);
-    setTotpCode("");
-    setMfaError(null);
-  }
-
-  async function removeFactor(factorId: string) {
-    setMfaBusy(true);
-    setMfaError(null);
-    const { error } = await supabase.auth.mfa.unenroll({ factorId });
-    setMfaBusy(false);
-    if (error) {
-      setMfaError(error.message);
-      return;
-    }
-    setMfaInfo("Authenticator app removed.");
-    await loadTotpFactors();
-  }
 
   async function saveIdentity(e: FormEvent) {
     e.preventDefault();
@@ -376,113 +261,6 @@ export default function AccountSettings() {
           <Gift size={16} />
           Manage payout methods
         </button>
-      </div>
-
-      <div className="card-luxury mt-4 p-5">
-        <h2 className="font-heading text-sm font-bold text-text-1">
-          Authenticator App
-        </h2>
-        <p className="mt-2 text-sm text-text-3">
-          Connect an authenticator app (Google Authenticator, Authy, 1Password,
-          …) for a faster security check on admin actions — no waiting for an
-          email code.
-        </p>
-
-        {mfaError && (
-          <div className="mt-3">
-            <ErrorBanner message={mfaError} />
-          </div>
-        )}
-        {mfaInfo && (
-          <div className="mt-3">
-            <InfoBanner message={mfaInfo} />
-          </div>
-        )}
-
-        {totpFactors.some((f) => f.status === "verified") && (
-          <div className="mt-3 space-y-2">
-            {totpFactors
-              .filter((f) => f.status === "verified")
-              .map((f) => (
-                <div
-                  key={f.id}
-                  className="flex items-center justify-between rounded-xl border border-canvas-border px-3 py-2.5"
-                >
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-emerald-600" />
-                    <span className="text-sm font-medium text-text-1">
-                      {f.friendly_name || "Authenticator app"}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => void removeFactor(f.id)}
-                    disabled={mfaBusy}
-                    className="rounded-lg p-1.5 text-text-3 hover:bg-canvas-soft hover:text-rose-600 disabled:opacity-50"
-                    title="Remove"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ))}
-          </div>
-        )}
-
-        {!enrollment ? (
-          <button
-            onClick={() => void startEnroll()}
-            disabled={mfaBusy}
-            className="btn-secondary mt-3 flex w-full items-center justify-center gap-2"
-          >
-            <Smartphone size={16} />
-            {mfaBusy ? "Starting…" : "Connect an authenticator app"}
-          </button>
-        ) : (
-          <form onSubmit={confirmEnroll} className="mt-3 space-y-3">
-            <div className="flex justify-center rounded-xl border border-canvas-border bg-white p-4">
-              {/* mfa.enroll() already returns a ready-to-use "data:image/svg+xml;utf-8,<svg>…"
-                  string (GoTrueClient prepends that itself) — wrapping it again here produced
-                  a broken image (data URI inside a data URI), caught via a screenshot during
-                  this feature's own testing. */}
-              <img
-                src={enrollment.qrCode}
-                alt="Scan with your authenticator app"
-                className="h-40 w-40"
-              />
-            </div>
-            <p className="text-center text-xs text-text-3">
-              Can't scan? Enter this code manually:{" "}
-              <span className="font-mono font-semibold text-text-1">
-                {enrollment.secret}
-              </span>
-            </p>
-            <input
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="000000"
-              value={totpCode}
-              onChange={(e) =>
-                setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-              className={`${inputClass} text-center font-mono text-lg tracking-[0.5em]`}
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => void cancelEnroll()}
-                className="btn-outline flex-1"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={mfaBusy || totpCode.length !== 6}
-                className="btn-primary flex-1"
-              >
-                {mfaBusy ? "Confirming…" : "Confirm"}
-              </button>
-            </div>
-          </form>
-        )}
       </div>
 
       <div className="card-luxury mt-4 p-5">

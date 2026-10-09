@@ -82,7 +82,12 @@ supabase functions deploy change-password
 supabase functions deploy admin-manage-user
 supabase functions deploy admin-approve-commission
 supabase functions deploy admin-recheck-payment
-supabase functions deploy mfa-stepup-token
+```
+
+If you already deployed `mfa-stepup-token` (from the now-reverted TOTP MFA attempt), remove it
+from the live project — it's no longer in the repo:
+```bash
+supabase functions delete mfa-stepup-token
 ```
 
 (`_shared/` is bundled automatically into each function — no separate deploy step for it.)
