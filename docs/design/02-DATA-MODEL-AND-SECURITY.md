@@ -501,15 +501,23 @@ so it isn't rediscovered as "wait, Supabase could have just done this."
   design on purpose — not a default. See `03-BUSINESS-RULES-REDESIGN.md` for the full
   before/after reasoning on this specific rule.
 - **One shared OTP/step-up-auth implementation** (`request-otp`/`verify-otp` Edge Functions +
-  `security_otp_tokens`), used identically for password-change, device-reactivation, and every
-  admin destructive action — replacing the old app's two independently duplicated OTP
-  modal/state implementations (the top-level admin one and the Departments tab's own copy).
-- **Codes are hashed, never logged in plaintext.** The old app's System Logs tab displayed
-  issued OTP codes directly to admins; this design never stores or surfaces the raw code
-  anywhere after it's emailed — `admin_actions_log` records *that* a step-up action happened
-  and *who* did it, never the secret that authorized it.
+  `security_otp_tokens`), used for password-change and device-reactivation — replacing the old
+  app's two independently duplicated OTP modal/state implementations (the top-level admin one
+  and the Departments tab's own copy). Admin destructive actions originally reused this same
+  email-OTP path too, but were moved to a static, admin-changeable code instead (see
+  `04-ROADMAP.md` Phase 5's step-up entry for why) — `consumeStepUpToken()`'s capability-token
+  contract is unchanged either way, so `admin-manage-user`/`admin-approve-commission` don't know
+  or care which path produced the token they're handed.
+- **Codes are hashed, never logged in plaintext** — both the one-time email codes
+  (`security_otp_tokens.code_hash`) and the static admin step-up code
+  (`admin_stepup_code.code_hash`, no client read/write policy on that table at all). The old
+  app's System Logs tab displayed issued OTP codes directly to admins; this design never stores
+  or surfaces a raw code anywhere — `admin_actions_log` records *that* a step-up action
+  happened and *who* did it, never the secret that authorized it.
 - **Step-up emails go to the acting admin's own address**, looked up from their own session —
   not a single hardcoded recipient, which breaks the moment there's more than one admin anyway.
+  (Applies to password-change/device-reactivation OTP; the static admin step-up code sends no
+  email at all.)
 - **Biometric/passkey login, done as actual WebAuthn**, not a password-recovery trick:
   Supabase Auth's own MFA (TOTP) covers "a second factor," and for a "fingerprint unlocks the
   app" convenience feature, the correct building block is a true **WebAuthn passkey**

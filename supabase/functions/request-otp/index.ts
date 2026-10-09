@@ -3,7 +3,10 @@ import { verifyUser, HttpError } from "../_shared/supabaseClients.ts";
 import { issueOtp, type OtpPurpose } from "../_shared/otp.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 
-const VALID_PURPOSES: OtpPurpose[] = ["password_change", "admin_step_up"];
+// admin_step_up no longer goes through email-OTP — see admin-verify-stepup-code (the static,
+// admin-changeable code that replaced it). Narrowed here too so the email path can't be
+// reached for it even directly, not just left unreferenced in the UI.
+const VALID_PURPOSES: OtpPurpose[] = ["password_change"];
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req);

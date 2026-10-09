@@ -64,8 +64,8 @@ supabase secrets set RESEND_FROM_EMAIL=noreply@yourdomain.com
 Start with your Paystack **test** secret key so you can do a full dry run before touching real
 money. Get it from the Paystack dashboard → Settings → API Keys & Webhooks.
 
-`RESEND_API_KEY` is the email-delivery provider chosen to unblock the account-settings
-password-change OTP flow (and the admin step-up gate once that's built) — get it from
+`RESEND_API_KEY` is the email-delivery provider for the account-settings password-change OTP
+flow only now — the admin step-up gate no longer uses email at all, see below — get it from
 resend.com → API Keys. `RESEND_FROM_EMAIL` must be an address on a domain you've verified in
 Resend (their dashboard walks through the DNS records); sending from an unverified domain
 fails outright, so verify the domain before the end-to-end smoke test in step 12.
@@ -82,6 +82,8 @@ supabase functions deploy change-password
 supabase functions deploy admin-manage-user
 supabase functions deploy admin-approve-commission
 supabase functions deploy admin-recheck-payment
+supabase functions deploy admin-verify-stepup-code
+supabase functions deploy admin-set-stepup-code
 ```
 
 If you already deployed `mfa-stepup-token` (from the now-reverted TOTP MFA attempt), remove it
@@ -89,6 +91,15 @@ from the live project — it's no longer in the repo:
 ```bash
 supabase functions delete mfa-stepup-token
 ```
+
+**Admin step-up now uses a static, admin-changeable code instead of email-OTP**
+(`admin-verify-stepup-code`/`admin-set-stepup-code`, backed by the new `admin_stepup_code`
+table) — the default is **`12345`**. Change it immediately after your first deploy from
+**Admin → Settings → Admin security code** (requires the current code, so do this before
+handing the account to anyone else). This gates: Users tab suspend/role-change/delete, and
+Affiliates tab commission-payment authorization. It does **not** need `supabase db push` to run
+separately — it's included in the regular migration step above, just called out here since it
+changes what step-up means in practice.
 
 (`_shared/` is bundled automatically into each function — no separate deploy step for it.)
 

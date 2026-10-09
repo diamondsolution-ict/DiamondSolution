@@ -2,11 +2,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   Facebook,
   Instagram,
+  KeyRound,
   Mail,
   MessageCircle,
   Save,
   Send,
   Settings,
+  ShieldCheck,
   Twitter,
   type LucideIcon,
 } from "lucide-react";
@@ -84,6 +86,13 @@ export default function AdminSettings() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  const [currentCode, setCurrentCode] = useState("");
+  const [newCode, setNewCode] = useState("");
+  const [confirmCode, setConfirmCode] = useState("");
+  const [codeSaving, setCodeSaving] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeInfo, setCodeInfo] = useState<string | null>(null);
+
   async function load() {
     setLoading(true);
     const { data } = await supabase
@@ -128,6 +137,39 @@ export default function AdminSettings() {
       return;
     }
     setInfo("Settings saved.");
+  }
+
+  async function changeStepUpCode(e: FormEvent) {
+    e.preventDefault();
+    setCodeError(null);
+    setCodeInfo(null);
+
+    if (newCode !== confirmCode) {
+      setCodeError("New code and confirmation don't match.");
+      return;
+    }
+    if (!/^\d{4,10}$/.test(newCode)) {
+      setCodeError("The new code must be 4–10 digits.");
+      return;
+    }
+
+    setCodeSaving(true);
+    const { data, error: invokeError } = await supabase.functions.invoke(
+      "admin-set-stepup-code",
+      { body: { current_code: currentCode, new_code: newCode } },
+    );
+    setCodeSaving(false);
+
+    if (invokeError || !data?.success) {
+      setCodeError(
+        data?.error ?? invokeError?.message ?? "Couldn't change the code.",
+      );
+      return;
+    }
+    setCurrentCode("");
+    setNewCode("");
+    setConfirmCode("");
+    setCodeInfo("Admin security code updated.");
   }
 
   return (
@@ -184,6 +226,89 @@ export default function AdminSettings() {
           </button>
         </form>
       )}
+
+      <form
+        onSubmit={changeStepUpCode}
+        className="card-luxury mt-6 space-y-4 p-6"
+      >
+        <div>
+          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+            <ShieldCheck size={17} className="text-royal" />
+            Admin security code
+          </h2>
+          <p className="mt-1 text-sm text-text-3">
+            Entered in the "Security Clearance Required" prompt before destructive admin
+            actions (suspending/deleting users, changing roles, approving commissions).
+            Default is <span className="font-mono font-semibold">12345</span> — change it here.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-text-2">
+              <KeyRound size={13} className="text-text-3" />
+              Current code
+            </label>
+            <input
+              inputMode="numeric"
+              value={currentCode}
+              onChange={(e) =>
+                setCurrentCode(e.target.value.replace(/\D/g, "").slice(0, 10))
+              }
+              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-text-2">
+              <KeyRound size={13} className="text-text-3" />
+              New code
+            </label>
+            <input
+              inputMode="numeric"
+              value={newCode}
+              onChange={(e) =>
+                setNewCode(e.target.value.replace(/\D/g, "").slice(0, 10))
+              }
+              placeholder="4–10 digits"
+              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-text-2">
+              <KeyRound size={13} className="text-text-3" />
+              Confirm new code
+            </label>
+            <input
+              inputMode="numeric"
+              value={confirmCode}
+              onChange={(e) =>
+                setConfirmCode(e.target.value.replace(/\D/g, "").slice(0, 10))
+              }
+              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+            />
+          </div>
+        </div>
+
+        {codeError && (
+          <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {codeError}
+          </p>
+        )}
+        {codeInfo && (
+          <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {codeInfo}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={codeSaving}
+          className="btn-secondary flex items-center gap-2"
+        >
+          <ShieldCheck size={15} />
+          {codeSaving ? "Updating…" : "Update security code"}
+        </button>
+      </form>
     </AdminLayout>
   );
 }

@@ -191,16 +191,29 @@ top of it.
 
 - [ ] `login_sessions`, `login_events`, the sign-in Auth hook enforcing
       `max_concurrent_sessions` (§2 of the business-rules doc).
-- [ ] MFA / "quick unlock" for admin step-up actions — built and then reverted. TOTP via
+- [x] MFA / "quick unlock" for admin step-up actions — two attempts and now settled. TOTP via
       Supabase Auth shipped briefly (an "Authenticator App" card on `/account`, a TOTP
-      fast-path in `StepUpModal`, a `mfa-stepup-token` Edge Function bridging a proven TOTP
-      check into the same capability token the email-OTP path produces), but was pulled back
-      out at the user's request in favor of trying a different second-factor method later —
-      the two real alternatives (SMS or WhatsApp OTP) both need a paid third-party provider
-      account the user hasn't set up yet, so for now the step-up gate (admin Users/Affiliates
-      destructive actions) is back to email-OTP only, same as before this was ever attempted.
-      WebAuthn passkeys are still the eventual plan here once Supabase's passkey support
-      (beta as of May 2026, explicitly "may change without notice") stabilizes.
+      fast-path in `StepUpModal`, a `mfa-stepup-token` Edge Function), then reverted back to
+      email-OTP at the user's request (SMS/WhatsApp OTP both need a paid provider account not
+      set up). Email-OTP was then *also* dropped, again at the user's request, after Resend
+      delivery proved a recurring support headache for a one-or-two-admin back office — the
+      step-up gate (Users tab suspend/role-change/delete, Affiliates tab commission-payment
+      authorization) now uses a **static, admin-changeable code** instead (default `12345`,
+      changed from Admin → Settings → "Admin security code"). New `admin_stepup_code` table
+      (singleton row, `code_hash` only — no client read/write policy at all, service_role
+      only, same posture as `payments`/`commissions`), `admin-verify-stepup-code` (checks the
+      code, issues the same capability-token shape `consumeStepUpToken()` already expected, so
+      `admin-manage-user`/`admin-approve-commission` needed zero changes) and
+      `admin-set-stepup-code` (change it, requires the current code as confirmation) Edge
+      Functions. `request-otp`/`verify-otp` narrowed to `password_change` only — the
+      `admin_step_up` purpose is still a valid `security_otp_tokens.purpose` value (rows are
+      written directly by `admin-verify-stepup-code` now) but can no longer be *requested*
+      through the email path, closing it server-side too, not just in the UI. This is a
+      knowingly weaker mechanism than OTP or TOTP (a shared static secret, not a one-time
+      code) — accepted as the right trade-off here since it's explicitly configured by the
+      site owner for their own back office, not exposed to students. WebAuthn passkeys remain
+      the eventual plan if a real second factor is wanted later, once Supabase's passkey
+      support (beta as of May 2026, explicitly "may change without notice") stabilizes.
 - [x] pgTAP RLS test suite, first pass — not "every invariant" yet, but the CI wiring already
       existed (`.github/workflows/ci.yml`'s `database` job: `supabase start` → `supabase db
       reset` → the RLS-enabled-on-every-table gate → `supabase test db`, which was built ahead

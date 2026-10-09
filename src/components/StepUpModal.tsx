@@ -1,8 +1,10 @@
-// The one shared OTP/step-up UI, consuming request-otp/verify-otp (purpose='admin_step_up')
-// — every destructive admin action reuses this instead of a duplicated modal per tab (the old
-// app had at least two independently-built copies of this same flow). See
-// 02-DATA-MODEL-AND-SECURITY.md §7.
-import { useEffect, useState } from "react";
+// The one shared step-up UI, consuming admin-verify-stepup-code — every destructive admin
+// action reuses this instead of a duplicated modal per tab. Gated by a static, admin-changeable
+// code (default "12345", change it from Admin → Settings) rather than email-OTP: the email path
+// was dropped at the user's request since Resend delivery was a recurring support headache for
+// a one-or-two-admin back office. See the admin_stepup_code migration header for the full
+// rationale and 02-DATA-MODEL-AND-SECURITY.md §7 for the original step-up design.
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface StepUpModalProps {
@@ -19,40 +21,19 @@ export function StepUpModal({
   onVerified,
 }: StepUpModalProps) {
   const [code, setCode] = useState("");
-  const [sending, setSending] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function sendCode() {
-    setSending(true);
-    setError(null);
-    const { data, error: invokeError } = await supabase.functions.invoke(
-      "request-otp",
-      { body: { purpose: "admin_step_up" } },
-    );
-    setSending(false);
-    if (invokeError || !data?.success) {
-      setError(
-        `Couldn't send a security code: ${invokeError?.message ?? data?.error ?? "unknown error"}`,
-      );
-    }
-  }
-
-  useEffect(() => {
-    void sendCode();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function confirm() {
     setVerifying(true);
     setError(null);
     const { data, error: invokeError } = await supabase.functions.invoke(
-      "verify-otp",
-      { body: { purpose: "admin_step_up", code } },
+      "admin-verify-stepup-code",
+      { body: { code } },
     );
     setVerifying(false);
     if (invokeError || !data?.success) {
-      setError("Invalid or expired security code.");
+      setError(data?.error ?? "Incorrect security code.");
       return;
     }
     onVerified(data.token);
@@ -68,16 +49,15 @@ export function StepUpModal({
         <p className="mt-2 text-sm text-text-2">{description}</p>
 
         <p className="mt-4 text-xs text-text-3">
-          {sending
-            ? "Sending a 6-digit code to your email…"
-            : "Enter the 6-digit code sent to your email."}
+          Enter the admin security code.
         </p>
         <input
           inputMode="numeric"
-          maxLength={6}
-          placeholder="000000"
+          maxLength={10}
+          placeholder="Security code"
           value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
+          autoFocus
           className="mt-2 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-center font-mono text-lg tracking-[0.5em] text-text-1 focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
         />
 
@@ -93,19 +73,12 @@ export function StepUpModal({
           </button>
           <button
             onClick={() => void confirm()}
-            disabled={verifying || code.length !== 6}
+            disabled={verifying || code.length < 4}
             className="btn-primary flex-1"
           >
             {verifying ? "Verifying…" : "Authorize"}
           </button>
         </div>
-        <button
-          onClick={() => void sendCode()}
-          disabled={sending}
-          className="mt-3 w-full text-xs font-semibold text-royal hover:underline"
-        >
-          Resend code
-        </button>
       </div>
     </div>
   );

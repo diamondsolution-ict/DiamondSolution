@@ -429,7 +429,7 @@ export default function AdminUsers() {
       {pending && (
         <StepUpModal
           title={describePending(pending)}
-          description="This action requires security clearance — enter the code sent to your own email."
+          description="This action requires security clearance — enter the admin security code."
           onCancel={() => setPending(null)}
           onVerified={(token) => void runPendingAction(token)}
         />

@@ -9,7 +9,7 @@ const STEP_UP_TOKEN_TTL_MINUTES = 15;
 
 export type OtpPurpose = "password_change" | "admin_step_up";
 
-async function sha256Hex(input: string): Promise<string> {
+export async function sha256Hex(input: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(input),
