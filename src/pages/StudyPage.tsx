@@ -32,7 +32,7 @@ const APPLICATION_SECONDS = 120;
 
 export default function StudyPage() {
   const { id: courseId } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -77,16 +77,21 @@ export default function StudyPage() {
       }
       setCourseTitle(courseRow.title);
 
-      const { data: grant } = await supabase
-        .from("access_grants")
-        .select("department_id")
-        .eq("user_id", user.id)
-        .eq("department_id", courseRow.department_id)
-        .maybeSingle();
-      if (!grant) {
-        setAccessDenied(true);
-        setLoading(false);
-        return;
+      // Admins read everything for free, matching has_department_access()'s own is_admin()
+      // OR — the backend already allowed this; the paywall gate just didn't know to skip
+      // itself for them.
+      if (!isAdmin) {
+        const { data: grant } = await supabase
+          .from("access_grants")
+          .select("department_id")
+          .eq("user_id", user.id)
+          .eq("department_id", courseRow.department_id)
+          .maybeSingle();
+        if (!grant) {
+          setAccessDenied(true);
+          setLoading(false);
+          return;
+        }
       }
 
       const [
@@ -141,7 +146,7 @@ export default function StudyPage() {
       setLoading(false);
     }
     void load();
-  }, [courseId, user]);
+  }, [courseId, user, isAdmin]);
 
   // Per-question timer
   useEffect(() => {

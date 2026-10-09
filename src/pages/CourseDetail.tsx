@@ -25,7 +25,7 @@ interface Counts {
 
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const [course, setCourse] = useState<Course | null>(null);
@@ -95,11 +95,13 @@ export default function CourseDetail() {
         questionCount: count ?? 0,
       });
       setOutline(outlineRows ?? []);
-      setHasAccess(!!grant);
+      // Admins read everything for free, matching has_department_access()'s own is_admin() OR
+      // — the backend already allowed this; the paywall UI just didn't know to skip itself.
+      setHasAccess(isAdmin || !!grant);
       setLoading(false);
     }
     void load();
-  }, [id, user]);
+  }, [id, user, isAdmin]);
 
   if (notFound) {
     return (

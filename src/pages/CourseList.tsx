@@ -27,7 +27,7 @@ interface Level {
 }
 
 export default function CourseList() {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const departmentId = searchParams.get("department") ?? "";
@@ -99,8 +99,10 @@ export default function CourseList() {
   }, [departmentId]);
 
   const activeDept = departments.find((d) => d.id === departmentId);
+  // Admins read everything for free, matching has_department_access()'s own is_admin() OR —
+  // the backend already allowed this; the paywall UI just didn't know to skip itself for them.
   const hasAccess = departmentId
-    ? grantedDepartmentIds.has(departmentId)
+    ? isAdmin || grantedDepartmentIds.has(departmentId)
     : false;
   const price = prices.find(
     (p) => p.department_id === departmentId && p.currency === "NGN",
