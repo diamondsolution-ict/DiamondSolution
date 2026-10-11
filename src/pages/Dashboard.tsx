@@ -355,10 +355,19 @@ export default function Dashboard() {
             )}
 
             <div className="mt-6">
-              <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
-                <BarChart3 size={16} className="text-royal" />
-                Study analytics
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+                  <BarChart3 size={16} className="text-royal" />
+                  Study analytics
+                </h2>
+                <button
+                  onClick={() => navigate("/activity-log")}
+                  className="flex items-center gap-1 text-xs font-semibold text-royal hover:underline"
+                >
+                  <ListChecks size={14} />
+                  Full activity log →
+                </button>
+              </div>
               <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
                 <Stat
                   label="Time spent (7d)"
@@ -449,7 +458,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-5">
+            <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <QuickAction
                 icon={BookOpen}
                 label="Study"
@@ -459,11 +468,6 @@ export default function Dashboard() {
                 icon={Trophy}
                 label="Leaderboard"
                 onClick={() => navigate("/leaderboard")}
-              />
-              <QuickAction
-                icon={ListChecks}
-                label="Activity"
-                onClick={() => navigate("/activity-log")}
               />
               <QuickAction
                 icon={Gift}
