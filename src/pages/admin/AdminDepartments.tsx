@@ -6,9 +6,14 @@ import {
   GraduationCap,
   Layers,
   LayoutGrid,
+  Pencil,
+  Plus,
+  X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
+
+const DEPT_STATUSES = ["active", "archived"] as const;
 
 interface Department {
   id: string;
@@ -21,12 +26,14 @@ interface PriceRow {
   department_id: string;
   currency: string;
   amount: number;
+  effective_from: string;
 }
 
 interface LevelRow {
   id: string;
   department_id: string;
   label: string;
+  sort_order: number;
 }
 
 function slugify(name: string) {
@@ -48,6 +55,11 @@ export default function AdminDepartments() {
   const [priceNgn, setPriceNgn] = useState("10000");
   const [levelInput, setLevelInput] = useState("100L, 200L, 300L, 400L");
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editStatus, setEditStatus] =
+    useState<(typeof DEPT_STATUSES)[number]>("active");
+  const [newLevelLabel, setNewLevelLabel] = useState("");
+  const [addingLevelFor, setAddingLevelFor] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -59,10 +71,12 @@ export default function AdminDepartments() {
           .order("name"),
         supabase
           .from("department_pricing")
-          .select("department_id, currency, amount"),
+          .select("department_id, currency, amount, effective_from")
+          .lte("effective_from", new Date().toISOString())
+          .order("effective_from", { ascending: false }),
         supabase
           .from("department_levels")
-          .select("id, department_id, label")
+          .select("id, department_id, label, sort_order")
           .order("sort_order"),
       ]);
     setDepartments(depts ?? []);
@@ -75,10 +89,52 @@ export default function AdminDepartments() {
     void load();
   }, []);
 
-  async function handleCreate(e: FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setName("");
+    setPriceNgn("10000");
+    setLevelInput("100L, 200L, 300L, 400L");
+    setEditStatus("active");
+  }
+
+  function startEdit(d: Department) {
+    setEditingId(d.id);
+    setName(d.name);
+    setPriceNgn(String(priceAmountFor(d.id)));
+    setEditStatus(d.status as (typeof DEPT_STATUSES)[number]);
+  }
+
+  async function handleSubmitForm(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSaving(true);
+
+    if (editingId) {
+      const { error: updateError } = await supabase
+        .from("departments")
+        .update({ name, slug: slugify(name), status: editStatus })
+        .eq("id", editingId);
+      if (updateError) {
+        setSaving(false);
+        setError(updateError.message);
+        return;
+      }
+      // A new row, not an update-in-place: department_pricing is a price-history table
+      // (unique on department_id/currency/effective_from, see its migration) — every price
+      // that was ever actually charged stays on record, and processDepartmentAccessPayment
+      // already resolves "the current price" as the latest effective_from <= now(), so a
+      // plain insert here becomes the new current price without touching history.
+      const amount = Number(priceNgn);
+      if (amount !== priceAmountFor(editingId)) {
+        await supabase
+          .from("department_pricing")
+          .insert({ department_id: editingId, currency: "NGN", amount });
+      }
+      resetForm();
+      setSaving(false);
+      await load();
+      return;
+    }
 
     const slug = slugify(name);
     const { data: dept, error: deptError } = await supabase
@@ -114,16 +170,39 @@ export default function AdminDepartments() {
       );
     }
 
-    setName("");
+    resetForm();
     setSaving(false);
     await load();
   }
 
-  function priceFor(deptId: string) {
-    const row = prices.find(
-      (p) => p.department_id === deptId && p.currency === "NGN",
+  async function addLevel(deptId: string) {
+    const label = newLevelLabel.trim();
+    if (!label) return;
+    const nextOrder =
+      Math.max(
+        -1,
+        ...levels
+          .filter((l) => l.department_id === deptId)
+          .map((l) => l.sort_order ?? 0),
+      ) + 1;
+    await supabase
+      .from("department_levels")
+      .insert({ department_id: deptId, label, sort_order: nextOrder });
+    setNewLevelLabel("");
+    setAddingLevelFor(null);
+    await load();
+  }
+
+  function priceAmountFor(deptId: string): number {
+    return (
+      prices.find((p) => p.department_id === deptId && p.currency === "NGN")
+        ?.amount ?? 0
     );
-    return row ? `₦${row.amount.toLocaleString()}` : "No price set";
+  }
+
+  function priceFor(deptId: string) {
+    const amount = priceAmountFor(deptId);
+    return amount > 0 ? `₦${amount.toLocaleString()}` : "No price set";
   }
 
   function levelsFor(deptId: string) {
@@ -140,11 +219,30 @@ export default function AdminDepartments() {
         added per department on the Courses tab.
       </p>
 
-      <form onSubmit={handleCreate} className="card-luxury mt-6 space-y-4 p-6">
-        <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
-          <FolderPlus size={17} className="text-royal" />
-          Add department
-        </h2>
+      <form
+        onSubmit={handleSubmitForm}
+        className="card-luxury mt-6 space-y-4 p-6"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+            {editingId ? (
+              <Pencil size={17} className="text-royal" />
+            ) : (
+              <FolderPlus size={17} className="text-royal" />
+            )}
+            {editingId ? "Edit department" : "Add department"}
+          </h2>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="flex items-center gap-1 text-xs font-semibold text-text-3 hover:text-text-1"
+            >
+              <X size={13} />
+              Cancel edit
+            </button>
+          )}
+        </div>
 
         {error && (
           <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -179,24 +277,55 @@ export default function AdminDepartments() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-text-2">
-            Levels (comma-separated)
-          </label>
-          <input
-            value={levelInput}
-            onChange={(e) => setLevelInput(e.target.value)}
-            className={inputClass}
-          />
-        </div>
+        {editingId ? (
+          <div>
+            <label className="block text-sm font-medium text-text-2">
+              Status
+            </label>
+            <select
+              value={editStatus}
+              onChange={(e) =>
+                setEditStatus(e.target.value as (typeof DEPT_STATUSES)[number])
+              }
+              className={`${inputClass} max-w-xs capitalize`}
+            >
+              {DEPT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-3">
+              Levels are managed per-department below — editing here never
+              touches existing levels (courses may already use them).
+            </p>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-text-2">
+              Levels (comma-separated)
+            </label>
+            <input
+              value={levelInput}
+              onChange={(e) => setLevelInput(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        )}
 
         <button
           type="submit"
           disabled={saving}
           className="btn-primary flex items-center gap-2"
         >
-          <FolderPlus size={15} />
-          {saving ? "Creating…" : "Create department"}
+          {editingId ? <Pencil size={15} /> : <FolderPlus size={15} />}
+          {saving
+            ? editingId
+              ? "Saving…"
+              : "Creating…"
+            : editingId
+              ? "Save changes"
+              : "Create department"}
         </button>
       </form>
 
@@ -215,25 +344,76 @@ export default function AdminDepartments() {
             {departments.map((d) => (
               <div
                 key={d.id}
-                className="card-luxury flex items-center gap-3 p-4"
+                className={`card-luxury p-4 ${editingId === d.id ? "ring-2 ring-royal" : ""}`}
               >
-                <div className="diamond-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
-                  <GraduationCap size={17} className="text-white" />
+                <div className="flex items-center gap-3">
+                  <div className="diamond-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+                    <GraduationCap size={17} className="text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-heading font-bold text-text-1">
+                      {d.name}
+                      {d.status === "archived" && (
+                        <span className="ml-2 text-xs font-normal text-text-3">
+                          (archived)
+                        </span>
+                      )}
+                    </p>
+                    <p className="flex items-center gap-1 text-sm text-text-3">
+                      <Layers size={12} />
+                      {priceFor(d.id)} ·{" "}
+                      {levelsFor(d.id).join(", ") || "no levels"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => startEdit(d)}
+                    className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
+                  >
+                    <Pencil size={13} />
+                    Edit
+                  </button>
+                  <Link
+                    to={`/admin/courses?department=${d.id}`}
+                    className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
+                  >
+                    Manage courses <ArrowRight size={13} />
+                  </Link>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-heading font-bold text-text-1">{d.name}</p>
-                  <p className="flex items-center gap-1 text-sm text-text-3">
-                    <Layers size={12} />
-                    {priceFor(d.id)} ·{" "}
-                    {levelsFor(d.id).join(", ") || "no levels"}
-                  </p>
-                </div>
-                <Link
-                  to={`/admin/courses?department=${d.id}`}
-                  className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
-                >
-                  Manage courses <ArrowRight size={13} />
-                </Link>
+
+                {addingLevelFor === d.id ? (
+                  <div className="mt-3 flex items-center gap-2 border-t border-canvas-border pt-3">
+                    <input
+                      autoFocus
+                      value={newLevelLabel}
+                      onChange={(e) => setNewLevelLabel(e.target.value)}
+                      placeholder="e.g. 600L"
+                      className={`${inputClass} mt-0 max-w-[160px]`}
+                    />
+                    <button
+                      onClick={() => void addLevel(d.id)}
+                      className="btn-secondary px-3 py-1.5 text-xs"
+                    >
+                      Add
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAddingLevelFor(null);
+                        setNewLevelLabel("");
+                      }}
+                      className="text-xs font-semibold text-text-3 hover:text-text-1"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingLevelFor(d.id)}
+                    className="mt-2 flex items-center gap-1 text-xs font-semibold text-royal hover:underline"
+                  >
+                    <Plus size={12} />
+                    Add a level
+                  </button>
+                )}
               </div>
             ))}
           </div>

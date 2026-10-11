@@ -4,11 +4,19 @@ import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
 import {
   BookOpen,
   BarChart3,
+  Facebook,
   Gift,
+  Globe,
+  Instagram,
   ListChecks,
+  Mail,
+  MessageCircle,
   Quote,
+  Send,
   Sparkles,
   Trophy,
+  Twitter,
+  X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -39,6 +47,14 @@ interface TopRanker {
   points: number;
   accuracy: number;
   attempted: number;
+}
+interface InstitutionalLinks {
+  telegram: string | null;
+  whatsapp: string | null;
+  facebook: string | null;
+  twitter: string | null;
+  instagram: string | null;
+  support_email: string | null;
 }
 interface Quote {
   text: string;
@@ -115,6 +131,8 @@ export default function Dashboard() {
   const [topRanker, setTopRanker] = useState<TopRanker | null>(null);
   const [quotePool, setQuotePool] = useState<Quote[]>(FALLBACK_QUOTES);
   const [loading, setLoading] = useState(true);
+  const [channels, setChannels] = useState<InstitutionalLinks | null>(null);
+  const [showChannels, setShowChannels] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -132,6 +150,7 @@ export default function Dashboard() {
         { data: affiliateRow },
         { data: standings },
         { data: quoteRows },
+        { data: channelsRow },
       ] = await Promise.all([
         supabase
           .from("daily_practice_stats")
@@ -167,9 +186,15 @@ export default function Dashboard() {
           p_limit: 1,
         }),
         supabase.from("quotes").select("text, author"),
+        supabase
+          .from("institutional_links")
+          .select("telegram, whatsapp, facebook, twitter, instagram, support_email")
+          .eq("id", 1)
+          .maybeSingle(),
       ]);
 
       if (quoteRows && quoteRows.length > 0) setQuotePool(quoteRows);
+      setChannels(channelsRow ?? null);
 
       const totalAttempted = (allStats ?? []).reduce(
         (s, r) => s + r.attempted,
@@ -424,7 +449,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-4 gap-2">
+            <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-5">
               <QuickAction
                 icon={BookOpen}
                 label="Study"
@@ -444,6 +469,11 @@ export default function Dashboard() {
                 icon={Gift}
                 label="Affiliate"
                 onClick={() => navigate("/affiliate")}
+              />
+              <QuickAction
+                icon={Globe}
+                label="Channels"
+                onClick={() => setShowChannels(true)}
               />
             </div>
           </div>
@@ -509,8 +539,107 @@ export default function Dashboard() {
           </div>
         </div>
       </Layout>
+
+      {showChannels && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4"
+          onClick={() => setShowChannels(false)}
+        >
+          <div
+            className="card-luxury w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-text-1">
+                <Globe size={18} className="text-royal" />
+                Channels
+              </h2>
+              <button
+                onClick={() => setShowChannels(false)}
+                className="rounded-full p-1 hover:bg-canvas-soft"
+              >
+                <X size={18} className="text-text-3" />
+              </button>
+            </div>
+            <p className="mt-1 text-sm text-text-3">
+              Stay connected — follow our official channels for updates.
+            </p>
+            <div className="mt-4 space-y-2">
+              {channelLinks(channels).length === 0 ? (
+                <p className="rounded-xl bg-canvas-soft px-3 py-4 text-center text-sm text-text-3">
+                  No channels have been set up yet.
+                </p>
+              ) : (
+                channelLinks(channels).map((c) => (
+                  <a
+                    key={c.label}
+                    href={c.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3 rounded-xl border border-canvas-border px-3 py-2.5 text-sm font-semibold text-text-1 transition-colors hover:border-royal/40 hover:bg-royal-soft"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal-soft text-royal">
+                      <c.icon size={15} />
+                    </span>
+                    {c.label}
+                  </a>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
+}
+
+function channelLinks(channels: InstitutionalLinks | null) {
+  if (!channels) return [];
+  const withScheme = (v: string) => (/^https?:\/\//i.test(v) ? v : `https://${v}`);
+  const links: { label: string; href: string; icon: typeof Globe }[] = [];
+  if (channels.telegram) {
+    links.push({
+      label: "Telegram",
+      href: `https://t.me/${channels.telegram.replace(/^@/, "")}`,
+      icon: Send,
+    });
+  }
+  if (channels.whatsapp) {
+    links.push({
+      label: "WhatsApp",
+      href: `https://wa.me/${channels.whatsapp.replace(/\D/g, "")}`,
+      icon: MessageCircle,
+    });
+  }
+  if (channels.facebook) {
+    links.push({
+      label: "Facebook",
+      href: withScheme(channels.facebook),
+      icon: Facebook,
+    });
+  }
+  if (channels.twitter) {
+    links.push({
+      label: "Twitter (X)",
+      href: `https://twitter.com/${channels.twitter.replace(/^@/, "")}`,
+      icon: Twitter,
+    });
+  }
+  if (channels.instagram) {
+    links.push({
+      label: "Instagram",
+      href: `https://instagram.com/${channels.instagram.replace(/^@/, "")}`,
+      icon: Instagram,
+    });
+  }
+  if (channels.support_email) {
+    links.push({
+      label: channels.support_email,
+      href: `mailto:${channels.support_email}`,
+      icon: Mail,
+    });
+  }
+  return links;
 }
 
 function HeroStat({ label, value }: { label: string; value: string | number }) {

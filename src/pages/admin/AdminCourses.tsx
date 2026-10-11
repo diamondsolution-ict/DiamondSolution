@@ -1,6 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, BookOpen, BookPlus, ListChecks } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  BookPlus,
+  ListChecks,
+  Pencil,
+  X,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 
@@ -21,7 +28,10 @@ interface Course {
   department_id: string;
   level_id: string;
   default_question_type: "objective" | "application";
+  description: string | null;
 }
+
+const STATUSES = ["draft", "published", "archived"] as const;
 
 function slugify(s: string) {
   return s
@@ -48,6 +58,8 @@ export default function AdminCourses() {
     "objective",
   );
   const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<(typeof STATUSES)[number]>("published");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -67,7 +79,7 @@ export default function AdminCourses() {
         supabase
           .from("courses")
           .select(
-            "id, title, slug, status, department_id, level_id, default_question_type",
+            "id, title, slug, status, department_id, level_id, default_question_type, description",
           )
           .eq("department_id", departmentId)
           .is("deleted_at", null)
@@ -84,11 +96,29 @@ export default function AdminCourses() {
 
   useEffect(() => {
     void load();
-    setLevelId("");
+    resetForm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departmentId]);
 
-  async function handleCreate(e: FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setTitle("");
+    setLevelId("");
+    setQuestionType("objective");
+    setDescription("");
+    setStatus("published");
+  }
+
+  function startEdit(c: Course) {
+    setEditingId(c.id);
+    setTitle(c.title);
+    setLevelId(c.level_id);
+    setQuestionType(c.default_question_type);
+    setDescription(c.description ?? "");
+    setStatus(c.status as (typeof STATUSES)[number]);
+  }
+
+  async function handleSubmitForm(e: FormEvent) {
     e.preventDefault();
     setError(null);
     if (!departmentId || !levelId) {
@@ -96,6 +126,28 @@ export default function AdminCourses() {
       return;
     }
     setSaving(true);
+
+    if (editingId) {
+      const { error: updateError } = await supabase
+        .from("courses")
+        .update({
+          level_id: levelId,
+          title,
+          slug: slugify(title),
+          description: description || null,
+          default_question_type: questionType,
+          status,
+        })
+        .eq("id", editingId);
+      setSaving(false);
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
+      resetForm();
+      await load();
+      return;
+    }
 
     const { error: insertError } = await supabase.from("courses").insert({
       department_id: departmentId,
@@ -112,8 +164,7 @@ export default function AdminCourses() {
       setError(insertError.message);
       return;
     }
-    setTitle("");
-    setDescription("");
+    resetForm();
     await load();
   }
 
@@ -150,13 +201,29 @@ export default function AdminCourses() {
       {departmentId && (
         <>
           <form
-            onSubmit={handleCreate}
+            onSubmit={handleSubmitForm}
             className="card-luxury mt-6 space-y-4 p-6"
           >
-            <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
-              <BookPlus size={17} className="text-royal" />
-              Add course
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+                {editingId ? (
+                  <Pencil size={17} className="text-royal" />
+                ) : (
+                  <BookPlus size={17} className="text-royal" />
+                )}
+                {editingId ? "Edit course" : "Add course"}
+              </h2>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="flex items-center gap-1 text-xs font-semibold text-text-3 hover:text-text-1"
+                >
+                  <X size={13} />
+                  Cancel edit
+                </button>
+              )}
+            </div>
 
             {error && (
               <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -224,13 +291,40 @@ export default function AdminCourses() {
               />
             </div>
 
+            {editingId && (
+              <div>
+                <label className="block text-sm font-medium text-text-2">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) =>
+                    setStatus(e.target.value as (typeof STATUSES)[number])
+                  }
+                  className={`${inputClass} max-w-xs capitalize`}
+                >
+                  {STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={saving}
               className="btn-primary flex items-center gap-2"
             >
-              <BookPlus size={15} />
-              {saving ? "Creating…" : "Create course"}
+              {editingId ? <Pencil size={15} /> : <BookPlus size={15} />}
+              {saving
+                ? editingId
+                  ? "Saving…"
+                  : "Creating…"
+                : editingId
+                  ? "Save changes"
+                  : "Create course"}
             </button>
           </form>
 
@@ -249,7 +343,7 @@ export default function AdminCourses() {
                 {courses.map((c) => (
                   <div
                     key={c.id}
-                    className="card-luxury flex items-center gap-3 p-4"
+                    className={`card-luxury flex items-center gap-3 p-4 ${editingId === c.id ? "ring-2 ring-royal" : ""}`}
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-royal-soft">
                       <BookOpen size={17} className="text-royal" />
@@ -263,6 +357,13 @@ export default function AdminCourses() {
                         {c.status}
                       </p>
                     </div>
+                    <button
+                      onClick={() => startEdit(c)}
+                      className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
+                    >
+                      <Pencil size={13} />
+                      Edit
+                    </button>
                     <Link
                       to={`/admin/courses/${c.id}/questions`}
                       className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
