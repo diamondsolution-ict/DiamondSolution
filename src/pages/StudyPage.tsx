@@ -452,7 +452,9 @@ export default function StudyPage() {
             <p className="text-[11px] font-bold uppercase tracking-widest text-text-3">
               Archive query · {question.type === "objective" ? "MCQ" : "Application"}
             </p>
-            <p className="mt-2 font-medium text-text-1">{question.prompt}</p>
+            <p className="mt-2 whitespace-pre-wrap font-medium text-text-1">
+              {question.prompt}
+            </p>
 
             {question.type === "objective" ? (
               <div className="mt-4 space-y-2">
@@ -490,7 +492,9 @@ export default function StudyPage() {
                       >
                         {opt.label}
                       </span>
-                      <span className="flex-1">{opt.body}</span>
+                      <span className="flex-1 whitespace-pre-wrap">
+                        {opt.body}
+                      </span>
                       {showCorrect && (
                         <CheckCircle2
                           size={16}
@@ -512,7 +516,7 @@ export default function StudyPage() {
                       <CheckCircle2 size={15} />
                       Expected response
                     </p>
-                    <p className="mt-1 text-white/90">
+                    <p className="mt-1 whitespace-pre-wrap text-white/90">
                       {question.expected_answer || "No expected answer recorded."}
                     </p>
                   </div>
@@ -526,7 +530,9 @@ export default function StudyPage() {
                   <Lightbulb size={15} />
                   Explanation
                 </p>
-                <p className="mt-1 text-white/90">{question.explanation}</p>
+                <p className="mt-1 whitespace-pre-wrap text-white/90">
+                  {question.explanation}
+                </p>
               </div>
             )}
           </div>

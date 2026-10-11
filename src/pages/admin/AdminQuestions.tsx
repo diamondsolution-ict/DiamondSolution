@@ -565,7 +565,7 @@ export default function AdminQuestions() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium text-text-1">
+                  <p className="whitespace-pre-wrap text-sm font-medium text-text-1">
                     {i + 1}. {q.prompt}
                   </p>
                   {q.explanation === PLACEHOLDER_MARKER && (
@@ -597,17 +597,22 @@ export default function AdminQuestions() {
                   {q.options.map((o) => (
                     <li
                       key={o.id}
-                      className={`flex items-center gap-1.5 ${o.is_correct ? "font-semibold text-royal" : ""}`}
+                      className={`flex items-start gap-1.5 whitespace-pre-wrap ${o.is_correct ? "font-semibold text-royal" : ""}`}
                     >
                       {o.is_correct && (
-                        <CheckCircle2 size={13} className="text-royal" />
+                        <CheckCircle2
+                          size={13}
+                          className="mt-0.5 shrink-0 text-royal"
+                        />
                       )}
-                      {o.label}. {o.body}
+                      <span>
+                        {o.label}. {o.body}
+                      </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-sm text-text-3">
+                <p className="mt-2 whitespace-pre-wrap text-sm text-text-3">
                   Expected: {q.expected_answer}
                 </p>
               )}

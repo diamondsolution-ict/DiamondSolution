@@ -59,6 +59,20 @@ function normalize(s) {
   return (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// Mirrors the old app's formatFormattedText() (src/lib/utils.ts there) — Firestore question
+// text sometimes carries literal "<br>" tags or escaped "\n"/"\r\n" sequences (two characters,
+// not a real line break) from however it was originally entered/imported. Left as-is, those
+// render as literal garbage in a plain <p>/<textarea> here instead of a line break. Applied to
+// every piece of question text this script writes.
+function normalizeContent(val) {
+  if (val === null || val === undefined) return "";
+  let str = String(val);
+  str = str.replace(/<br\s*\/?>/gi, "\n");
+  str = str.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "\n");
+  str = str.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  return str.trim();
+}
+
 async function main() {
   const serviceAccountPath = env("FIREBASE_SERVICE_ACCOUNT_PATH");
   const supabaseUrl = env("SUPABASE_URL");
@@ -165,7 +179,7 @@ async function main() {
     let sortOrder = 0;
     for (const oq of oldQuestions) {
       const isApplication = oq.type === "application";
-      const prompt = (oq.question ?? "").trim();
+      const prompt = normalizeContent(oq.question);
       if (!prompt) {
         dataWarnings.push(`${oldCourse.title}: question ${oq.id} has no prompt text — skipped.`);
         continue;
@@ -177,8 +191,10 @@ async function main() {
           course_id: newCourse.id,
           type: isApplication ? "application" : "objective",
           prompt,
-          expected_answer: isApplication ? (oq.answerText || oq.explanation || "").trim() || null : null,
-          explanation: isApplication ? null : (oq.explanation ?? "").trim() || null,
+          expected_answer: isApplication
+            ? normalizeContent(oq.answerText || oq.explanation) || null
+            : null,
+          explanation: isApplication ? null : normalizeContent(oq.explanation) || null,
           sort_order: sortOrder++,
         })
         .select("id")
@@ -191,7 +207,7 @@ async function main() {
       if (!isApplication) {
         const rawOptions = Array.isArray(oq.options) ? oq.options : [];
         const optionRows = rawOptions
-          .map((body, i) => ({ label: OPTION_LABELS[i], body: (body ?? "").trim(), i }))
+          .map((body, i) => ({ label: OPTION_LABELS[i], body: normalizeContent(body), i }))
           .filter((o) => o.label && o.body)
           .map((o) => ({
             question_id: inserted.id,
