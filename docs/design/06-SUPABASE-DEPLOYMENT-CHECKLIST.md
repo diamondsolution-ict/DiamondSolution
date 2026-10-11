@@ -116,40 +116,45 @@ paying — the client-triggered `verify-payment` call and this webhook both land
 idempotent `processDepartmentAccessPayment`, so whichever arrives first wins and the second is
 a safe no-op.
 
-## 7. Connect Netlify to the repo
+## 7. Connect Cloudflare Pages to the repo
 
-This project briefly evaluated moving to Cloudflare Pages after the original Netlify account
-ran out of operational credits, but that's resolved now (a personal Netlify account, no longer
-credit-limited) — back on Netlify. Netlify dashboard → **Add a new site** → **Import an
-existing project** → connect to Git → pick `diamondsolution-ict/DiamondSolution`, branch
-`main`:
+This project moved off Netlify a second time after its account ran out of operational credits
+again — this time for good, since Cloudflare Pages' free tier has no bandwidth/request cap for
+a static site like this one, so the same problem shouldn't recur. Cloudflare dashboard →
+**Workers & Pages** → **Create application** → **Pages** → **Connect to Git** → pick
+`diamondsolution-ict/DiamondSolution`, branch `main`:
 
+- **Framework preset**: Vite (or "None" if Vite isn't offered — the settings below are the same
+  either way)
 - **Build command**: `npm run build`
-- **Publish directory**: `dist`
-- **Base directory**: leave as the repo root (`/`)
+- **Build output directory**: `dist`
+- **Root directory**: leave as the repo root (`/`)
 
-`netlify.toml` is already in the repo with exactly this build command/publish dir plus the SPA
-redirect (`/* -> /index.html`, status 200) that makes a direct load of `/dashboard`,
-`/admin/login`, etc. work instead of 404ing — Netlify reads it automatically, nothing further
-to configure for that part. (`public/_redirects` also exists from the brief Cloudflare
-evaluation; Netlify would honor either, but `netlify.toml` takes precedence and already covers
-the same rule, so no conflict.)
+`public/_redirects` is already in the repo with the SPA fallback rule (`/* -> /index.html`,
+status 200) that makes a direct load of `/dashboard`, `/admin/login`, etc. work instead of
+404ing — Cloudflare Pages reads it automatically from the build output, nothing further to
+configure for that part. `.node-version` (pinned to `22`, matching CI) is also already in the
+repo so Cloudflare builds with the same Node version everything else does.
+
+`netlify.toml` is still in the repo (harmless — Cloudflare ignores it) in case this project ever
+needs to point back at Netlify; delete it whenever you're confident that won't happen.
 
 ## 8. Configure Auth URLs
 
 Supabase dashboard → **Authentication** → **URL Configuration**:
 
-- **Site URL**: your Netlify domain, e.g. `https://diamondsolution.netlify.app` (or your custom
-  domain once one's attached)
-- **Redirect URLs**: add the same domain (and Netlify's per-deploy-preview URL pattern if you
-  want deploy previews to work too)
+- **Site URL**: your Cloudflare Pages domain, e.g. `https://diamondsolution.pages.dev` (or your
+  custom domain once one's attached under the Pages project's **Custom domains** tab)
+- **Redirect URLs**: add the same domain (and Cloudflare's per-deploy-preview URL pattern,
+  `https://*.diamondsolution.pages.dev`, if you want preview deploys to work too)
 
 Without this, the email-confirmation link a new user receives redirects to `localhost` instead
 of your real site.
 
-## 9. Set Netlify environment variables and redeploy
+## 9. Set Cloudflare Pages environment variables and redeploy
 
-Netlify site → **Site configuration** → **Environment variables**, set:
+Cloudflare Pages project → **Settings** → **Environment variables**, set for both
+**Production** and **Preview**:
 
 - `VITE_SUPABASE_URL` — from Supabase dashboard → Project Settings → API
 - `VITE_SUPABASE_ANON_KEY` — same page
@@ -157,9 +162,9 @@ Netlify site → **Site configuration** → **Environment variables**, set:
   key from step 4
 
 These are baked in at **build time**, not read at runtime — after setting them, trigger a new
-deploy (**Deploys** → **Trigger deploy** → **Deploy site**, or just push a commit), a page
-refresh alone won't pick them up. This is also the actual fix for the blank-page issue on the
-old credit-limited Netlify setup — that was these variables being unset (or the account not
+deploy (**Deployments** tab → **Retry deployment** on the latest one, or just push a commit), a
+page refresh alone won't pick them up. This is also the actual fix for the blank-page issue on
+the old credit-limited Netlify setup — that was these variables being unset (or the account not
 building at all), and `src/main.tsx` now shows a clear "Configuration missing" message instead
 of a blank screen if they're ever missing again.
 
@@ -233,7 +238,7 @@ end-to-end before telling anyone else the platform is open.
 ## 14. Turn on error tracking (optional, recommended)
 
 - [sentry.io](https://sentry.io) → new project → React → copy the DSN from Client Keys.
-- Add `VITE_SENTRY_DSN=https://...` to Netlify's environment variables and redeploy — the app
+- Add `VITE_SENTRY_DSN=https://...` to Cloudflare Pages' environment variables and redeploy — the app
   only initializes Sentry when this is set, so skipping this step is safe (no behavior change,
   just no error reports).
 - Trigger a real error once deployed (e.g. temporarily throw inside a component) and confirm
