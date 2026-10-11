@@ -1,0 +1,19 @@
+{
+  // Committed instead of leaving this to Cloudflare's own build-time auto-generation —
+  // without it, the first "Create wrangler.jsonc" step (triggered by npx wrangler deploy)
+  // re-derives this from scratch on every build, and previously conflicted with the
+  // now-removed public/_redirects SPA-fallback rule (that rule and `not_found_handling`
+  // below both tried to do the same job, which Cloudflare's redirect validator rejects as an
+  // infinite loop). `not_found_handling: "single-page-application"` is react-router-dom's
+  // fallback: any path with no matching static asset (e.g. a direct load of /dashboard,
+  // /admin/login) serves index.html and lets the app's own router take over.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "diamondsolutionapp",
+  "compatibility_date": "2026-10-11",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "not_found_handling": "single-page-application"
+  }
+}

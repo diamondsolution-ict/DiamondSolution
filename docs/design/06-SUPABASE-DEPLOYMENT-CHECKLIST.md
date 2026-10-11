@@ -130,11 +130,17 @@ a static site like this one, so the same problem shouldn't recur. Cloudflare das
 - **Build output directory**: `dist`
 - **Root directory**: leave as the repo root (`/`)
 
-`public/_redirects` is already in the repo with the SPA fallback rule (`/* -> /index.html`,
-status 200) that makes a direct load of `/dashboard`, `/admin/login`, etc. work instead of
-404ing — Cloudflare Pages reads it automatically from the build output, nothing further to
-configure for that part. `.node-version` (pinned to `22`, matching CI) is also already in the
-repo so Cloudflare builds with the same Node version everything else does.
+Cloudflare now deploys this kind of project as "Workers with static assets" rather than
+classic Pages — its build step runs `npx wrangler deploy` after `npm run build`, which is why a
+connected project's first build auto-generates a `wrangler.jsonc`. That file is already
+committed in this repo instead of being left to that auto-generation, with
+`assets.not_found_handling: "single-page-application"` — the SPA fallback that makes a direct
+load of `/dashboard`, `/admin/login`, etc. serve `index.html` and let the app's own router take
+over, instead of 404ing. (An earlier `public/_redirects` tried to do the same job the
+Netlify way — `/* -> /index.html` — and Cloudflare's redirect validator rejects that as an
+infinite loop once `not_found_handling` is already set, so it's been removed; don't re-add
+it.) `.node-version` (pinned to `22`, matching CI) is also already in the repo so Cloudflare
+builds with the same Node version everything else does.
 
 `netlify.toml` is still in the repo (harmless — Cloudflare ignores it) in case this project ever
 needs to point back at Netlify; delete it whenever you're confident that won't happen.
