@@ -26,6 +26,7 @@ interface Course {
 interface Level {
   id: string;
   label: string;
+  sort_order: number;
 }
 
 export default function CourseList() {
@@ -41,6 +42,7 @@ export default function CourseList() {
   );
   const [courses, setCourses] = useState<Course[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
+  const [selectedLevelId, setSelectedLevelId] = useState("");
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
 
@@ -90,13 +92,15 @@ export default function CourseList() {
           .order("title"),
         supabase
           .from("department_levels")
-          .select("id, label")
-          .eq("department_id", departmentId),
+          .select("id, label, sort_order")
+          .eq("department_id", departmentId)
+          .order("sort_order"),
       ]);
       setCourses(courseRows ?? []);
       setLevels(levelRows ?? []);
       setLoading(false);
     }
+    setSelectedLevelId("");
     void loadCourses();
   }, [departmentId]);
 
@@ -159,6 +163,10 @@ export default function CourseList() {
   function levelLabel(id: string) {
     return levels.find((l) => l.id === id)?.label ?? "";
   }
+
+  const visibleCourses = selectedLevelId
+    ? courses.filter((c) => c.level_id === selectedLevelId)
+    : courses;
 
   if (!departmentId) {
     return (
@@ -255,21 +263,59 @@ export default function CourseList() {
               Lifetime access active
             </div>
           )}
-          {courses.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => navigate(`/courses/${c.id}`)}
-              className="card-luxury flex w-full items-center gap-3 p-4 text-left"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-royal-soft">
-                <BookOpen size={18} className="text-royal" />
-              </div>
-              <span className="flex-1 font-heading font-bold text-text-1">
-                {c.title}
-              </span>
-              <span className="badge-royal">{levelLabel(c.level_id)}</span>
-            </button>
-          ))}
+
+          {levels.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedLevelId("")}
+                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                  selectedLevelId === ""
+                    ? "bg-royal text-white"
+                    : "bg-canvas-soft text-text-2 hover:bg-royal-soft"
+                }`}
+              >
+                All levels
+              </button>
+              {levels.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => setSelectedLevelId(l.id)}
+                  className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                    selectedLevelId === l.id
+                      ? "bg-royal text-white"
+                      : "bg-canvas-soft text-text-2 hover:bg-royal-soft"
+                  }`}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {visibleCourses.length === 0 ? (
+            <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+              <BookOpen size={28} className="text-text-3" />
+              <p className="text-sm text-text-3">
+                No courses at this level yet.
+              </p>
+            </div>
+          ) : (
+            visibleCourses.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => navigate(`/courses/${c.id}`)}
+                className="card-luxury flex w-full items-center gap-3 p-4 text-left"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-royal-soft">
+                  <BookOpen size={18} className="text-royal" />
+                </div>
+                <span className="flex-1 font-heading font-bold text-text-1">
+                  {c.title}
+                </span>
+                <span className="badge-royal">{levelLabel(c.level_id)}</span>
+              </button>
+            ))
+          )}
         </div>
       )}
     </Layout>

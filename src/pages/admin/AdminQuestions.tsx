@@ -12,7 +12,9 @@ import {
   Download,
   FilePlus,
   FileQuestion,
+  ListTree,
   Pencil,
+  Plus,
   Trash2,
   Upload,
   X,
@@ -45,6 +47,14 @@ interface Question {
   options: Option[];
 }
 
+interface OutlineSection {
+  id: string;
+  title: string;
+  start_question_order: number;
+  end_question_order: number;
+  sort_order: number;
+}
+
 const OPTION_LABELS = ["A", "B", "C", "D", "E"];
 // Must match supabase/seed/03-placeholder-questions.sql's v_marker exactly.
 const PLACEHOLDER_MARKER =
@@ -68,6 +78,17 @@ export default function AdminQuestions() {
   const [correctIndex, setCorrectIndex] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  const [outline, setOutline] = useState<OutlineSection[]>([]);
+  const [outlineError, setOutlineError] = useState<string | null>(null);
+  const [outlineSaving, setOutlineSaving] = useState(false);
+  const [editingOutlineId, setEditingOutlineId] = useState<string | null>(
+    null,
+  );
+  const [outlineTitle, setOutlineTitle] = useState("");
+  const [outlineStart, setOutlineStart] = useState("");
+  const [outlineEnd, setOutlineEnd] = useState("");
+  const [showOutlineForm, setShowOutlineForm] = useState(false);
 
   async function load() {
     if (!courseId) return;
@@ -104,6 +125,14 @@ export default function AdminQuestions() {
         options: (optionRows ?? []).filter((o) => o.question_id === q.id),
       })),
     );
+
+    const { data: outlineRows } = await supabase
+      .from("course_outline_sections")
+      .select("id, title, start_question_order, end_question_order, sort_order")
+      .eq("course_id", courseId)
+      .order("sort_order");
+    setOutline(outlineRows ?? []);
+
     setLoading(false);
   }
 
@@ -223,6 +252,99 @@ export default function AdminQuestions() {
       .from("questions")
       .update({ status: "trashed", deleted_at: new Date().toISOString() })
       .eq("id", id);
+    await load();
+  }
+
+  function resetOutlineForm() {
+    setEditingOutlineId(null);
+    setOutlineTitle("");
+    setOutlineStart("");
+    setOutlineEnd("");
+    setShowOutlineForm(false);
+  }
+
+  function startAddOutline() {
+    resetOutlineForm();
+    const lastEnd = outline.reduce(
+      (max, s) => Math.max(max, s.end_question_order),
+      0,
+    );
+    setOutlineStart(String(lastEnd + 1));
+    setOutlineEnd(String(questions.length));
+    setShowOutlineForm(true);
+  }
+
+  function startEditOutline(s: OutlineSection) {
+    setEditingOutlineId(s.id);
+    setOutlineTitle(s.title);
+    setOutlineStart(String(s.start_question_order));
+    setOutlineEnd(String(s.end_question_order));
+    setShowOutlineForm(true);
+  }
+
+  async function handleSubmitOutline(e: FormEvent) {
+    e.preventDefault();
+    setOutlineError(null);
+
+    const start = Number(outlineStart);
+    const end = Number(outlineEnd);
+    if (!outlineTitle.trim()) {
+      setOutlineError("Give this section a title.");
+      return;
+    }
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1) {
+      setOutlineError("Start/end must be whole numbers, starting from 1.");
+      return;
+    }
+    if (end < start) {
+      setOutlineError("End must be greater than or equal to start.");
+      return;
+    }
+    if (end > questions.length) {
+      setOutlineError(
+        `This course only has ${questions.length} question(s) — end can't exceed that.`,
+      );
+      return;
+    }
+
+    setOutlineSaving(true);
+    if (editingOutlineId) {
+      const { error: updateError } = await supabase
+        .from("course_outline_sections")
+        .update({
+          title: outlineTitle.trim(),
+          start_question_order: start,
+          end_question_order: end,
+        })
+        .eq("id", editingOutlineId);
+      setOutlineSaving(false);
+      if (updateError) {
+        setOutlineError(updateError.message);
+        return;
+      }
+    } else {
+      const { error: insertError } = await supabase
+        .from("course_outline_sections")
+        .insert({
+          course_id: courseId,
+          title: outlineTitle.trim(),
+          start_question_order: start,
+          end_question_order: end,
+          sort_order: outline.length,
+        });
+      setOutlineSaving(false);
+      if (insertError) {
+        setOutlineError(insertError.message);
+        return;
+      }
+    }
+    resetOutlineForm();
+    await load();
+  }
+
+  async function handleRemoveOutline(id: string) {
+    if (editingOutlineId === id) resetOutlineForm();
+    await supabase.from("course_outline_sections").delete().eq("id", id);
     await load();
   }
 
@@ -618,6 +740,165 @@ export default function AdminQuestions() {
               )}
             </div>
           ))
+        )}
+      </div>
+
+      <div className="card-luxury mt-8 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+              <ListTree size={17} className="text-royal" />
+              Course outline
+            </h2>
+            <p className="mt-1 text-sm text-text-3">
+              Breaks the {questions.length} question(s) above into named
+              sections — shown to students on the course page, and triggers
+              the "section complete" checkpoint mid-quiz.
+            </p>
+          </div>
+          {!showOutlineForm && (
+            <button
+              onClick={startAddOutline}
+              disabled={questions.length === 0}
+              className="btn-secondary flex shrink-0 items-center gap-1.5 text-sm disabled:opacity-50"
+            >
+              <Plus size={14} />
+              Add section
+            </button>
+          )}
+        </div>
+
+        {questions.length === 0 && (
+          <p className="mt-3 text-xs text-text-3">
+            Add questions above first — sections reference question
+            positions.
+          </p>
+        )}
+
+        {showOutlineForm && (
+          <form
+            onSubmit={handleSubmitOutline}
+            className="mt-4 space-y-3 rounded-xl border border-canvas-border p-4"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-text-1">
+                {editingOutlineId ? "Edit section" : "New section"}
+              </p>
+              <button
+                type="button"
+                onClick={resetOutlineForm}
+                className="flex items-center gap-1 text-xs font-semibold text-text-3 hover:text-text-1"
+              >
+                <X size={13} />
+                Cancel
+              </button>
+            </div>
+
+            {outlineError && (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {outlineError}
+              </p>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-text-2">
+                Title
+              </label>
+              <input
+                required
+                value={outlineTitle}
+                onChange={(e) => setOutlineTitle(e.target.value)}
+                placeholder="e.g. Orbit and Ear (Part 1)"
+                className={inputClass}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-2">
+                  Start question #
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={questions.length}
+                  required
+                  value={outlineStart}
+                  onChange={(e) => setOutlineStart(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-2">
+                  End question #
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={questions.length}
+                  required
+                  value={outlineEnd}
+                  onChange={(e) => setOutlineEnd(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={outlineSaving}
+              className="btn-primary flex items-center gap-2"
+            >
+              {editingOutlineId ? <Pencil size={15} /> : <Plus size={15} />}
+              {outlineSaving
+                ? "Saving…"
+                : editingOutlineId
+                  ? "Save changes"
+                  : "Add section"}
+            </button>
+          </form>
+        )}
+
+        {outline.length === 0 ? (
+          <p className="mt-4 text-sm text-text-3">
+            No outline sections yet — the course page will just show "no
+            outline published" until you add one.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {outline.map((s, i) => (
+              <li
+                key={s.id}
+                className={`card-luxury flex items-center gap-3 p-3 ${editingOutlineId === s.id ? "ring-2 ring-royal" : ""}`}
+              >
+                <span className="badge-royal flex h-6 w-6 shrink-0 items-center justify-center rounded-full p-0">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-text-1">
+                    {s.title}
+                  </p>
+                  <p className="text-xs text-text-3">
+                    Q{s.start_question_order}–{s.end_question_order}
+                  </p>
+                </div>
+                <button
+                  onClick={() => startEditOutline(s)}
+                  className="flex shrink-0 items-center gap-1 text-xs font-semibold text-royal hover:underline"
+                >
+                  <Pencil size={12} />
+                  Edit
+                </button>
+                <button
+                  onClick={() => void handleRemoveOutline(s.id)}
+                  className="flex shrink-0 items-center gap-1 text-xs font-semibold text-rose-600 hover:underline"
+                >
+                  <Trash2 size={12} />
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </AdminLayout>
