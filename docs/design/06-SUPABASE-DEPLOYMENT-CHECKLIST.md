@@ -186,14 +186,17 @@ To get real questions in, pick one:
   column layout). The old app's own Admin → Questions tab has a per-course **Export CSV** button
   that writes that same format, so you can export from the old app and import straight into the
   matching course here.
-- **All courses at once**: `scripts/migrate-questions-from-firebase.mjs` reads every course's
-  questions directly out of the old app's Firestore and inserts them into the matching Supabase
-  course in one run (matched by department + level + course title). Needs a Firebase
-  service-account key for the old project and this project's Supabase service-role key — see the
-  script's header comment for exact steps. Run `--dry-run` first; it prints which old courses
-  matched, which don't exist in the new catalog (the new catalog deliberately dropped some
-  duplicate-category courses — see `supabase/seed/02-courses.sql`'s header), and any questions
-  it couldn't import cleanly, so you can fix those up by hand afterward.
+- **All courses at once**: `scripts/import-questions-from-export.mjs` reads the JSON export
+  produced by the old app's Question Bank Exporter tool and inserts every course's real
+  questions into Supabase in one run — creating any department level or course that doesn't
+  already exist (using the old app's own titles) rather than skipping it, and re-hosting each
+  course's thumbnail image into the `media` storage bucket. Needs only this project's Supabase
+  service-role key — see the script's header comment for exact steps. Run `--dry-run` first; it
+  prints every level/course it would create and the question/thumbnail counts, so you can review
+  before writing anything.
+  (`scripts/migrate-questions-from-firebase.mjs`, which pulls straight from live Firestore and
+  only matches against `supabase/seed/02-courses.sql`'s narrower catalog, is kept for reference
+  but superseded by the above for this import.)
 
 ## 12. End-to-end smoke test (Paystack test mode)
 

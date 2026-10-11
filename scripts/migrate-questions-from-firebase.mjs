@@ -1,3 +1,10 @@
+// SUPERSEDED for the real import by scripts/import-questions-from-export.mjs — this script
+// requires live Firestore access (a service-account key for the old project) and only matches
+// against courses supabase/seed/02-courses.sql already created, silently skipping anything
+// else. The exporter tool + JSON export we actually used instead needs neither Firebase
+// credentials nor that narrower matching; use import-questions-from-export.mjs unless you
+// specifically need to pull straight from live Firestore again. Left here for reference.
+//
 // One-time migration: pulls the real question bank out of the old Firebase app's Firestore
 // (`courses/{id}` + `courses/{id}/content` subcollection — see Tobinioluwa/Diamond-Solution-app's
 // src/pages/AdminDashboard.tsx) and inserts it straight into this app's Supabase `questions`/
