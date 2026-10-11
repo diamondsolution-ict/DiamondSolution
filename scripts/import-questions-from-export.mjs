@@ -188,7 +188,16 @@ async function main() {
     if (!level) {
       const nextSort = (maxSortByDept.get(dept.id) ?? -1) + 1;
       if (DRY_RUN) {
-        level = { id: `[dry-run-new-level]`, department_id: dept.id, label: oldCourse.level, sort_order: nextSort };
+        // Must be unique per (department, label) — a flat literal here would make two
+        // different new levels in the same department (e.g. BMLS's "Ochei Questions" and
+        // "Application Questions", which share some course titles between them) collide in
+        // courseByKey below, since courseKey is built from this id.
+        level = {
+          id: `[dry-run-new-level:${dept.id}:${normalize(oldCourse.level)}]`,
+          department_id: dept.id,
+          label: oldCourse.level,
+          sort_order: nextSort,
+        };
       } else {
         const { data: inserted, error: insErr } = await supabase
           .from("department_levels")
@@ -206,7 +215,14 @@ async function main() {
     // ---- Resolve or create the course ----
     const courseKey = `${dept.id}::${level.id}::${normalize(oldCourse.title)}`;
     let course = courseByKey.get(courseKey);
-    let courseIsNew = false;
+    // A dry run never really inserts a course, so a *second* old course landing on the same
+    // key within this same run (e.g. two export entries with the same department/level/title)
+    // would otherwise find the first one's placeholder object here and try to query the real
+    // database using its fake "[dry-run-new-course:...]" id — not a UUID, so Postgres rejects
+    // it. Treat that case as still new: nothing real exists for it either way.
+    const isDryRunPlaceholder =
+      DRY_RUN && typeof course?.id === "string" && course.id.startsWith("[dry-run-new-course:");
+    let courseIsNew = !course || isDryRunPlaceholder;
     if (!course) {
       courseIsNew = true;
       const slug = slugify(oldCourse.title) || `course-${oldCourse.id}`;
