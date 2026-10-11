@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
 import {
   BookOpen,
-  BarChart3,
+  CheckCircle,
+  Clock,
   Facebook,
   Gift,
   Globe,
@@ -15,10 +16,22 @@ import {
   Search,
   Send,
   Sparkles,
+  Target,
+  TrendingUp,
   Trophy,
   Twitter,
   X,
+  Zap,
 } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -145,6 +158,9 @@ export default function Dashboard() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     async function load() {
@@ -343,7 +359,6 @@ export default function Dashboard() {
     navigate(`/courses/${id}`);
   }
 
-  const maxAttempted = Math.max(1, ...week.map((d) => d.attempted));
   const weekTimeSpentMinutes = Math.round(
     week.reduce((s, d) => s + d.studyDuration, 0) / 60,
   );
@@ -351,6 +366,28 @@ export default function Dashboard() {
   const weekCorrect = week.reduce((s, d) => s + d.correct, 0);
   const weekAccuracy =
     weekAttempted > 0 ? Math.round((weekCorrect / weekAttempted) * 100) : 0;
+
+  const weeklyStats = week.map((d) => ({
+    date: d.date,
+    dayLabel: format(new Date(d.date), "EEE").toUpperCase(),
+    fullDate: format(new Date(d.date), "MMM d, yyyy"),
+    studyDurationMins: Math.round(d.studyDuration / 60),
+    attempted: d.attempted,
+    correct: d.correct,
+    accuracy: d.attempted > 0 ? Math.round((d.correct / d.attempted) * 100) : 0,
+  }));
+  const focusedDay =
+    selectedDayIndex !== null ? weeklyStats[selectedDayIndex] : null;
+  const displayDuration = focusedDay
+    ? `${focusedDay.studyDurationMins}m`
+    : `${weekTimeSpentMinutes}m`;
+  const displayAttempted = focusedDay ? focusedDay.attempted : weekAttempted;
+  const displayCorrect = focusedDay ? focusedDay.correct : weekCorrect;
+  const displayAccuracy = focusedDay ? focusedDay.accuracy : weekAccuracy;
+  const statsLabel = focusedDay
+    ? `${focusedDay.dayLabel} (${focusedDay.fullDate})`
+    : "7-Day Total";
+
   const resumePercent =
     resume && resume.totalQuestions > 0
       ? Math.round((resume.current_order / resume.totalQuestions) * 100)
@@ -478,66 +515,262 @@ export default function Dashboard() {
               </button>
             )}
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
-                  <BarChart3 size={16} className="text-royal" />
-                  Study analytics
-                </h2>
-                <button
-                  onClick={() => navigate("/activity-log")}
-                  className="flex items-center gap-1 text-xs font-semibold text-royal hover:underline"
-                >
-                  <ListChecks size={14} />
-                  Full activity log →
-                </button>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <Stat
-                  label="Time spent (7d)"
-                  value={`${weekTimeSpentMinutes}m`}
-                />
-                <Stat label="Attempted (7d)" value={weekAttempted} />
-                <Stat label="Correct answers" value={weekCorrect} />
-                <Stat label="Average score" value={`${weekAccuracy}%`} />
-              </div>
-            </div>
-
-            <div className="card-luxury mt-4 p-5">
-              <h2 className="font-heading text-sm font-bold text-text-1">
-                Daily time spent &amp; practice volume
-              </h2>
-              <div className="mt-3 flex items-end gap-2" style={{ height: 80 }}>
-                {week.map((d) => (
-                  <div
-                    key={d.date}
-                    className="flex flex-1 flex-col items-center gap-1"
-                  >
-                    <div
-                      className="w-full rounded-t bg-royal"
-                      style={{
-                        height: `${Math.max(4, (d.attempted / maxAttempted) * 64)}px`,
-                      }}
-                      title={`${d.attempted} attempted, ${d.correct} correct`}
-                    />
-                    <span className="text-[10px] text-text-3">
-                      {format(new Date(d.date), "EEE")}
-                    </span>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-royal-border bg-royal-soft text-royal">
+                    <TrendingUp size={16} />
                   </div>
-                ))}
-              </div>
-              <div className="mt-3 grid grid-cols-7 gap-1">
-                {week.map((d) => (
-                  <div
-                    key={d.date}
-                    className="rounded-lg bg-canvas-soft py-1.5 text-center"
-                  >
-                    <p className="text-[10px] font-semibold text-text-2">
-                      {Math.round(d.studyDuration / 60)}m
+                  <div>
+                    <h2 className="font-heading text-sm font-bold text-text-1">
+                      Study Analytics
+                    </h2>
+                    <p className="text-[10px] font-bold text-text-3">
+                      7-day performance &amp; time spent
                     </p>
-                    <p className="text-[10px] text-text-3">{d.attempted}q</p>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-center gap-3">
+                  {selectedDayIndex !== null && (
+                    <button
+                      onClick={() => setSelectedDayIndex(null)}
+                      className="rounded-lg bg-royal-soft px-2.5 py-1 text-[11px] font-bold text-royal hover:bg-[#e0eaff]"
+                    >
+                      Reset Selection
+                    </button>
+                  )}
+                  <button
+                    onClick={() => navigate("/activity-log")}
+                    className="flex items-center gap-1 text-xs font-semibold text-royal hover:underline"
+                  >
+                    <ListChecks size={14} />
+                    Full activity log →
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="card-luxury flex flex-col justify-between p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-3">
+                      Time Spent
+                    </span>
+                    <Clock size={16} className="text-royal" />
+                  </div>
+                  <div className="mt-2">
+                    <div className="font-heading text-xl font-bold text-text-1 sm:text-2xl">
+                      {displayDuration}
+                    </div>
+                    <div className="mt-0.5 truncate text-[10px] font-medium text-text-3">
+                      {statsLabel}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-luxury flex flex-col justify-between p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-3">
+                      Attempted
+                    </span>
+                    <Target size={16} className="text-indigo-600" />
+                  </div>
+                  <div className="mt-2">
+                    <div className="font-heading text-xl font-bold text-text-1 sm:text-2xl">
+                      {displayAttempted}
+                    </div>
+                    <div className="mt-0.5 truncate text-[10px] font-medium text-text-3">
+                      {statsLabel} questions
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-luxury flex flex-col justify-between p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-3">
+                      Correct Answers
+                    </span>
+                    <CheckCircle size={16} className="text-emerald-600" />
+                  </div>
+                  <div className="mt-2">
+                    <div className="font-heading text-xl font-bold text-emerald-700 sm:text-2xl">
+                      {displayCorrect}
+                    </div>
+                    <div className="mt-0.5 truncate text-[10px] font-medium text-text-3">
+                      {displayAttempted > 0
+                        ? `${Math.round((displayCorrect / displayAttempted) * 100)}% correct`
+                        : "No attempts"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-luxury flex flex-col justify-between p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-3">
+                      Average Score
+                    </span>
+                    <Zap size={16} className="text-gold" />
+                  </div>
+                  <div className="mt-2">
+                    <div className="font-heading text-xl font-bold text-text-1 sm:text-2xl">
+                      {displayAccuracy}%
+                    </div>
+                    <div className="mt-0.5 truncate text-[10px] font-medium text-text-3">
+                      Accuracy score
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card-luxury space-y-4 p-5 sm:p-6">
+                <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                  <div>
+                    <h3 className="font-heading text-sm font-bold text-text-1">
+                      Daily Time Spent &amp; Practice Volume
+                    </h3>
+                    <p className="text-[11px] text-text-3">
+                      Tap or hover any day bar to inspect questions attempted
+                      and score percentage.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-3 w-3 rounded-md bg-gradient-to-t from-navy to-royal" />
+                      <span className="text-[11px] font-bold text-text-2">
+                        Time (Mins)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-2.5 w-2.5 rounded-full bg-gold" />
+                      <span className="text-[11px] font-bold text-text-2">
+                        Accuracy %
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-56 w-full pt-2 sm:h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={weeklyStats}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                      onClick={(state) => {
+                        const idx = Number(state?.activeTooltipIndex);
+                        if (Number.isFinite(idx)) {
+                          setSelectedDayIndex(
+                            selectedDayIndex === idx ? null : idx,
+                          );
+                        }
+                      }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="var(--color-royal-soft)"
+                      />
+                      <XAxis
+                        dataKey="dayLabel"
+                        tickLine={false}
+                        axisLine={{ stroke: "var(--color-royal-border)" }}
+                        tick={{ fill: "#64748b", fontSize: 11, fontWeight: 700 }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: "#94a3b8", fontSize: 10 }}
+                        unit="m"
+                      />
+                      <Tooltip
+                        cursor={{ fill: "var(--color-royal-soft)", opacity: 0.7 }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload || payload.length === 0) {
+                            return null;
+                          }
+                          const d = payload[0].payload as (typeof weeklyStats)[number];
+                          return (
+                            <div className="space-y-1.5 rounded-2xl border border-white/10 bg-navy p-3 text-xs text-white shadow-xl">
+                              <div className="text-[10px] font-black uppercase tracking-wider text-gold">
+                                {d.dayLabel} • {d.fullDate}
+                              </div>
+                              <div className="flex items-center justify-between gap-4 text-white/90">
+                                <span>⏱️ Time Spent:</span>
+                                <span className="font-bold text-white">
+                                  {d.studyDurationMins} mins
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4 text-white/90">
+                                <span>🎯 Attempted:</span>
+                                <span className="font-bold text-white">
+                                  {d.attempted} questions
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4 text-white/90">
+                                <span>✅ Correct:</span>
+                                <span className="font-bold text-emerald-400">
+                                  {d.correct} correct
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-1 text-white/90">
+                                <span>⚡ Avg Score:</span>
+                                <span className="font-bold text-gold">
+                                  {d.accuracy}%
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Bar
+                        dataKey="studyDurationMins"
+                        fill="var(--color-royal)"
+                        radius={[8, 8, 0, 0]}
+                        maxBarSize={42}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 border-t border-royal-soft pt-2 sm:gap-2">
+                  {weeklyStats.map((d, idx) => {
+                    const isSelected = selectedDayIndex === idx;
+                    return (
+                      <button
+                        key={d.date}
+                        onClick={() =>
+                          setSelectedDayIndex(isSelected ? null : idx)
+                        }
+                        className={`flex flex-col items-center rounded-xl border px-1 py-2 text-center transition-all ${
+                          isSelected
+                            ? "border-royal bg-royal text-white shadow-md shadow-royal/20"
+                            : "border-royal-border bg-canvas-soft text-text-1 hover:bg-royal-soft"
+                        }`}
+                      >
+                        <span
+                          className={`text-[9px] font-black uppercase tracking-wider ${
+                            isSelected ? "text-white/80" : "text-text-3"
+                          }`}
+                        >
+                          {d.dayLabel}
+                        </span>
+                        <span
+                          className={`mt-0.5 text-xs font-black ${
+                            isSelected ? "text-white" : "text-text-1"
+                          }`}
+                        >
+                          {d.studyDurationMins}m
+                        </span>
+                        <span
+                          className={`mt-1 rounded px-1 text-[8px] font-bold ${
+                            isSelected
+                              ? "bg-white/20 text-gold"
+                              : "border border-canvas-border bg-white text-text-2"
+                          }`}
+                        >
+                          {d.attempted}q
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -781,14 +1014,6 @@ function HeroStat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="card-luxury p-3 text-center">
-      <p className="font-heading text-lg font-bold text-royal">{value}</p>
-      <p className="text-xs text-text-3">{label}</p>
-    </div>
-  );
-}
 
 function ProgressRing({ percent }: { percent: number }) {
   const r = 20;

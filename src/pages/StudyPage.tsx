@@ -214,16 +214,35 @@ export default function StudyPage() {
     const isLast = currentIndex === questions.length - 1;
     const nextOrder = currentIndex + 1;
 
-    await supabase.rpc("record_question_attempt", {
-      p_course_id: courseId,
-      p_question_id: question.id,
-      p_selected_option_id:
-        question.type === "objective" ? selectedOptionId : null,
-      p_result: result,
-      p_time_taken_seconds: timeTaken,
-      p_current_order: nextOrder,
-      p_completed: isLast,
-    });
+    // Local calendar date, not UTC — record_question_attempt() stamps daily_practice_stats
+    // with this, and the Dashboard's 7-day chart is built from the browser's local dates too;
+    // using the server's default (UTC) current_date here could shift late-day sessions onto
+    // the "wrong" day for students outside UTC.
+    const now = new Date();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    const { error: attemptError } = await supabase.rpc(
+      "record_question_attempt",
+      {
+        p_course_id: courseId,
+        p_question_id: question.id,
+        p_selected_option_id:
+          question.type === "objective" ? selectedOptionId : null,
+        p_result: result,
+        p_time_taken_seconds: timeTaken,
+        p_current_order: nextOrder,
+        p_completed: isLast,
+        p_practice_date: localDate,
+      },
+    );
+    // Never block the quiz UI on this — the question is already answered and the local
+    // session state above already reflects it. But this previously failed completely
+    // silently, so a real failure here (bad param, network blip) left daily_practice_stats
+    // permanently missing that attempt with no way to tell. Logging it is the minimum fix;
+    // worth revisiting with a retry or a subtle "not synced" indicator if it recurs.
+    if (attemptError) {
+      console.error("record_question_attempt failed:", attemptError);
+    }
   }
 
   function handleNext() {
