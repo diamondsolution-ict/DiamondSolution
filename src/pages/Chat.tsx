@@ -19,31 +19,58 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   async function loadMessages(id: string) {
-    const { data } = await supabase
+    const { data, error: fetchError } = await supabase
       .from("chat_messages")
       .select("id, sender_role, body, created_at")
       .eq("thread_id", id)
       .order("created_at", { ascending: true });
+    if (fetchError) throw fetchError;
     setMessages(data ?? []);
     await supabase.rpc("mark_chat_thread_read_by_user");
   }
 
-  useEffect(() => {
-    async function init() {
-      setLoading(true);
-      const { data } = await supabase
-        .from("chat_threads")
-        .select("id")
-        .maybeSingle();
-      if (data) {
-        setThreadId(data.id);
-        await loadMessages(data.id);
+  // Finds (or confirms the absence of) the student's own thread and loads its history.
+  // Throws on any failure instead of swallowing it, so init() below can tell "real error,
+  // worth retrying" apart from "no thread yet — a genuinely new conversation".
+  async function loadOwnThread() {
+    const { data, error: fetchError } = await supabase
+      .from("chat_threads")
+      .select("id")
+      .maybeSingle();
+    if (fetchError) throw fetchError;
+    if (data) {
+      setThreadId(data.id);
+      await loadMessages(data.id);
+    }
+  }
+
+  // One retry before giving up: a request fired right as the page mounts can race a
+  // just-expired access token's background refresh (ProtectedRoute waits for the session to
+  // load, but not for it to be fresh) — that failure used to be swallowed by discarding
+  // `error` entirely, silently rendering the "Say hello" empty state even for a student with
+  // a real conversation already in progress, as if no thread existed at all.
+  async function init(isRetry = false) {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      await loadOwnThread();
+      setLoading(false);
+    } catch {
+      if (!isRetry) {
+        await new Promise((r) => setTimeout(r, 800));
+        await init(true);
+        return;
       }
+      setLoadError(true);
       setLoading(false);
     }
+  }
+
+  useEffect(() => {
     void init();
   }, []);
 
@@ -120,6 +147,18 @@ export default function Chat() {
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <LoadingScreen />
+          ) : loadError ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+              <p className="font-heading text-sm font-bold text-text-1">
+                Couldn't load your conversation
+              </p>
+              <p className="max-w-xs text-sm text-text-3">
+                Check your connection and try again.
+              </p>
+              <button onClick={() => void init()} className="btn-secondary mt-2">
+                Retry
+              </button>
+            </div>
           ) : messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center">
               <p className="font-heading text-sm font-bold text-text-1">
