@@ -6,7 +6,7 @@ import {
   CheckCircle,
   Clock,
   Facebook,
-  Gift,
+  FileText,
   Globe,
   Instagram,
   ListChecks,
@@ -15,11 +15,11 @@ import {
   Quote,
   Search,
   Send,
-  Sparkles,
   Target,
   TrendingUp,
   Trophy,
   Twitter,
+  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -65,6 +65,7 @@ interface SearchResult {
 interface TopRanker {
   user_id: string;
   display_name: string;
+  university: string | null;
   points: number;
   accuracy: number;
   attempted: number;
@@ -135,6 +136,13 @@ function greetingName(
     return local.replace(/\b\w/g, (c) => c.toUpperCase());
   }
   return "Scholar";
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export default function Dashboard() {
@@ -290,10 +298,13 @@ export default function Dashboard() {
         const { data: names } = await supabase.rpc("public_profile_names", {
           p_user_ids: [top.user_id],
         });
-        const name = (names ?? [])[0] as { display_name?: string } | undefined;
+        const name = (names ?? [])[0] as
+          | { display_name?: string; university?: string | null }
+          | undefined;
         setTopRanker({
           user_id: top.user_id,
           display_name: name?.display_name ?? "Scholar",
+          university: name?.university ?? null,
           points: Math.round((top.attempted * 2 + top.correct * 0.5) * 10) / 10,
           accuracy:
             top.attempted > 0
@@ -775,39 +786,57 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-6">
-              <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
-                <BookOpen size={16} className="text-royal" />
-                Departments
-              </h2>
-              <div className="mt-2 flex gap-3 overflow-x-auto pb-2">
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading text-sm font-bold text-text-1">
+                  Departments
+                </h2>
+                <button
+                  onClick={() => navigate("/courses")}
+                  className="text-xs font-semibold text-royal hover:underline"
+                >
+                  See all
+                </button>
+              </div>
+              {/* A wrapping grid, not a horizontal-scroll row — departments beyond what fits
+                  on one line are reached by scrolling the page down like everything else,
+                  not by discovering a hidden side-scroll. */}
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {departments.map((d) => {
                   const imageUrl = d.image_path
                     ? supabase.storage.from("media").getPublicUrl(
                         d.image_path,
                       ).data.publicUrl
                     : null;
+                  const granted = grantedIds.has(d.id);
                   return (
                     <button
                       key={d.id}
                       onClick={() => navigate(`/courses?department=${d.id}`)}
-                      className="card-luxury flex w-32 shrink-0 flex-col items-start gap-2 p-3 text-left"
+                      className="card-luxury flex items-stretch justify-between overflow-hidden p-0 text-left"
                     >
+                      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 p-4">
+                        {granted && (
+                          <span className="badge-royal self-start">
+                            Active
+                          </span>
+                        )}
+                        <span className="truncate font-heading text-sm font-bold text-text-1">
+                          {d.name}
+                        </span>
+                        <span className="text-xs font-semibold text-royal">
+                          Explore →
+                        </span>
+                      </div>
                       {imageUrl ? (
                         <img
                           src={imageUrl}
                           alt=""
-                          className="h-10 w-10 rounded-xl object-cover"
+                          className="h-auto w-24 shrink-0 object-cover"
                         />
                       ) : (
-                        <div className="diamond-gradient flex h-10 w-10 items-center justify-center rounded-xl">
-                          <BookOpen size={16} className="text-white/70" />
+                        <div className="diamond-gradient flex w-24 shrink-0 items-center justify-center">
+                          <BookOpen size={20} className="text-white/70" />
                         </div>
-                      )}
-                      <span className="font-heading text-sm font-bold text-text-1">
-                        {d.name}
-                      </span>
-                      {grantedIds.has(d.id) && (
-                        <span className="badge-royal">Active</span>
                       )}
                     </button>
                   );
@@ -815,27 +844,40 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <QuickAction
-                icon={BookOpen}
-                label="Study"
-                onClick={() => navigate("/courses")}
-              />
-              <QuickAction
-                icon={Trophy}
-                label="Leaderboard"
-                onClick={() => navigate("/leaderboard")}
-              />
-              <QuickAction
-                icon={Gift}
-                label="Affiliate"
-                onClick={() => navigate("/affiliate")}
-              />
-              <QuickAction
-                icon={Globe}
-                label="Channels"
-                onClick={() => setShowChannels(true)}
-              />
+            <div className="mt-6">
+              <h2 className="font-heading text-sm font-bold text-text-1">
+                Quick actions
+              </h2>
+              <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <QuickAction
+                  icon={FileText}
+                  iconClassName="bg-royal-soft text-royal"
+                  title="Start Quiz"
+                  subtitle="Pick a topic and go"
+                  onClick={() => navigate("/courses")}
+                />
+                <QuickAction
+                  icon={Trophy}
+                  iconClassName="bg-gold-pale text-gold-dark"
+                  title="Leaderboard"
+                  subtitle="See department rank"
+                  onClick={() => navigate("/leaderboard")}
+                />
+                <QuickAction
+                  icon={Users}
+                  iconClassName="bg-emerald-50 text-emerald-600"
+                  title="Refer & Earn"
+                  subtitle="25% commission"
+                  onClick={() => navigate("/affiliate")}
+                />
+                <QuickAction
+                  icon={Globe}
+                  iconClassName="bg-violet-50 text-violet-600"
+                  title="Channels"
+                  subtitle="Social updates"
+                  onClick={() => setShowChannels(true)}
+                />
+              </div>
             </div>
           </div>
 
@@ -843,55 +885,75 @@ export default function Dashboard() {
           <div className="mt-4 lg:col-span-1 lg:mt-0">
             <button
               onClick={() => navigate("/affiliate")}
-              className="diamond-gradient card-luxury w-full p-5 text-left text-white"
+              className="diamond-gradient card-luxury flex w-full items-center justify-between gap-3 p-5 text-left text-white"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
-                <Sparkles size={18} className="text-gold" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wide text-gold">
+                  Revenue program
+                </p>
+                <p className="mt-1 font-heading text-xl font-bold">
+                  Refer &amp; earn 25%
+                </p>
+                <p className="mt-1 text-sm text-white/80">
+                  Share your referral code and earn on every successful
+                  enrollment.
+                </p>
+                <span className="mt-3 inline-block rounded-full border border-white/30 bg-white/10 px-4 py-2 font-mono text-sm tracking-wider text-gold">
+                  {referralCode ?? "Become an affiliate →"}
+                </span>
               </div>
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-gold">
-                Revenue program
-              </p>
-              <p className="mt-1 font-heading text-xl font-bold">
-                Refer &amp; earn 25%
-              </p>
-              <p className="mt-1 text-sm text-white/80">
-                Share your referral code and earn on every successful
-                enrollment.
-              </p>
-              <span className="mt-3 inline-block rounded-full border border-white/30 bg-white/10 px-4 py-2 font-mono text-sm tracking-wider text-gold">
-                {referralCode ?? "Become an affiliate →"}
-              </span>
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/10">
+                <Users size={22} className="text-gold" />
+              </div>
             </button>
 
             {topRanker && (
               <div className="card-luxury mt-4 p-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
-                    <Trophy size={16} className="text-gold" />
-                    Top this week
-                  </h2>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
+                      <Trophy size={16} className="text-gold" />
+                      Top this week
+                    </h2>
+                    <p className="mt-0.5 text-[11px] text-text-3">
+                      Department Arena:{" "}
+                      <span className="font-semibold text-text-2">
+                        {departments.find((d) => d.id === profile?.department_id)
+                          ?.name ?? "All departments"}
+                      </span>
+                    </p>
+                  </div>
                   <button
                     onClick={() => navigate("/leaderboard")}
-                    className="text-xs font-semibold text-royal hover:underline"
+                    className="shrink-0 text-xs font-semibold text-royal hover:underline"
                   >
                     See full rankings →
                   </button>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
-                  <span className="badge-gold flex h-8 w-8 items-center justify-center rounded-full font-bold">
+                  <span className="badge-gold flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold">
                     1
                   </span>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-text-1">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-bold text-white">
+                    {initials(topRanker.display_name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-text-1">
                       {topRanker.user_id === user?.id
                         ? "You"
                         : topRanker.display_name}
+                      {topRanker.university && (
+                        <span className="font-normal text-text-3">
+                          {" "}
+                          ({topRanker.university})
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-text-3">
                       {topRanker.accuracy}% accuracy · {topRanker.attempted} q's
                     </p>
                   </div>
-                  <span className="font-heading text-sm font-bold text-royal">
+                  <span className="shrink-0 font-heading text-sm font-bold text-royal">
                     {topRanker.points} pts
                   </span>
                 </div>
@@ -1055,20 +1117,31 @@ function ProgressRing({ percent }: { percent: number }) {
 
 function QuickAction({
   icon: Icon,
-  label,
+  iconClassName,
+  title,
+  subtitle,
   onClick,
 }: {
   icon: typeof BookOpen;
-  label: string;
+  iconClassName: string;
+  title: string;
+  subtitle: string;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className="btn-secondary flex-col gap-1 py-3 text-xs"
+      className="card-luxury flex flex-col items-start gap-2 p-4 text-left"
     >
-      <Icon size={18} />
-      {label}
+      <div
+        className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconClassName}`}
+      >
+        <Icon size={18} />
+      </div>
+      <div>
+        <p className="font-heading text-sm font-bold text-text-1">{title}</p>
+        <p className="text-xs text-text-3">{subtitle}</p>
+      </div>
     </button>
   );
 }
