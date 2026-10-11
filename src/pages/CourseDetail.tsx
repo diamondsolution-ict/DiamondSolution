@@ -4,6 +4,7 @@ import { BookOpen, FileQuestion, Lock, PlayCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 interface Course {
   id: string;
@@ -118,7 +119,7 @@ export default function CourseDetail() {
   if (loading || !course) {
     return (
       <Layout title="Course" onBack={() => navigate("/courses")}>
-        <p className="text-sm text-text-3">Loading…</p>
+        <LoadingScreen />
       </Layout>
     );
   }

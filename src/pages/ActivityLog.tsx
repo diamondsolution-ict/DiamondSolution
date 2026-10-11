@@ -11,6 +11,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 type Filter = "all" | "correct" | "incorrect" | "skipped";
 const PAGE_SIZE = 20;
@@ -113,7 +114,7 @@ export default function ActivityLog() {
       </div>
 
       {loading && attempts.length === 0 ? (
-        <p className="text-sm text-text-3">Loading…</p>
+        <LoadingScreen />
       ) : filtered.length === 0 ? (
         <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
           <ListChecks size={28} className="text-text-3" />

@@ -8,6 +8,10 @@ import {
   Shield,
   LogOut,
   Sparkles,
+  Trophy,
+  ListChecks,
+  Gift,
+  Receipt,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -28,6 +32,16 @@ const NAV = [
   { to: "/courses", labelKey: "nav.departments", icon: BookOpen },
   { to: "/chats", labelKey: "nav.chats", icon: MessageCircle },
   { to: "/profile", labelKey: "nav.user", icon: User },
+];
+
+// Desktop sidebar only — there's room for direct links here, unlike the mobile bottom bar
+// (kept to the 4 primary tabs above so it doesn't get cramped). These are reached via
+// Dashboard's Quick Actions tiles on mobile instead.
+const DESKTOP_EXTRA_NAV = [
+  { to: "/leaderboard", labelKey: "nav.leaderboard", icon: Trophy },
+  { to: "/activity-log", labelKey: "nav.activity", icon: ListChecks },
+  { to: "/affiliate", labelKey: "nav.affiliate", icon: Gift },
+  { to: "/payments", labelKey: "nav.payments", icon: Receipt },
 ];
 
 export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
@@ -63,6 +77,27 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
               </Link>
             );
           })}
+
+          <div className="my-2 border-t border-white/10" />
+
+          {DESKTOP_EXTRA_NAV.map(({ to, labelKey, icon: Icon }) => {
+            const active = location.pathname.startsWith(to);
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                  active
+                    ? "bg-white/15 text-white"
+                    : "text-slate-300 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <Icon size={17} />
+                {t(labelKey)}
+              </Link>
+            );
+          })}
+
           {isAdmin && (
             <Link
               to="/admin/dashboard"

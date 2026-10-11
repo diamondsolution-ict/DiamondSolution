@@ -3,6 +3,7 @@ import { Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/components/Layout";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 interface ChatMessage {
   id: string;
@@ -118,7 +119,7 @@ export default function Chat() {
       <div className="card-luxury flex h-[calc(100dvh-200px)] flex-col overflow-hidden p-0 md:h-[calc(100dvh-104px)]">
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
-            <p className="text-center text-sm text-text-3">Loading…</p>
+            <LoadingScreen />
           ) : messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center">
               <p className="font-heading text-sm font-bold text-text-1">

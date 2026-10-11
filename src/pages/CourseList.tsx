@@ -5,6 +5,7 @@ import { BookOpen, FolderOpen, Lock, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 interface Department {
   id: string;
@@ -238,7 +239,7 @@ export default function CourseList() {
           )}
         </div>
       ) : loading ? (
-        <p className="text-sm text-text-3">Loading…</p>
+        <LoadingScreen />
       ) : courses.length === 0 ? (
         <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
           <BookOpen size={28} className="text-text-3" />

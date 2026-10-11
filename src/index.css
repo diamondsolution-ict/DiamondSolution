@@ -127,6 +127,22 @@
   .skeleton {
     @apply animate-pulse rounded-xl bg-slate-200/80;
   }
+
+  .animate-breathe {
+    animation: breathe 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.75;
+  }
 }
 
 @layer utilities {

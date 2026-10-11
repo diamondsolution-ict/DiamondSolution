@@ -11,11 +11,14 @@ import {
   Download,
   FilePlus,
   FileQuestion,
+  Pencil,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { parseCSV, downloadCSV } from "@/lib/csv";
 
 interface Course {
@@ -59,6 +62,8 @@ export default function AdminQuestions() {
   const [expectedAnswer, setExpectedAnswer] = useState("");
   const [options, setOptions] = useState(["", "", "", ""]);
   const [correctIndex, setCorrectIndex] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function load() {
     if (!courseId) return;
@@ -103,7 +108,36 @@ export default function AdminQuestions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
-  async function handleCreate(e: FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setType(course?.default_question_type ?? "objective");
+    setPrompt("");
+    setExplanation("");
+    setExpectedAnswer("");
+    setOptions(["", "", "", ""]);
+    setCorrectIndex(0);
+  }
+
+  function startEdit(q: Question) {
+    setEditingId(q.id);
+    setType(q.type);
+    setPrompt(q.prompt);
+    setExplanation(q.explanation ?? "");
+    setExpectedAnswer(q.expected_answer ?? "");
+    if (q.type === "objective") {
+      const byLabel = (label: string) =>
+        q.options.find((o) => o.label === label)?.body ?? "";
+      setOptions(OPTION_LABELS.map((l) => byLabel(l)));
+      const correct = q.options.findIndex((o) => o.is_correct);
+      setCorrectIndex(correct >= 0 ? correct : 0);
+    } else {
+      setOptions(["", "", "", ""]);
+      setCorrectIndex(0);
+    }
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function handleSubmitForm(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
@@ -117,22 +151,46 @@ export default function AdminQuestions() {
     }
 
     setSaving(true);
-    const { data: question, error: qError } = await supabase
-      .from("questions")
-      .insert({
-        course_id: courseId,
-        type,
-        prompt,
-        explanation: explanation || null,
-        expected_answer: type === "application" ? expectedAnswer : null,
-        sort_order: questions.length,
-      })
-      .select("id")
-      .single();
+
+    const questionId = editingId;
+    if (questionId) {
+      const { error: qError } = await supabase
+        .from("questions")
+        .update({
+          type,
+          prompt,
+          explanation: explanation || null,
+          expected_answer: type === "application" ? expectedAnswer : null,
+        })
+        .eq("id", questionId);
+      if (qError) {
+        setSaving(false);
+        setError(qError.message);
+        return;
+      }
+      // Options are replaced wholesale rather than diffed — simpler and matches how creation
+      // itself builds them, with no edge cases around a relabeled/reordered/removed option.
+      await supabase.from("question_options").delete().eq("question_id", questionId);
+    }
+
+    const { data: question, error: qError } = questionId
+      ? { data: { id: questionId }, error: null }
+      : await supabase
+          .from("questions")
+          .insert({
+            course_id: courseId,
+            type,
+            prompt,
+            explanation: explanation || null,
+            expected_answer: type === "application" ? expectedAnswer : null,
+            sort_order: questions.length,
+          })
+          .select("id")
+          .single();
 
     if (qError || !question) {
       setSaving(false);
-      setError(qError?.message ?? "Failed to create question.");
+      setError(qError?.message ?? "Failed to save question.");
       return;
     }
 
@@ -150,16 +208,13 @@ export default function AdminQuestions() {
       await supabase.from("question_options").insert(rows);
     }
 
-    setPrompt("");
-    setExplanation("");
-    setExpectedAnswer("");
-    setOptions(["", "", "", ""]);
-    setCorrectIndex(0);
+    resetForm();
     setSaving(false);
     await load();
   }
 
   async function handleRemove(id: string) {
+    if (editingId === id) resetForm();
     await supabase
       .from("questions")
       .update({ status: "trashed", deleted_at: new Date().toISOString() })
@@ -358,11 +413,31 @@ export default function AdminQuestions() {
         />
       </div>
 
-      <form onSubmit={handleCreate} className="card-luxury mt-6 space-y-4 p-6">
-        <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
-          <FilePlus size={17} className="text-royal" />
-          Add question
-        </h2>
+      <form
+        ref={formRef}
+        onSubmit={handleSubmitForm}
+        className="card-luxury mt-6 space-y-4 p-6"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+            {editingId ? (
+              <Pencil size={17} className="text-royal" />
+            ) : (
+              <FilePlus size={17} className="text-royal" />
+            )}
+            {editingId ? "Edit question" : "Add question"}
+          </h2>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="flex items-center gap-1 text-xs font-semibold text-text-3 hover:text-text-1"
+            >
+              <X size={13} />
+              Cancel edit
+            </button>
+          )}
+        </div>
 
         {error && (
           <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -457,14 +532,20 @@ export default function AdminQuestions() {
           disabled={saving}
           className="btn-primary flex items-center gap-2"
         >
-          <FilePlus size={15} />
-          {saving ? "Adding…" : "Add question"}
+          {editingId ? <Pencil size={15} /> : <FilePlus size={15} />}
+          {saving
+            ? editingId
+              ? "Saving…"
+              : "Adding…"
+            : editingId
+              ? "Save changes"
+              : "Add question"}
         </button>
       </form>
 
       <div className="mt-8 space-y-3">
         {loading ? (
-          <p className="text-sm text-text-3">Loading…</p>
+          <LoadingScreen />
         ) : questions.length === 0 ? (
           <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
             <FileQuestion size={28} className="text-text-3" />
@@ -474,18 +555,30 @@ export default function AdminQuestions() {
           </div>
         ) : (
           questions.map((q, i) => (
-            <div key={q.id} className="card-luxury p-4">
+            <div
+              key={q.id}
+              className={`card-luxury p-4 ${editingId === q.id ? "ring-2 ring-royal" : ""}`}
+            >
               <div className="flex items-start justify-between gap-4">
                 <p className="text-sm font-medium text-text-1">
                   {i + 1}. {q.prompt}
                 </p>
-                <button
-                  onClick={() => void handleRemove(q.id)}
-                  className="flex shrink-0 items-center gap-1 text-xs font-semibold text-rose-600 hover:underline"
-                >
-                  <Trash2 size={12} />
-                  Remove
-                </button>
+                <div className="flex shrink-0 items-center gap-3">
+                  <button
+                    onClick={() => startEdit(q)}
+                    className="flex items-center gap-1 text-xs font-semibold text-royal hover:underline"
+                  >
+                    <Pencil size={12} />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => void handleRemove(q.id)}
+                    className="flex items-center gap-1 text-xs font-semibold text-rose-600 hover:underline"
+                  >
+                    <Trash2 size={12} />
+                    Remove
+                  </button>
+                </div>
               </div>
               {q.type === "objective" ? (
                 <ul className="mt-2 space-y-1 text-sm text-text-3">

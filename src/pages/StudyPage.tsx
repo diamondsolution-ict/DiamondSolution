@@ -13,6 +13,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 type QuestionType = "objective" | "application";
 type Result = "correct" | "incorrect" | "skipped" | "applied";
@@ -255,7 +256,7 @@ export default function StudyPage() {
   if (loading) {
     return (
       <Layout title="Studying" onBack={() => navigate(-1)}>
-        <p className="text-sm text-text-3">Loading…</p>
+        <LoadingScreen />
       </Layout>
     );
   }

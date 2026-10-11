@@ -1,15 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export function ProtectedRoute() {
   const { user, isSuspended, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-500">
-        Loading…
-      </div>
-    );
+    return <LoadingScreen full />;
   }
 
   if (!user) {
@@ -30,11 +27,7 @@ export function AdminRoute() {
   const { user, isAdmin, isModerator, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-500">
-        Loading…
-      </div>
-    );
+    return <LoadingScreen full />;
   }
 
   // Not signed in at all → the admin sign-in page, not the student one.
