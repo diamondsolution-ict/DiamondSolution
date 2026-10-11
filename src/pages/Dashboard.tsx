@@ -12,6 +12,7 @@ import {
   Mail,
   MessageCircle,
   Quote,
+  Search,
   Send,
   Sparkles,
   Trophy,
@@ -39,7 +40,14 @@ interface ResumeCourse {
   course_id: string;
   current_order: number;
   course_title: string;
+  level_label: string | null;
   totalQuestions: number;
+}
+interface SearchResult {
+  id: string;
+  title: string;
+  department_name: string | null;
+  level_label: string | null;
 }
 interface TopRanker {
   user_id: string;
@@ -133,6 +141,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [channels, setChannels] = useState<InstitutionalLinks | null>(null);
   const [showChannels, setShowChannels] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -159,7 +171,7 @@ export default function Dashboard() {
         supabase
           .from("study_progress")
           .select(
-            "course_id, current_order, updated_at, completed, courses(title)",
+            "course_id, current_order, updated_at, completed, courses(title, department_levels(label))",
           )
           .eq("user_id", user.id)
           .eq("completed", false)
@@ -228,7 +240,10 @@ export default function Dashboard() {
         | {
             course_id: string;
             current_order: number;
-            courses: { title: string } | null;
+            courses: {
+              title: string;
+              department_levels: { label: string } | null;
+            } | null;
           }
         | undefined;
 
@@ -242,6 +257,7 @@ export default function Dashboard() {
           course_id: progress.course_id,
           current_order: progress.current_order,
           course_title: progress.courses?.title ?? "",
+          level_label: progress.courses?.department_levels?.label ?? null,
           totalQuestions: count ?? 0,
         });
       } else {
@@ -279,6 +295,54 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile?.department_id]);
 
+  // Debounced course/topic search — courses_select_signed_in's RLS policy already lets any
+  // signed-in, non-suspended user read every published course regardless of department access
+  // (the paywall is enforced on CourseList/CourseDetail, not here), so this can search across
+  // the whole catalog rather than just the student's own department.
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timeout = setTimeout(async () => {
+      const { data } = await supabase
+        .from("courses")
+        .select("id, title, departments(name), department_levels(label)")
+        .ilike("title", `%${query}%`)
+        .eq("status", "published")
+        .is("deleted_at", null)
+        .order("title")
+        .limit(8);
+      setSearchResults(
+        (data ?? []).map((c) => {
+          const row = c as unknown as {
+            id: string;
+            title: string;
+            departments: { name: string } | null;
+            department_levels: { label: string } | null;
+          };
+          return {
+            id: row.id,
+            title: row.title,
+            department_name: row.departments?.name ?? null,
+            level_label: row.department_levels?.label ?? null,
+          };
+        }),
+      );
+      setSearching(false);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  function goToSearchResult(id: string) {
+    setSearchQuery("");
+    setSearchResults([]);
+    navigate(`/courses/${id}`);
+  }
+
   const maxAttempted = Math.max(1, ...week.map((d) => d.attempted));
   const weekTimeSpentMinutes = Math.round(
     week.reduce((s, d) => s + d.studyDuration, 0) / 60,
@@ -310,6 +374,59 @@ export default function Dashboard() {
               <p className="font-heading text-xl font-bold">
                 {greetingName(profile, user?.email)}
               </p>
+
+              <div className="relative mt-4">
+                <div className="flex items-center gap-2 rounded-xl bg-white px-3.5 py-2.5">
+                  <Search size={17} className="shrink-0 text-text-3" />
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setSearchFocused(true)}
+                    onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+                    placeholder="Search a course, topic or exam (e.g. Hematology)…"
+                    className="w-full bg-transparent text-sm text-text-1 placeholder:text-text-3 focus:outline-none"
+                  />
+                </div>
+
+                {searchFocused && searchQuery.trim() && (
+                  <div className="card-luxury absolute left-0 right-0 top-full z-20 mt-1.5 max-h-72 overflow-y-auto p-1.5 text-left">
+                    {searching ? (
+                      <p className="px-3 py-2.5 text-sm text-text-3">
+                        Searching…
+                      </p>
+                    ) : searchResults.length === 0 ? (
+                      <p className="px-3 py-2.5 text-sm text-text-3">
+                        No courses match "{searchQuery.trim()}".
+                      </p>
+                    ) : (
+                      searchResults.map((r) => (
+                        <button
+                          key={r.id}
+                          onClick={() => goToSearchResult(r.id)}
+                          className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left hover:bg-canvas-soft"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold text-text-1">
+                              {r.title}
+                            </span>
+                            {r.department_name && (
+                              <span className="block truncate text-xs text-text-3">
+                                {r.department_name}
+                              </span>
+                            )}
+                          </span>
+                          {r.level_label && (
+                            <span className="badge-royal shrink-0">
+                              {r.level_label}
+                            </span>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="mt-4 grid grid-cols-3 gap-2">
                 <HeroStat label="Points" value={points} />
                 <HeroStat label="Accuracy" value={`${accuracy}%`} />
@@ -337,9 +454,16 @@ export default function Dashboard() {
               >
                 <ProgressRing percent={resumePercent} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs uppercase tracking-wide text-white/70">
-                    Recently practiced
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gold">
+                      Recently practiced
+                    </p>
+                    {resume.level_label && (
+                      <span className="rounded-full border border-white/25 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                        {resume.level_label}
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 truncate font-heading text-base font-bold">
                     {resume.course_title}
                   </p>
@@ -348,7 +472,7 @@ export default function Dashboard() {
                     completed
                   </p>
                   <span className="mt-2 inline-block rounded-full bg-gold px-3 py-1 text-xs font-bold text-navy">
-                    Resume quiz →
+                    Resume Quiz →
                   </span>
                 </div>
               </button>
