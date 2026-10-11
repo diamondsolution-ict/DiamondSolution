@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useParams } from "react-router-dom";
 import {
+  AlertTriangle,
   CheckCircle2,
   Download,
   FilePlus,
@@ -45,6 +46,9 @@ interface Question {
 }
 
 const OPTION_LABELS = ["A", "B", "C", "D", "E"];
+// Must match supabase/seed/03-placeholder-questions.sql's v_marker exactly.
+const PLACEHOLDER_MARKER =
+  "[PLACEHOLDER — auto-generated, safe to delete once real questions are added]";
 
 export default function AdminQuestions() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -560,9 +564,17 @@ export default function AdminQuestions() {
               className={`card-luxury p-4 ${editingId === q.id ? "ring-2 ring-royal" : ""}`}
             >
               <div className="flex items-start justify-between gap-4">
-                <p className="text-sm font-medium text-text-1">
-                  {i + 1}. {q.prompt}
-                </p>
+                <div>
+                  <p className="text-sm font-medium text-text-1">
+                    {i + 1}. {q.prompt}
+                  </p>
+                  {q.explanation === PLACEHOLDER_MARKER && (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                      <AlertTriangle size={10} />
+                      Placeholder — not real content
+                    </span>
+                  )}
+                </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <button
                     onClick={() => startEdit(q)}

@@ -5,11 +5,14 @@
 -- `psql <connection string> -f supabase/seed/02-courses.sql`).
 --
 -- WHAT THIS DOES NOT INCLUDE, on purpose:
--- - No questions. These courses are catalog entries only (title/level/department) — they will
---   show up in /courses but render empty in StudyPage until real questions are added via
---   /admin/courses/:id/questions (hand-entered or CSV-imported, per
---   06-SUPABASE-DEPLOYMENT-CHECKLIST.md step 11). Seeding plausible-looking fake questions
---   would be worse than an honest "no content yet" state.
+-- - No real questions. These courses are catalog entries only (title/level/department) — add
+--   real content via /admin/courses/:id/questions (hand-entered or CSV-imported, per
+--   06-SUPABASE-DEPLOYMENT-CHECKLIST.md step 11) or scripts/migrate-questions-from-firebase.mjs.
+--   Seeding plausible-looking fake *answers* would be worse than an honest "no content yet"
+--   state — this is health-science exam prep, and a wrong AI-guessed "correct answer" is a
+--   real harm, not a cosmetic one. 03-placeholder-questions.sql instead gives every empty
+--   course one honest, clearly-labeled "not real content yet" placeholder, run that next if
+--   you want the catalog non-empty before real questions are imported.
 -- - The old app's "category" dimension (MCQ Practice / Theoretical Questions / OCHEI Question
 --   Bank / Application Questions / Object Questions / Practical Application / ...) is NOT
 --   reproduced. That schema had the same course title repeated under multiple categories at

@@ -21,11 +21,16 @@
 //     node scripts/migrate-questions-from-firebase.mjs --dry-run
 //
 // Review the dry-run report (it prints every course it would import into, skip because the new
-// catalog has no matching course, or skip because the new course already has questions), then
-// re-run without --dry-run to actually write.
+// catalog has no matching course, or skip because the new course already has real questions),
+// then re-run without --dry-run to actually write.
 //
-// Safe to re-run: any new course that already has active questions is skipped, so a second run
-// only picks up courses that were skipped or failed the first time.
+// A course whose only active question is the temporary placeholder from
+// supabase/seed/03-placeholder-questions.sql is NOT skipped — its placeholder is trashed and
+// real content is imported in its place. Only a course with genuine existing content is left
+// untouched.
+//
+// Safe to re-run: any course that already has real (non-placeholder) active questions is
+// skipped, so a second run only picks up courses that were skipped or failed the first time.
 
 import { readFileSync } from "node:fs";
 import { cert, initializeApp } from "firebase-admin/app";
@@ -34,6 +39,12 @@ import { createClient } from "@supabase/supabase-js";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 const OPTION_LABELS = ["A", "B", "C", "D", "E"];
+// Must match supabase/seed/03-placeholder-questions.sql's v_marker exactly — a course whose
+// only active question(s) carry this marker has no real content yet, so this script replaces
+// it (trashes the placeholder, imports for real) instead of treating it as "already has
+// questions" and skipping.
+const PLACEHOLDER_MARKER =
+  "[PLACEHOLDER — auto-generated, safe to delete once real questions are added]";
 
 function env(name) {
   const v = process.env[name];
@@ -99,15 +110,33 @@ async function main() {
       continue;
     }
 
-    const { count: existingCount, error: countErr } = await supabase
+    const { data: existingRows, error: countErr } = await supabase
       .from("questions")
-      .select("id", { count: "exact", head: true })
+      .select("id, explanation")
       .eq("course_id", newCourse.id)
       .eq("status", "active");
     if (countErr) throw countErr;
-    if (existingCount && existingCount > 0) {
+
+    const existingCount = existingRows?.length ?? 0;
+    const isPlaceholderOnly =
+      existingCount > 0 &&
+      existingRows.every((q) => q.explanation === PLACEHOLDER_MARKER);
+
+    if (existingCount > 0 && !isPlaceholderOnly) {
       skippedAlreadyHasQuestions.push({ ...oldCourse, existingCount });
       continue;
+    }
+
+    if (isPlaceholderOnly) {
+      console.log(
+        `${DRY_RUN ? "[dry-run] would replace" : "Replacing"} placeholder question in "${newCourse.title}" with real content…`,
+      );
+      if (!DRY_RUN) {
+        await supabase
+          .from("questions")
+          .update({ status: "trashed", deleted_at: new Date().toISOString() })
+          .in("id", existingRows.map((q) => q.id));
+      }
     }
 
     const contentSnap = await firestore
