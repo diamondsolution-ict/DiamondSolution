@@ -43,13 +43,19 @@ const FIELDS: {
   {
     key: "telegram",
     label: "Telegram Handle",
-    placeholder: "@diamondsolution",
+    // A private group/channel's invite link (t.me/+<code>) has no bare handle at all, so
+    // this field accepts either — a plain handle still becomes https://t.me/<handle>, but a
+    // full https://t.me/... link (invite links included) is used exactly as pasted.
+    placeholder: "@diamondsolution or a full t.me/... invite link",
     icon: Send,
   },
   {
     key: "whatsapp",
     label: "WhatsApp Interface",
-    placeholder: "+2348012345678",
+    // Same as Telegram: a WhatsApp Channel link (whatsapp.com/channel/<id>) has no phone
+    // number to extract, so a full link here is used as-is instead of being stripped to
+    // digits the way a plain phone number is.
+    placeholder: "+2348012345678 or a full wa.me/... or channel link",
     icon: MessageCircle,
   },
   {
@@ -61,7 +67,7 @@ const FIELDS: {
   {
     key: "twitter",
     label: "Twitter (X) Command",
-    placeholder: "@diamondsolution",
+    placeholder: "@diamondsolution or a full profile link",
     icon: Twitter,
   },
   {
@@ -73,7 +79,7 @@ const FIELDS: {
   {
     key: "instagram",
     label: "Instagram Feed",
-    placeholder: "@diamondsolution",
+    placeholder: "@diamondsolution or a full profile link",
     icon: Instagram,
   },
 ];

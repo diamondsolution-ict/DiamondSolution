@@ -1019,18 +1019,32 @@ export default function Dashboard() {
 function channelLinks(channels: InstitutionalLinks | null) {
   if (!channels) return [];
   const withScheme = (v: string) => (/^https?:\/\//i.test(v) ? v : `https://${v}`);
+  // A handle/number builds the usual share link (t.me/<handle>, wa.me/<digits>, etc.), but
+  // Telegram invite links (t.me/+<code>) and WhatsApp channel links
+  // (whatsapp.com/channel/<id>) have no bare "handle" to reconstruct from at all — if the
+  // admin already pasted a full URL, use it exactly as given instead of mangling it through
+  // handle/phone-number formatting (prepending https://t.me/ to an already-full URL, or
+  // stripping a URL down to whatever digits happen to appear in it).
+  const asLink = (v: string, buildFromHandle: (handle: string) => string) =>
+    /^https?:\/\//i.test(v.trim()) ? v.trim() : buildFromHandle(v);
   const links: { label: string; href: string; icon: typeof Globe }[] = [];
   if (channels.telegram) {
     links.push({
       label: "Telegram",
-      href: `https://t.me/${channels.telegram.replace(/^@/, "")}`,
+      href: asLink(
+        channels.telegram,
+        (v) => `https://t.me/${v.replace(/^@/, "")}`,
+      ),
       icon: Send,
     });
   }
   if (channels.whatsapp) {
     links.push({
       label: "WhatsApp",
-      href: `https://wa.me/${channels.whatsapp.replace(/\D/g, "")}`,
+      href: asLink(
+        channels.whatsapp,
+        (v) => `https://wa.me/${v.replace(/\D/g, "")}`,
+      ),
       icon: MessageCircle,
     });
   }
@@ -1044,14 +1058,20 @@ function channelLinks(channels: InstitutionalLinks | null) {
   if (channels.twitter) {
     links.push({
       label: "Twitter (X)",
-      href: `https://twitter.com/${channels.twitter.replace(/^@/, "")}`,
+      href: asLink(
+        channels.twitter,
+        (v) => `https://twitter.com/${v.replace(/^@/, "")}`,
+      ),
       icon: Twitter,
     });
   }
   if (channels.instagram) {
     links.push({
       label: "Instagram",
-      href: `https://instagram.com/${channels.instagram.replace(/^@/, "")}`,
+      href: asLink(
+        channels.instagram,
+        (v) => `https://instagram.com/${v.replace(/^@/, "")}`,
+      ),
       icon: Instagram,
     });
   }
