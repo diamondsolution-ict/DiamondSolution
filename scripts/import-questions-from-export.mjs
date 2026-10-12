@@ -243,11 +243,40 @@ async function main() {
           })
           .select("id, title, department_id, level_id, image_path")
           .single();
-        if (insErr) throw insErr;
-        course = inserted;
+        if (insErr && insErr.code === "23505") {
+          // slugify() strips punctuation more aggressively than the normalize() comparison
+          // used to decide "is this course new" above — e.g. "Medical - Surgical Nursing" and
+          // "Medical Surgical Nursing" are different under normalize() (kept as separate old
+          // courses on purpose — see this script's header) but produce the identical slug
+          // "medical-surgical-nursing", so the (department_id, level_id, slug) unique
+          // constraint rejects the second insert. That collision means a real course already
+          // exists under that slug — the two titles are the same course after all — so
+          // resolve to it instead of crashing the whole run.
+          const { data: existing, error: fetchErr } = await supabase
+            .from("courses")
+            .select("id, title, department_id, level_id, image_path")
+            .eq("department_id", dept.id)
+            .eq("level_id", level.id)
+            .eq("slug", slug)
+            .single();
+          if (fetchErr || !existing) throw insErr;
+          course = existing;
+          courseIsNew = false;
+          console.log(
+            `  (slug collision: "${oldCourse.title}" matches the same course as "${existing.title}" — merging into it)`,
+          );
+        } else if (insErr) {
+          throw insErr;
+        } else {
+          course = inserted;
+        }
       }
       courseByKey.set(courseKey, course);
-      coursesCreated.push(`[${oldCourse.department} / ${oldCourse.level}] "${oldCourse.title}"`);
+      // Only a genuine insert counts as "created" — a slug collision merged into an existing
+      // course (courseIsNew now false) created nothing new.
+      if (courseIsNew) {
+        coursesCreated.push(`[${oldCourse.department} / ${oldCourse.level}] "${oldCourse.title}"`);
+      }
     }
 
     // ---- Thumbnail (only set if the course doesn't already have one) ----
