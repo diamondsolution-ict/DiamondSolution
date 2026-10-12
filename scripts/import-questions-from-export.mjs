@@ -65,6 +65,49 @@ function slugify(title) {
     .replace(/^-+|-+$/g, "");
 }
 
+// The old app's course.objectives field is a free-text, newline-separated list of section
+// titles with their question ranges (e.g. "Blood, Haemostasis and the Lymphatic System: Q1–7"),
+// never machine-structured. This app's course_outline_sections table wants that same
+// information structured (title, start_question_order, end_question_order). Real export data
+// uses several slightly different formats for the trailing range (colon vs em-dash vs just
+// whitespace before "Q", en-dash vs plain hyphen, a few "Question paper N - M" lines with no
+// "Q" at all) — verified against all 3,035 real objective lines across the 6 export files,
+// matching 3,032 of them (99.9%); the 3 that don't match are genuine source-data problems (one
+// line with no question numbers at all, one with a stray trailing ")", one where the range's end
+// number is smaller than its start) that would need guessing to "fix" — skipped and logged
+// instead of inventing a number that was never in the original data.
+function parseObjectives(text) {
+  if (!text) return { sections: [], skipped: [] };
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim().replace(/[)\].,;]+$/, ""))
+    .filter(Boolean);
+  const sections = [];
+  const skipped = [];
+  for (const line of lines) {
+    let m = line.match(/^(.*?)[\s:\u2013\u2014-]*Q\s*(\d+)\s*[\u2013\u2014-]\s*(\d+)\s*$/i);
+    let title, start, end;
+    if (m && m[2] && m[3]) {
+      title = m[1].replace(/[:\u2013\u2014-]+$/, "").trim();
+      start = parseInt(m[2], 10);
+      end = parseInt(m[3], 10);
+    } else if ((m = line.match(/^(.*?)\s*(\d+)\s*-\s*(\d+)\s*$/))) {
+      title = m[1].trim();
+      start = parseInt(m[2], 10);
+      end = parseInt(m[3], 10);
+    } else if ((m = line.match(/^(.*?)[\s:\u2013\u2014-]*Q\s*(\d+)\s*$/i))) {
+      title = m[1].replace(/[:\u2013\u2014-]+$/, "").trim();
+      start = end = parseInt(m[2], 10);
+    }
+    if (title && Number.isFinite(start) && Number.isFinite(end) && end >= start) {
+      sections.push({ title, start, end });
+    } else {
+      skipped.push(line);
+    }
+  }
+  return { sections, skipped };
+}
+
 // Mirrors the old app's formatFormattedText() — Firestore question text sometimes carries
 // literal "<br>" tags or escaped "\n"/"\r\n" sequences (two characters, not a real line break).
 function normalizeContent(val) {
@@ -171,9 +214,11 @@ async function main() {
   const dataWarnings = [];
   const levelsCreated = [];
   const coursesCreated = [];
+  const sectionsSyncedForCourse = new Set();
   let coursesImported = 0;
   let questionsImported = 0;
   let thumbnailsSet = 0;
+  let sectionsSynced = 0;
 
   for (const oldCourse of oldCourses) {
     const dept = deptByName.get(normalize(oldCourse.department));
@@ -291,6 +336,39 @@ async function main() {
       }
     }
 
+    // ---- Course outline sections (the "Academic Objectives" list) ----
+    // Runs for every old course entry regardless of courseIsNew/skip status below, so a re-run
+    // backfills sections for courses that were already imported before this existed.
+    if (oldCourse.objectives && !sectionsSyncedForCourse.has(course.id)) {
+      sectionsSyncedForCourse.add(course.id);
+      const { sections, skipped } = parseObjectives(oldCourse.objectives);
+      for (const s of skipped) {
+        dataWarnings.push(`${oldCourse.title}: couldn't parse outline line "${s}" — skipped.`);
+      }
+      if (sections.length > 0) {
+        sectionsSynced += sections.length;
+        if (DRY_RUN) {
+          console.log(`  (would set ${sections.length} outline section(s) for "${course.title}")`);
+        } else {
+          const { error: delErr } = await supabase
+            .from("course_outline_sections")
+            .delete()
+            .eq("course_id", course.id);
+          if (delErr) throw delErr;
+          const { error: secErr } = await supabase.from("course_outline_sections").insert(
+            sections.map((s, i) => ({
+              course_id: course.id,
+              title: s.title,
+              start_question_order: s.start,
+              end_question_order: s.end,
+              sort_order: i,
+            })),
+          );
+          if (secErr) throw secErr;
+        }
+      }
+    }
+
     // ---- Skip if real (non-placeholder) questions already exist ----
     if (!courseIsNew) {
       const { data: existingRows, error: countErr } = await supabase
@@ -397,6 +475,7 @@ async function main() {
   console.log(`Courses created: ${coursesCreated.length}`);
   for (const c of coursesCreated) console.log(`  - ${c}`);
   console.log(`Course thumbnails set: ${thumbnailsSet}`);
+  console.log(`Outline sections synced: ${sectionsSynced} (across ${sectionsSyncedForCourse.size} course(s))`);
   console.log(`Courses imported into: ${coursesImported}`);
   console.log(`Questions imported: ${questionsImported}`);
   console.log(`Courses already had real questions (left untouched): ${skippedAlreadyHasQuestions.length}`);

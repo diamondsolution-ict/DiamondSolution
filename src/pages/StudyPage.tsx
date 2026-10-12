@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   BookX,
   CheckCircle2,
@@ -46,6 +46,7 @@ export default function StudyPage() {
   const { id: courseId } = useParams<{ id: string }>();
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -148,16 +149,23 @@ export default function StudyPage() {
       );
       setOutline(outlineRows ?? []);
 
-      if (progress?.completed) {
+      // A "Jump to question N" or "Resume session" link from CourseDetail carries an explicit
+      // ?start= — honor it over study_progress (even past a completed run), since the student
+      // deliberately chose this starting point rather than asking to continue where they left
+      // off or see their last result.
+      const startParam = Number(searchParams.get("start"));
+      const total = questionRows?.length ?? 0;
+      if (Number.isInteger(startParam) && startParam >= 1 && total > 0) {
+        setCurrentIndex(Math.min(startParam - 1, total - 1));
+      } else if (progress?.completed) {
         setShowResults(true);
       } else if (progress) {
-        setCurrentIndex(
-          Math.min(progress.current_order, (questionRows?.length ?? 1) - 1),
-        );
+        setCurrentIndex(Math.min(progress.current_order, Math.max(total - 1, 0)));
       }
       setLoading(false);
     }
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, user, isAdmin]);
 
   // Per-question timer
