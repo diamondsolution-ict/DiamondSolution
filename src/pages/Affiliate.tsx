@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { format } from "date-fns";
 import {
   Banknote,
   Check,
@@ -51,6 +52,10 @@ interface Withdrawal {
   status: string;
   requested_at: string;
 }
+interface Referral {
+  referred_user_id: string;
+  referred_at: string;
+}
 
 const MIN_WITHDRAWAL = { NGN: 10000, USD: 10 };
 
@@ -78,10 +83,10 @@ export default function Affiliate() {
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const [payoutMethods, setPayoutMethods] = useState<PayoutMethod[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
 
   const [methodForm, setMethodForm] = useState({
     currency: "NGN" as "NGN" | "USD",
-    method: "bank_transfer",
     bankCode: "",
     accountNumber: "",
     accountName: "",
@@ -109,6 +114,7 @@ export default function Affiliate() {
         { data: commissionRows },
         { data: methodRows },
         { data: withdrawalRows },
+        { data: referralRows },
       ] = await Promise.all([
         supabase.from("affiliate_balances").select("*").eq("user_id", user.id),
         supabase
@@ -132,15 +138,31 @@ export default function Affiliate() {
           .eq("user_id", user.id)
           .order("requested_at", { ascending: false })
           .limit(50),
+        // Every signup attributed to this referrer, not just the ones that converted into a
+        // commission — without this, a referral that signed up but hasn't paid yet (or a
+        // broken attribution) is simply invisible, making it impossible to tell "nobody's
+        // signing up with my link" apart from "they signed up but haven't paid".
+        supabase
+          .from("referrals")
+          .select("referred_user_id, referred_at")
+          .eq("referrer_user_id", user.id)
+          .order("referred_at", { ascending: false })
+          .limit(50),
       ]);
 
       setBalances(balanceRows ?? []);
       setCommissions(commissionRows ?? []);
       setPayoutMethods(methodRows ?? []);
       setWithdrawals(withdrawalRows ?? []);
+      setReferrals(referralRows ?? []);
 
       const referredIds = [
-        ...new Set((commissionRows ?? []).map((c) => c.referred_user_id)),
+        ...new Set(
+          [
+            ...(commissionRows ?? []).map((c) => c.referred_user_id),
+            ...(referralRows ?? []).map((r) => r.referred_user_id),
+          ],
+        ),
       ];
       if (referredIds.length > 0) {
         const { data: nameRows } = await supabase.rpc("public_profile_names", {
@@ -209,9 +231,8 @@ export default function Affiliate() {
       .insert({
         user_id: user.id,
         currency: methodForm.currency,
-        method: methodForm.method,
-        bank_code:
-          methodForm.method === "bank_transfer" ? methodForm.bankCode : null,
+        method: "bank_transfer",
+        bank_code: methodForm.bankCode,
         account_number: methodForm.accountNumber,
         account_name: methodForm.accountName,
       });
@@ -221,7 +242,6 @@ export default function Affiliate() {
     }
     setMethodForm({
       currency: "NGN",
-      method: "bank_transfer",
       bankCode: "",
       accountNumber: "",
       accountName: "",
@@ -426,7 +446,7 @@ export default function Affiliate() {
             <option value="">Select payout method</option>
             {methodsForWithdrawCurrency.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.method} · {m.account_number}
+                {m.account_name} · {m.account_number}
               </option>
             ))}
           </select>
@@ -445,52 +465,33 @@ export default function Affiliate() {
           <Landmark size={16} className="text-royal" />
           Add a payout method
         </h2>
+        <p className="mt-1 text-xs text-text-3">
+          Bank transfer only — payouts are sent automatically via Paystack.
+        </p>
         <form onSubmit={addPayoutMethod} className="mt-3 space-y-3">
-          <div className="flex gap-2">
-            <select
-              value={methodForm.currency}
-              onChange={(e) =>
-                setMethodForm((f) => ({
-                  ...f,
-                  currency: e.target.value as "NGN" | "USD",
-                }))
-              }
-              className={inputClass}
-            >
-              <option value="NGN">NGN</option>
-              <option value="USD">USD</option>
-            </select>
-            <select
-              value={methodForm.method}
-              onChange={(e) =>
-                setMethodForm((f) => ({ ...f, method: e.target.value }))
-              }
-              className={inputClass}
-            >
-              <option value="bank_transfer">Bank transfer</option>
-              <option value="paypal">PayPal</option>
-              <option value="usdt_trc20">USDT (TRC20)</option>
-              <option value="intl_wire">International wire</option>
-            </select>
-          </div>
-          {methodForm.method === "bank_transfer" && (
-            <input
-              placeholder="Bank code"
-              value={methodForm.bankCode}
-              onChange={(e) =>
-                setMethodForm((f) => ({ ...f, bankCode: e.target.value }))
-              }
-              className={inputClass}
-            />
-          )}
-          <input
-            placeholder={
-              methodForm.method === "paypal"
-                ? "PayPal email"
-                : methodForm.method === "usdt_trc20"
-                  ? "Wallet address"
-                  : "Account number"
+          <select
+            value={methodForm.currency}
+            onChange={(e) =>
+              setMethodForm((f) => ({
+                ...f,
+                currency: e.target.value as "NGN" | "USD",
+              }))
             }
+            className={inputClass}
+          >
+            <option value="NGN">NGN</option>
+            <option value="USD">USD</option>
+          </select>
+          <input
+            placeholder="Bank code"
+            value={methodForm.bankCode}
+            onChange={(e) =>
+              setMethodForm((f) => ({ ...f, bankCode: e.target.value }))
+            }
+            className={inputClass}
+          />
+          <input
+            placeholder="Account number"
             value={methodForm.accountNumber}
             onChange={(e) =>
               setMethodForm((f) => ({ ...f, accountNumber: e.target.value }))
@@ -529,8 +530,13 @@ export default function Affiliate() {
               key={w.id}
               className="flex items-center justify-between py-2 text-sm"
             >
-              <span className="text-text-2">
-                {w.amount.toLocaleString()} {w.currency}
+              <span>
+                <span className="block text-text-2">
+                  {w.amount.toLocaleString()} {w.currency}
+                </span>
+                <span className="text-xs text-text-3">
+                  {format(new Date(w.requested_at), "MMM d, yyyy")}
+                </span>
               </span>
               <StatusBadge status={w.status} />
             </li>
@@ -541,28 +547,62 @@ export default function Affiliate() {
       <div className="card-luxury mt-4 p-5">
         <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
           <Users size={16} className="text-royal" />
-          Referral earnings
+          My referrals
         </h2>
-        {commissions.length === 0 && (
-          <p className="mt-2 text-sm text-text-3">No referral earnings yet.</p>
+        {referrals.length === 0 && (
+          <p className="mt-2 text-sm text-text-3">
+            No one has signed up with your link yet.
+          </p>
         )}
         <ul className="mt-2 divide-y divide-canvas-border">
-          {commissions.map((c) => (
-            <li
-              key={c.id}
-              className="flex items-center justify-between py-2 text-sm"
-            >
-              <span className="flex items-center gap-2 text-text-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-royal-soft text-[10px] font-bold text-royal">
-                  {(names.get(c.referred_user_id) ?? "?").charAt(0).toUpperCase()}
+          {referrals.map((r) => {
+            const earnings = commissions.filter(
+              (c) => c.referred_user_id === r.referred_user_id,
+            );
+            // Group by currency — almost always one entry, but a referral who paid for
+            // departments priced in different currencies would have more than one.
+            const totalsByCurrency = new Map<string, number>();
+            for (const c of earnings) {
+              totalsByCurrency.set(
+                c.commission_currency,
+                (totalsByCurrency.get(c.commission_currency) ?? 0) +
+                  c.commission_amount,
+              );
+            }
+            return (
+              <li
+                key={r.referred_user_id}
+                className="flex items-center justify-between gap-2 py-2 text-sm"
+              >
+                <span className="flex min-w-0 items-center gap-2 text-text-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-royal-soft text-[10px] font-bold text-royal">
+                    {(names.get(r.referred_user_id) ?? "?")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate">
+                      {names.get(r.referred_user_id) ?? "A referral"}
+                    </span>
+                    <span className="text-xs text-text-3">
+                      Signed up {format(new Date(r.referred_at), "MMM d, yyyy")}
+                    </span>
+                  </span>
                 </span>
-                {names.get(c.referred_user_id) ?? "A referral"}
-              </span>
-              <span className="font-semibold text-royal">
-                +{c.commission_amount.toLocaleString()} {c.commission_currency}
-              </span>
-            </li>
-          ))}
+                {totalsByCurrency.size > 0 ? (
+                  <span className="shrink-0 text-right font-semibold text-royal">
+                    {[...totalsByCurrency.entries()]
+                      .map(([cur, amt]) => `+${amt.toLocaleString()} ${cur}`)
+                      .join(", ")}
+                  </span>
+                ) : (
+                  <span className="shrink-0 text-xs text-text-3">
+                    Not converted yet
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </div>
     </Layout>
