@@ -60,6 +60,11 @@ export default function StudyPage() {
   const [sessionResults, setSessionResults] = useState<Record<string, Result>>(
     {},
   );
+  // Remembers which option was picked for each question answered this session, so stepping
+  // back with "Previous" and then forward again restores the same view instead of a blank one.
+  const [selectedByQuestion, setSelectedByQuestion] = useState<
+    Record<string, string | null>
+  >({});
   const [showResults, setShowResults] = useState(false);
   const [sectionComplete, setSectionComplete] = useState<OutlineSection | null>(
     null,
@@ -218,6 +223,7 @@ export default function StudyPage() {
 
     setSubmitted(true);
     setSessionResults((prev) => ({ ...prev, [question.id]: result }));
+    setSelectedByQuestion((prev) => ({ ...prev, [question.id]: selectedOptionId }));
 
     const isLast = currentIndex === questions.length - 1;
     const nextOrder = currentIndex + 1;
@@ -266,13 +272,23 @@ export default function StudyPage() {
       setSectionComplete(activeSection);
       return;
     }
-    advance();
+    goToIndex(currentIndex + 1);
   }
 
-  function advance() {
-    setCurrentIndex((i) => i + 1);
-    setSelectedOptionId(null);
-    setSubmitted(false);
+  function handlePrevious() {
+    if (currentIndex === 0) return;
+    goToIndex(currentIndex - 1);
+  }
+
+  // Already answered this session (sessionResults has it) → restore that view read-only
+  // instead of a blank unanswered question, so stepping back and forward again doesn't lose
+  // what was picked. Not-yet-answered → fresh/unanswered as usual.
+  function goToIndex(i: number) {
+    const target = questions[i];
+    const alreadyAnswered = !!target && sessionResults[target.id] !== undefined;
+    setCurrentIndex(i);
+    setSelectedOptionId(alreadyAnswered ? (selectedByQuestion[target.id] ?? null) : null);
+    setSubmitted(alreadyAnswered);
     setSectionComplete(null);
   }
 
@@ -415,7 +431,7 @@ export default function StudyPage() {
               Outline
             </button>
             <button
-              onClick={() => (isLastSection ? setShowResults(true) : advance())}
+              onClick={() => (isLastSection ? setShowResults(true) : goToIndex(currentIndex + 1))}
               className="btn-primary flex-1"
             >
               {isLastSection ? "Final results" : "Next section"}
@@ -427,177 +443,161 @@ export default function StudyPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
-      {/* Dark "protocol" header, matching the old app's immersive quiz chrome — distinct from
-          the rest of this app's light Layout, deliberately, only for the live question view. */}
-      <header className="sticky top-0 z-20 bg-navy px-4 py-3 text-white md:px-8">
-        <div className="mx-auto flex max-w-3xl items-center gap-3">
-          <button
-            onClick={() => navigate(`/courses/${courseId}`)}
-            className="shrink-0 rounded-full p-1.5 hover:bg-white/10"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold">
-              {courseTitle}
-              {activeSection ? ` — ${activeSection.title}` : ""}
-            </p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gold">
-              Question {currentIndex + 1} of {questions.length}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
-                secondsLeft <= 10
-                  ? "animate-pulse bg-rose-500/90"
-                  : "bg-white/10"
-              }`}
-            >
-              <Timer size={12} />
-              {secondsLeft}s
-            </span>
-            <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold">
-              Score: {totalCorrect}
-            </span>
-          </div>
+    <Layout title={courseTitle} onBack={() => navigate(`/courses/${courseId}`)}>
+      <div className="card-luxury p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="min-w-0 truncate text-xs font-bold text-text-3">
+            {activeSection ? activeSection.title : courseTitle}
+          </p>
+          <p className="shrink-0 text-xs font-bold text-royal">
+            Question {currentIndex + 1} of {questions.length}
+          </p>
         </div>
-        <div className="mx-auto mt-3 h-1 max-w-3xl overflow-hidden rounded-full bg-white/10">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-canvas-soft">
           <div
-            className="h-full bg-gold transition-all"
+            className="h-full bg-royal transition-all"
             style={{
               width: `${((currentIndex + 1) / questions.length) * 100}%`,
             }}
           />
         </div>
-      </header>
+        <div className="mt-3 flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
+              secondsLeft <= 10
+                ? "animate-pulse bg-rose-50 text-rose-600"
+                : "bg-canvas-soft text-text-2"
+            }`}
+          >
+            <Timer size={12} />
+            {secondsLeft}s
+          </span>
+          <span className="rounded-full bg-canvas-soft px-2.5 py-1 text-xs font-bold text-text-2">
+            Score: {totalCorrect}
+          </span>
+        </div>
+      </div>
 
-      <main className="flex-1 px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-2xl">
-          <div className="card-luxury p-6">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-text-3">
-              Archive query · {question.type === "objective" ? "MCQ" : "Application"}
-            </p>
-            <p className="mt-2 whitespace-pre-wrap font-medium text-text-1">
-              {question.prompt}
-            </p>
+      <div className="mt-4 card-luxury p-6">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-text-3">
+          Archive query · {question.type === "objective" ? "MCQ" : "Application"}
+        </p>
+        <p className="mt-2 whitespace-pre-wrap font-medium text-text-1">
+          {question.prompt}
+        </p>
 
-            {question.type === "objective" ? (
-              <div className="mt-4 space-y-2">
-                {question.options.map((opt) => {
-                  const isSelected = selectedOptionId === opt.id;
-                  const showCorrect = submitted && opt.is_correct;
-                  const showWrong = submitted && isSelected && !opt.is_correct;
-                  return (
-                    <button
-                      key={opt.id}
-                      disabled={submitted}
-                      onClick={() => setSelectedOptionId(opt.id)}
-                      className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
-                        showCorrect
-                          ? "border-emerald-400 bg-emerald-50 text-emerald-800"
-                          : showWrong
-                            ? "border-rose-400 bg-rose-50 text-rose-800"
-                            : isSelected
-                              ? "border-royal bg-royal-soft text-royal"
-                              : submitted
-                                ? "border-canvas-border opacity-50"
-                                : "border-canvas-border hover:border-royal/40"
-                      }`}
-                    >
-                      <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                          showCorrect
-                            ? "bg-emerald-500 text-white"
-                            : showWrong
-                              ? "bg-rose-500 text-white"
-                              : isSelected
-                                ? "bg-royal text-white"
-                                : "bg-canvas-soft text-text-2"
-                        }`}
-                      >
-                        {opt.label}
-                      </span>
-                      <span className="flex-1 whitespace-pre-wrap">
-                        {opt.body}
-                      </span>
-                      {showCorrect && (
-                        <CheckCircle2
-                          size={16}
-                          className="shrink-0 text-emerald-600"
-                        />
-                      )}
-                      {showWrong && (
-                        <XCircle size={16} className="shrink-0 text-rose-600" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="mt-4">
-                {submitted && (
-                  <div className="diamond-gradient rounded-xl p-4 text-sm text-white">
-                    <p className="flex items-center gap-2 font-semibold">
-                      <CheckCircle2 size={15} />
-                      Expected response
-                    </p>
-                    <p className="mt-1 whitespace-pre-wrap text-white/90">
-                      {question.expected_answer || "No expected answer recorded."}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {submitted && question.explanation && (
-              <div className="mt-4 rounded-xl bg-navy p-4 text-sm text-white">
+        {question.type === "objective" ? (
+          <div className="mt-4 space-y-2">
+            {question.options.map((opt) => {
+              const isSelected = selectedOptionId === opt.id;
+              const showCorrect = submitted && opt.is_correct;
+              const showWrong = submitted && isSelected && !opt.is_correct;
+              return (
+                <button
+                  key={opt.id}
+                  disabled={submitted}
+                  onClick={() => setSelectedOptionId(opt.id)}
+                  className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
+                    showCorrect
+                      ? "border-emerald-400 bg-emerald-50 text-emerald-800"
+                      : showWrong
+                        ? "border-rose-400 bg-rose-50 text-rose-800"
+                        : isSelected
+                          ? "border-royal bg-royal-soft text-royal"
+                          : submitted
+                            ? "border-canvas-border opacity-50"
+                            : "border-canvas-border hover:border-royal/40"
+                  }`}
+                >
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                      showCorrect
+                        ? "bg-emerald-500 text-white"
+                        : showWrong
+                          ? "bg-rose-500 text-white"
+                          : isSelected
+                            ? "bg-royal text-white"
+                            : "bg-canvas-soft text-text-2"
+                    }`}
+                  >
+                    {opt.label}
+                  </span>
+                  <span className="flex-1 whitespace-pre-wrap">
+                    {opt.body}
+                  </span>
+                  {showCorrect && (
+                    <CheckCircle2
+                      size={16}
+                      className="shrink-0 text-emerald-600"
+                    />
+                  )}
+                  {showWrong && (
+                    <XCircle size={16} className="shrink-0 text-rose-600" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-4">
+            {submitted && (
+              <div className="diamond-gradient rounded-xl p-4 text-sm text-white">
                 <p className="flex items-center gap-2 font-semibold">
-                  <Lightbulb size={15} />
-                  Explanation
+                  <CheckCircle2 size={15} />
+                  Expected response
                 </p>
                 <p className="mt-1 whitespace-pre-wrap text-white/90">
-                  {question.explanation}
+                  {question.expected_answer || "No expected answer recorded."}
                 </p>
               </div>
             )}
           </div>
-        </div>
-      </main>
+        )}
 
-      <footer className="sticky bottom-0 z-20 bg-navy px-4 py-3 text-white md:px-8">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+        {submitted && question.explanation && (
+          <div className="mt-4 rounded-xl bg-navy p-4 text-sm text-white">
+            <p className="flex items-center gap-2 font-semibold">
+              <Lightbulb size={15} />
+              Explanation
+            </p>
+            <p className="mt-1 whitespace-pre-wrap text-white/90">
+              {question.explanation}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <button
+          onClick={handlePrevious}
+          disabled={currentIndex === 0}
+          className="btn-outline flex items-center gap-1.5 text-sm disabled:opacity-40"
+        >
+          <ChevronLeft size={15} />
+          Previous
+        </button>
+
+        <button
+          onClick={() => navigate(`/courses/${courseId}`)}
+          className="text-xs font-semibold text-text-3 hover:text-text-1 hover:underline"
+        >
+          Exit quiz
+        </button>
+
+        {!submitted ? (
           <button
-            onClick={() => navigate(`/courses/${courseId}`)}
-            className="flex items-center gap-2 text-left hover:opacity-80"
+            onClick={() => void handleSubmit(false)}
+            disabled={question.type === "objective" && !selectedOptionId}
+            className="btn-primary disabled:opacity-40"
           >
-            <ChevronLeft size={16} />
-            <span>
-              <span className="block text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                Session
-              </span>
-              <span className="block text-sm font-bold">Exit quiz</span>
-            </span>
+            {question.type === "application" ? "Check answer" : "Submit"}
           </button>
-          {!submitted ? (
-            <button
-              onClick={() => void handleSubmit(false)}
-              disabled={question.type === "objective" && !selectedOptionId}
-              className="rounded-full bg-gold px-6 py-2.5 text-sm font-bold text-navy transition-opacity disabled:opacity-40"
-            >
-              {question.type === "application" ? "Check answer" : "Submit"}
-            </button>
-          ) : (
-            <button
-              onClick={handleNext}
-              className="rounded-full bg-gold px-6 py-2.5 text-sm font-bold text-navy"
-            >
-              {currentIndex === questions.length - 1 ? "Finish" : "Next"}
-            </button>
-          )}
-        </div>
-      </footer>
-    </div>
+        ) : (
+          <button onClick={handleNext} className="btn-primary">
+            {currentIndex === questions.length - 1 ? "Finish" : "Next"}
+          </button>
+        )}
+      </div>
+    </Layout>
   );
 }
