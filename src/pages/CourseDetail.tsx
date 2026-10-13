@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  Award,
   BookOpen,
   FileQuestion,
   Lock,
   PlayCircle,
+  Share2,
+  ShieldCheck,
   Target,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -177,15 +180,39 @@ export default function CourseDetail() {
         </div>
       )}
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <span className="badge-gold">{meta?.departmentName}</span>
-        <span className="badge-royal">{meta?.levelLabel}</span>
+        {meta?.levelLabel && (
+          <span className="badge-royal">{meta.levelLabel} Level</span>
+        )}
       </div>
 
-      <blockquote className="mt-4 border-l-2 border-canvas-border pl-4 text-sm text-text-2">
+      <h1 className="mt-3 font-heading text-2xl font-bold text-text-1">
+        {course.title}
+      </h1>
+
+      <blockquote className="mt-3 border-l-2 border-gold pl-4 text-sm italic text-text-2">
         {course.description ||
           "Practice questions for this course, reviewed by the academic team."}
       </blockquote>
+
+      <div className="mt-6 grid grid-cols-3 divide-x divide-canvas-border border-y border-canvas-border py-4 text-center">
+        {[
+          { icon: Award, label: "Status", value: "Institutional" },
+          { icon: ShieldCheck, label: "Security", value: "Encrypted" },
+          { icon: Share2, label: "Endowment", value: "25% Yield" },
+        ].map(({ icon: Icon, label, value }) => (
+          <div key={label} className="flex flex-col items-center gap-1.5 px-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-royal-soft">
+              <Icon size={16} className="text-royal" />
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-text-3">
+              {label}
+            </span>
+            <span className="text-sm font-bold text-text-1">{value}</span>
+          </div>
+        ))}
+      </div>
 
       {!hasAccess ? (
         <div className="card-luxury mt-6 flex flex-col items-center gap-2 p-6 text-center">
@@ -282,6 +309,11 @@ export default function CourseDetail() {
           )}
         </div>
       )}
+      {hasAccess && !!meta?.questionCount && (
+        <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-text-3">
+          Lifetime access · One-time payment · Secured transaction
+        </p>
+      )}
 
       <div className="mt-8">
         <h2 className="flex items-center gap-2 font-heading text-base font-bold uppercase tracking-widest text-text-1">
@@ -293,7 +325,7 @@ export default function CourseDetail() {
             No outline published for this course yet.
           </p>
         ) : (
-          <div className="mt-3 space-y-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {outline.map((section) => (
               <button
                 key={section.id}
@@ -302,17 +334,17 @@ export default function CourseDetail() {
                   navigate(`/courses/${course.id}/study?start=${section.start_question_order}`)
                 }
                 disabled={!hasAccess}
-                className="diamond-gradient flex w-full items-center gap-3 rounded-2xl p-4 text-left text-white shadow-md transition-transform disabled:opacity-60 enabled:hover:scale-[1.01]"
+                className="diamond-gradient flex w-full items-center gap-2.5 rounded-2xl p-3.5 text-left text-white shadow-md transition-transform disabled:opacity-60 enabled:hover:scale-[1.01]"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15">
-                  <PlayCircle size={18} />
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15">
+                  <PlayCircle size={16} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold leading-snug">
+                  <span className="block text-xs font-bold leading-snug">
                     {section.title}: Q{section.start_question_order}–
                     {section.end_question_order}
                   </span>
-                  <span className="mt-1 block text-[10px] font-bold uppercase tracking-widest text-gold">
+                  <span className="mt-1 block text-[9px] font-bold uppercase tracking-widest text-gold">
                     {hasAccess ? "Click to launch section" : "Requires access"}
                   </span>
                 </span>
