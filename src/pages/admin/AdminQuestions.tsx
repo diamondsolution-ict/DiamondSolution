@@ -132,6 +132,17 @@ export default function AdminQuestions() {
   const [detailsImagePath, setDetailsImagePath] = useState<string | null>(null);
   const [detailsSaving, setDetailsSaving] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
+  const detailsTitleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!showEditDetails) return;
+    detailsTitleRef.current?.focus();
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowEditDetails(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showEditDetails]);
 
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [type, setType] = useState<"objective" | "application">("objective");
@@ -1274,31 +1285,41 @@ export default function AdminQuestions() {
           <form
             onSubmit={handleSaveDetails}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-archive-details-heading"
             className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-heading text-lg font-bold text-text-1">
+              <h2
+                id="edit-archive-details-heading"
+                className="font-heading text-lg font-bold text-text-1"
+              >
                 Edit archive details
               </h2>
               <button
                 type="button"
                 onClick={() => setShowEditDetails(false)}
-                className="rounded-full p-1 text-text-3 hover:bg-canvas-soft"
+                aria-label="Close"
+                className="rounded-full p-1 text-text-3 hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal"
               >
-                <X size={18} />
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
 
             {detailsError && (
-              <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <p
+                role="alert"
+                className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              >
                 {detailsError}
               </p>
             )}
 
             <div className="mt-4">
-              <label className="block text-sm font-medium text-text-2">
+              <p className="text-sm font-medium text-text-2">
                 Course picture (shown on left of course cards)
-              </label>
+              </p>
               <div className="mt-1">
                 <ImageUpload
                   currentPath={detailsImagePath}
@@ -1311,10 +1332,15 @@ export default function AdminQuestions() {
             </div>
 
             <div className="mt-4">
-              <label className="block text-sm font-medium text-text-2">
+              <label
+                htmlFor="details-title"
+                className="block text-sm font-medium text-text-2"
+              >
                 Archive title
               </label>
               <input
+                id="details-title"
+                ref={detailsTitleRef}
                 required
                 value={detailsTitle}
                 onChange={(e) => setDetailsTitle(e.target.value)}
@@ -1324,10 +1350,14 @@ export default function AdminQuestions() {
 
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-text-2">
+                <label
+                  htmlFor="details-department"
+                  className="block text-sm font-medium text-text-2"
+                >
                   Department
                 </label>
                 <select
+                  id="details-department"
                   required
                   value={detailsDeptId}
                   onChange={(e) => {
@@ -1345,10 +1375,14 @@ export default function AdminQuestions() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-2">
+                <label
+                  htmlFor="details-level"
+                  className="block text-sm font-medium text-text-2"
+                >
                   Level
                 </label>
                 <select
+                  id="details-level"
                   required
                   value={detailsLevelId}
                   onChange={(e) => setDetailsLevelId(e.target.value)}
@@ -1366,10 +1400,14 @@ export default function AdminQuestions() {
             </div>
 
             <div className="mt-4">
-              <label className="block text-sm font-medium text-text-2">
+              <label
+                htmlFor="details-type"
+                className="block text-sm font-medium text-text-2"
+              >
                 Question type
               </label>
               <select
+                id="details-type"
                 value={detailsType}
                 onChange={(e) =>
                   setDetailsType(e.target.value as "objective" | "application")
@@ -1382,10 +1420,14 @@ export default function AdminQuestions() {
             </div>
 
             <div className="mt-4">
-              <label className="block text-sm font-medium text-text-2">
+              <label
+                htmlFor="details-description"
+                className="block text-sm font-medium text-text-2"
+              >
                 Description (optional)
               </label>
               <textarea
+                id="details-description"
                 value={detailsDescription}
                 onChange={(e) => setDetailsDescription(e.target.value)}
                 placeholder="Description of the course archive…"
