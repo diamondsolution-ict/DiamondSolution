@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { Coins, Link2, Users } from "lucide-react";
+import { Download, Link2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 import { StepUpModal } from "@/components/StepUpModal";
 import { downloadCSV } from "@/lib/csv";
 
-type SubTab = "commissions" | "registry";
+type SubTab = "matrix" | "registry";
 
 interface Commission {
   id: string;
@@ -30,12 +29,20 @@ interface AffiliateProfile {
   status: string;
 }
 
+const CURRENCY_SYMBOL: Record<string, string> = { NGN: "₦", USD: "$" };
+
+function money(amount: number, currency: string) {
+  return `${CURRENCY_SYMBOL[currency] ?? ""}${amount.toLocaleString()}`;
+}
+
 export default function AdminAffiliates() {
-  const [subTab, setSubTab] = useState<SubTab>("commissions");
+  const [subTab, setSubTab] = useState<SubTab>("matrix");
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [balances, setBalances] = useState<Balance[]>([]);
   const [affiliates, setAffiliates] = useState<AffiliateProfile[]>([]);
-  const [names, setNames] = useState<Record<string, string>>({});
+  const [usernames, setUsernames] = useState<Record<string, string>>({});
+  const [displayNames, setDisplayNames] = useState<Record<string, string>>({});
+  const [emails, setEmails] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -72,13 +79,29 @@ export default function AdminAffiliates() {
       ]),
     ];
     if (userIds.length > 0) {
-      const { data: profileRows } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .in("user_id", userIds);
-      setNames(
+      const [{ data: profileRows }, { data: emailRows }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("user_id, display_name, username")
+          .in("user_id", userIds),
+        supabase.rpc("admin_list_emails", { p_user_ids: userIds }),
+      ]);
+      setDisplayNames(
         Object.fromEntries(
           (profileRows ?? []).map((p) => [p.user_id, p.display_name ?? "Unnamed"]),
+        ),
+      );
+      setUsernames(
+        Object.fromEntries(
+          (profileRows ?? []).map((p) => [p.user_id, p.username ?? p.user_id]),
+        ),
+      );
+      setEmails(
+        Object.fromEntries(
+          ((emailRows ?? []) as { user_id: string; email: string }[]).map((r) => [
+            r.user_id,
+            r.email,
+          ]),
         ),
       );
     }
@@ -114,30 +137,30 @@ export default function AdminAffiliates() {
   }
 
   function exportCsv() {
-    if (subTab === "commissions") {
+    if (subTab === "matrix") {
       const rows = [
         ["Referrer", "Amount", "Currency", "Status", "Date"],
         ...commissions.map((c) => [
-          names[c.referrer_user_id] ?? c.referrer_user_id,
+          usernames[c.referrer_user_id] ?? c.referrer_user_id,
           String(c.commission_amount),
           c.commission_currency,
           c.status,
           c.created_at,
         ]),
       ];
-      downloadCSV(`affiliate_commissions_${Date.now()}.csv`, rows);
+      downloadCSV(`affiliate_matrix_${Date.now()}.csv`, rows);
     } else {
       const rows = [
-        ["Name", "Referral Code", "Status", "Total Earned", "Total Paid", "Balance"],
+        ["Name", "Email", "Referral Code", "Total Earned", "Total Paid", "Balance"],
         ...affiliates.map((a) => {
           const b = balancesFor(a.user_id);
           const earned = b.reduce((s, x) => s + x.total_earned, 0);
           const withdrawn = b.reduce((s, x) => s + x.total_withdrawn, 0);
           const balance = b.reduce((s, x) => s + x.balance, 0);
           return [
-            names[a.user_id] ?? a.user_id,
+            displayNames[a.user_id] ?? a.user_id,
+            emails[a.user_id] ?? "",
             a.referral_code,
-            a.status,
             String(earned),
             String(withdrawn),
             String(balance),
@@ -150,28 +173,29 @@ export default function AdminAffiliates() {
 
   return (
     <AdminLayout>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-heading text-2xl font-bold text-text-1">
-          Affiliates
-        </h1>
-        <button onClick={exportCsv} className="btn-outline">
-          Export CSV
-        </button>
-      </div>
-
-      <div className="mt-4 inline-flex rounded-xl border border-canvas-border bg-white p-1">
-        {(["commissions", "registry"] as SubTab[]).map((t) => (
+      <div className="flex gap-6 border-b border-canvas-border">
+        {(["matrix", "registry"] as SubTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setSubTab(t)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-semibold capitalize transition-colors ${
-              subTab === t ? "bg-royal text-white" : "text-text-3"
+            className={`-mb-px border-b-2 pb-3 text-xs font-bold uppercase tracking-widest transition-colors ${
+              subTab === t
+                ? "border-royal text-royal"
+                : "border-transparent text-text-3 hover:text-text-2"
             }`}
           >
-            {t === "commissions" ? "Commissions" : "Partner Registry"}
+            {t === "matrix" ? "Matrix" : "Partner Registry"}
           </button>
         ))}
       </div>
+
+      <button
+        onClick={exportCsv}
+        className="btn-outline mt-4 flex items-center gap-1.5 text-xs"
+      >
+        <Download size={13} />
+        Export
+      </button>
 
       {error && (
         <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -186,101 +210,111 @@ export default function AdminAffiliates() {
 
       {loading ? (
         <p className="mt-4 text-sm text-text-3">Loading…</p>
-      ) : subTab === "commissions" ? (
-        <div className="mt-4 space-y-2">
-          {commissions.length === 0 && (
-            <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
-              <Coins size={28} className="text-text-3" />
-              <p className="text-sm text-text-3">No commissions yet.</p>
-            </div>
-          )}
-          {commissions.map((c) => (
-            <div
-              key={c.id}
-              className="card-luxury flex items-center gap-3 p-4"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-pale">
-                <Coins size={15} className="text-gold-dark" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-text-1">
-                  {names[c.referrer_user_id] ?? c.referrer_user_id}
-                </p>
-                <p className="text-xs text-text-3">
-                  {format(new Date(c.created_at), "MMM d, yyyy · HH:mm")}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="font-heading font-bold text-royal">
-                  {c.commission_amount.toLocaleString()} {c.commission_currency}
-                </span>
-                {c.status === "paid" ? (
-                  <span className="badge-royal">paid</span>
-                ) : (
-                  <button
-                    onClick={() => setPendingCommissionId(c.id)}
-                    disabled={busyId === c.id}
-                    className="btn-secondary px-3 py-1.5 text-xs"
-                  >
-                    Authorize Payment
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+      ) : subTab === "matrix" ? (
+        commissions.length === 0 ? (
+          <div className="card-luxury mt-4 flex flex-col items-center gap-2 p-10 text-center">
+            <Users size={28} className="text-text-3" />
+            <p className="text-sm text-text-3">No commissions yet.</p>
+          </div>
+        ) : (
+          <div className="mt-4 overflow-hidden rounded-2xl border border-canvas-border bg-white">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-canvas-border bg-canvas-soft text-[11px] font-bold uppercase tracking-widest text-text-3">
+                  <th className="px-5 py-3 font-bold">Commission referrer</th>
+                  <th className="px-5 py-3 font-bold">Accrued amount</th>
+                  <th className="px-5 py-3 font-bold">Protocol status</th>
+                  <th className="px-5 py-3 font-bold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {commissions.map((c) => (
+                  <tr key={c.id} className="border-b border-canvas-border last:border-0">
+                    <td className="px-5 py-4 font-semibold text-text-1">
+                      {usernames[c.referrer_user_id] ?? c.referrer_user_id}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-emerald-600 line-through decoration-2">
+                      {money(c.commission_amount, c.commission_currency)}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="badge-royal">
+                        {c.status === "paid" ? "Paid" : "Success"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      {c.status === "paid" ? (
+                        <span className="text-xs font-semibold text-text-3">
+                          Settled
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setPendingCommissionId(c.id)}
+                          disabled={busyId === c.id}
+                          className="rounded-xl border border-royal/30 bg-royal-soft px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-royal transition-colors hover:bg-royal/15 disabled:opacity-50"
+                        >
+                          Authorize payment
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : affiliates.length === 0 ? (
+        <div className="card-luxury mt-4 flex flex-col items-center gap-2 p-10 text-center">
+          <Users size={28} className="text-text-3" />
+          <p className="text-sm text-text-3">No partners yet.</p>
         </div>
       ) : (
-        <div className="mt-4 space-y-2">
-          {affiliates.length === 0 && (
-            <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
-              <Users size={28} className="text-text-3" />
-              <p className="text-sm text-text-3">No partners yet.</p>
-            </div>
-          )}
-          {affiliates.map((a) => {
-            const b = balancesFor(a.user_id);
-            return (
-              <div key={a.user_id} className="card-luxury p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-royal-soft text-xs font-bold text-royal">
-                      {(names[a.user_id] ?? "P").charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-text-1">
-                        {names[a.user_id] ?? a.user_id}
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-canvas-border bg-white">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-canvas-border bg-canvas-soft text-[11px] font-bold uppercase tracking-widest text-text-3">
+                <th className="px-5 py-3 font-bold">Partner name</th>
+                <th className="px-5 py-3 font-bold">Referral code</th>
+                <th className="px-5 py-3 font-bold">Total earned</th>
+                <th className="px-5 py-3 font-bold">Total paid</th>
+                <th className="px-5 py-3 font-bold">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {affiliates.map((a) => {
+                const b = balancesFor(a.user_id);
+                const primary = b[0];
+                const currency = primary?.currency ?? "NGN";
+                const earned = b.reduce((s, x) => s + x.total_earned, 0);
+                const withdrawn = b.reduce((s, x) => s + x.total_withdrawn, 0);
+                const balance = b.reduce((s, x) => s + x.balance, 0);
+                return (
+                  <tr key={a.user_id} className="border-b border-canvas-border last:border-0">
+                    <td className="px-5 py-4">
+                      <p className="font-bold text-text-1">
+                        {displayNames[a.user_id] ?? a.user_id}
                       </p>
-                      <p className="flex items-center gap-1 font-mono text-xs text-royal">
+                      <p className="text-xs text-text-3">{emails[a.user_id] ?? ""}</p>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-royal/30 bg-royal-soft px-2.5 py-1 font-mono text-xs font-bold uppercase text-royal">
                         <Link2 size={11} />
                         {a.referral_code}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="badge-royal capitalize">{a.status}</span>
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                  {b.length === 0 ? (
-                    <p className="col-span-3 text-text-3">No earnings yet</p>
-                  ) : (
-                    b.map((row) => (
-                      <div
-                        key={row.currency}
-                        className="rounded-lg bg-canvas-soft py-2"
-                      >
-                        <p className="font-bold text-text-1">
-                          {row.balance.toLocaleString()} {row.currency}
-                        </p>
-                        <p className="text-text-3">
-                          earned {row.total_earned.toLocaleString()} · paid{" "}
-                          {row.total_withdrawn.toLocaleString()}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 font-bold text-text-1 line-through decoration-2">
+                      {money(earned, currency)}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-emerald-600 line-through decoration-2">
+                      {money(withdrawn, currency)}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-royal line-through decoration-2">
+                      {money(balance, currency)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
