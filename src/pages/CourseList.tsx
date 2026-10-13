@@ -56,9 +56,18 @@ export default function CourseList() {
             .select("id, name, slug, image_path")
             .eq("status", "active")
             .order("name"),
+          // department_pricing is a price *history* table — every change inserts a new row
+          // rather than updating in place (see AdminDepartments.tsx's upsertPrice), so an
+          // unfiltered, unordered select can return any past price. "Current price" is the
+          // newest row whose effective_from isn't in the future — same rule processPayment.ts
+          // uses server-side when actually charging. Without the filter/order here, .find()
+          // below returned whatever row Postgres happened to return first (in practice the
+          // oldest), so the paywall kept showing a price after an admin changed it.
           supabase
             .from("department_pricing")
-            .select("department_id, amount, currency"),
+            .select("department_id, amount, currency")
+            .lte("effective_from", new Date().toISOString())
+            .order("effective_from", { ascending: false }),
           user
             ? supabase
                 .from("access_grants")
