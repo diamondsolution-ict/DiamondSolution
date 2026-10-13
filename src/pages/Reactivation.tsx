@@ -8,6 +8,7 @@ import { usePaystackPayment } from "react-paystack";
 import { CreditCard, LogOut, ShieldAlert } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { functionErrorMessage } from "@/lib/functionError";
 
 const REACTIVATION_FEE_NGN = 1000;
 const REACTIVATION_FEE_USD = 2;
@@ -70,7 +71,7 @@ export default function Reactivation() {
         setPaying(false);
         if (invokeError || !data?.success) {
           setError(
-            `Payment verification failed: ${invokeError?.message ?? data?.error ?? "unknown error"}`,
+            `Payment verification failed: ${await functionErrorMessage(data, invokeError, "unknown error")}`,
           );
           return;
         }

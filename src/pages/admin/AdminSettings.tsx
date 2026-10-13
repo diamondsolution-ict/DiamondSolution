@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { AdminLayout } from "@/components/AdminLayout";
+import { functionErrorMessage } from "@/lib/functionError";
 
 interface Links {
   telegram: string;
@@ -231,9 +232,7 @@ export default function AdminSettings() {
     setCodeSaving(false);
 
     if (invokeError || !data?.success) {
-      setCodeError(
-        data?.error ?? invokeError?.message ?? "Couldn't change the code.",
-      );
+      setCodeError(await functionErrorMessage(data, invokeError, "Couldn't change the code."));
       return;
     }
     setCurrentCode("");

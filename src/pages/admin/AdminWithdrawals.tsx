@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
+import { functionErrorMessage } from "@/lib/functionError";
 
 interface PayoutMethod {
   method: string;
@@ -107,7 +108,7 @@ export default function AdminWithdrawals() {
     setBusyId(null);
     if (invokeError || !data?.success) {
       setError(
-        `Payout failed: ${invokeError?.message ?? data?.error ?? "unknown error"} — withdrawal marked failed, settle manually if needed.`,
+        `Payout failed: ${await functionErrorMessage(data, invokeError, "unknown error")} — withdrawal marked failed, settle manually if needed.`,
       );
     }
     void load();
@@ -125,9 +126,7 @@ export default function AdminWithdrawals() {
     );
     setBusyId(null);
     if (invokeError || !data?.success) {
-      setError(
-        `Reject failed: ${invokeError?.message ?? data?.error ?? "unknown error"}`,
-      );
+      setError(`Reject failed: ${await functionErrorMessage(data, invokeError, "unknown error")}`);
     }
     void load();
   }
@@ -158,9 +157,7 @@ export default function AdminWithdrawals() {
     );
     setBusyId(null);
     if (invokeError || !data?.success) {
-      setError(
-        `Recheck failed: ${invokeError?.message ?? data?.error ?? "unknown error"}`,
-      );
+      setError(`Recheck failed: ${await functionErrorMessage(data, invokeError, "unknown error")}`);
       return;
     }
     setRecheckResult((prev) => ({

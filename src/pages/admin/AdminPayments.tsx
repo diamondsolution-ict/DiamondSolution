@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
 import { downloadCSV } from "@/lib/csv";
+import { functionErrorMessage } from "@/lib/functionError";
 
 interface Payment {
   id: string;
@@ -177,7 +178,7 @@ export default function AdminPayments() {
     if (error || !data?.success) {
       setRecheckResult({
         ok: false,
-        message: data?.error ?? error?.message ?? "Recheck failed.",
+        message: await functionErrorMessage(data, error, "Recheck failed."),
       });
     } else {
       setRecheckResult({
@@ -235,7 +236,7 @@ export default function AdminPayments() {
     if (error || !data?.success) {
       setDetailRecheck({
         ok: false,
-        message: data?.error ?? error?.message ?? "Recheck failed.",
+        message: await functionErrorMessage(data, error, "Recheck failed."),
       });
     } else {
       setDetailRecheck({

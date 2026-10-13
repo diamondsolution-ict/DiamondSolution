@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Layout } from "@/components/Layout";
 import { validatePassword } from "@/lib/passwordPolicy";
+import { functionErrorMessage } from "@/lib/functionError";
 
 type PasswordStep = "form" | "otp";
 
@@ -103,7 +104,7 @@ export default function AccountSettings() {
 
     if (error || !data?.success) {
       setPasswordError(
-        `Couldn't send a security code: ${error?.message ?? data?.error ?? "unknown error"}`,
+        `Couldn't send a security code: ${await functionErrorMessage(data, error, "unknown error")}`,
       );
       return;
     }
@@ -123,7 +124,9 @@ export default function AccountSettings() {
 
     if (verifyError || !verifyData?.success) {
       setPasswordBusy(false);
-      setPasswordError("Invalid security code.");
+      setPasswordError(
+        await functionErrorMessage(verifyData, verifyError, "Invalid security code."),
+      );
       return;
     }
 
@@ -135,7 +138,7 @@ export default function AccountSettings() {
 
     if (changeError || !changeData?.success) {
       setPasswordError(
-        `Couldn't change password: ${changeError?.message ?? changeData?.error ?? "unknown error"}`,
+        `Couldn't change password: ${await functionErrorMessage(changeData, changeError, "unknown error")}`,
       );
       return;
     }
@@ -149,12 +152,14 @@ export default function AccountSettings() {
     if (!user?.email) return;
     setPasswordError(null);
     setPasswordBusy(true);
-    const { error } = await supabase.functions.invoke("request-otp", {
+    const { data, error } = await supabase.functions.invoke("request-otp", {
       body: { purpose: "password_change" },
     });
     setPasswordBusy(false);
     if (error) {
-      setPasswordError("Couldn't resend the code — try again shortly.");
+      setPasswordError(
+        await functionErrorMessage(data, error, "Couldn't resend the code — try again shortly."),
+      );
       return;
     }
     setPasswordInfo(`A new code was sent to ${user.email}.`);

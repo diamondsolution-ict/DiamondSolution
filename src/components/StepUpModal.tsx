@@ -6,6 +6,7 @@
 // rationale and 02-DATA-MODEL-AND-SECURITY.md §7 for the original step-up design.
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { functionErrorMessage } from "@/lib/functionError";
 
 interface StepUpModalProps {
   title: string;
@@ -33,7 +34,7 @@ export function StepUpModal({
     );
     setVerifying(false);
     if (invokeError || !data?.success) {
-      setError(data?.error ?? "Incorrect security code.");
+      setError(await functionErrorMessage(data, invokeError, "Incorrect security code."));
       return;
     }
     onVerified(data.token);

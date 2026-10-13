@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { functionErrorMessage } from "@/lib/functionError";
 
 interface Department {
   id: string;
@@ -150,7 +151,7 @@ export default function CourseList() {
         setPaying(false);
         if (error || !data?.success) {
           alert(
-            `Payment verification failed: ${error?.message ?? data?.error ?? "unknown error"}`,
+            `Payment verification failed: ${await functionErrorMessage(data, error, "unknown error")}`,
           );
           return;
         }

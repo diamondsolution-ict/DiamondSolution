@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { AdminLayout } from "@/components/AdminLayout";
 import { StepUpModal } from "@/components/StepUpModal";
 import { downloadCSV } from "@/lib/csv";
+import { functionErrorMessage } from "@/lib/functionError";
 
 type Role = "student" | "moderator" | "admin";
 type StatusFilter = "all" | "active" | "suspended";
@@ -158,7 +159,7 @@ export default function AdminUsers() {
 
     if (invokeError || !data?.success) {
       setError(
-        `Action failed: ${invokeError?.message ?? data?.error ?? "unknown error"}`,
+        `Action failed: ${await functionErrorMessage(data, invokeError, "unknown error")}`,
       );
       return;
     }
@@ -189,7 +190,7 @@ export default function AdminUsers() {
     setAddBusy(false);
     if (invokeError || !data?.success) {
       setAddError(
-        `Couldn't create user: ${invokeError?.message ?? data?.error ?? "unknown error"}`,
+        `Couldn't create user: ${await functionErrorMessage(data, invokeError, "unknown error")}`,
       );
       return;
     }
