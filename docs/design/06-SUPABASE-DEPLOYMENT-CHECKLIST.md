@@ -31,7 +31,7 @@ usually `eu-west` or similar — check the lowest-latency option Supabase offers
 ```bash
 cd diamondsolution
 supabase link --project-ref <your-project-ref>
-supabase db push             # applies all 14 migrations, in order, to the live project
+supabase db push             # applies every migration, in order, to the live project
 ```
 
 This creates every table, RLS policy, and function from scratch — `profiles`, `departments`,
@@ -80,11 +80,23 @@ supabase functions deploy request-otp
 supabase functions deploy verify-otp
 supabase functions deploy change-password
 supabase functions deploy admin-manage-user
-supabase functions deploy admin-approve-commission
 supabase functions deploy admin-recheck-payment
 supabase functions deploy admin-verify-stepup-code
 supabase functions deploy admin-set-stepup-code
+supabase functions deploy list-banks
+supabase functions deploy resolve-bank-account
 ```
+
+(`admin-approve-commission` was removed from the repo — the affiliate "authorize payment"
+step it backed was replaced by the configurable commission/withdrawal flow in
+`20261013150000_affiliate_program_configurable.sql`. If you deployed it in an earlier pass,
+delete it from the live project: `supabase functions delete admin-approve-commission`.)
+
+`list-banks` and `resolve-bank-account` power the Affiliate page's "Initialize credentials"
+form — a dropdown of Paystack-supported banks and automatic account-name resolution, so a
+payout method never has a hand-typed bank code or account name. If you see **"Failed to send
+a request to the Edge Function"** on that form, it almost always means one of these two
+hasn't been deployed yet — deploy both and reload.
 
 If you already deployed `mfa-stepup-token` (from the now-reverted TOTP MFA attempt), remove it
 from the live project — it's no longer in the repo:
