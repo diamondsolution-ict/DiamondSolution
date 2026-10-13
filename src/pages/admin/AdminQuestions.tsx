@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/supabasePaging";
 import { AdminLayout } from "@/components/AdminLayout";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -176,27 +177,59 @@ export default function AdminQuestions() {
     setLevels(levelRows ?? []);
     if (courseRow) setType(courseRow.default_question_type);
 
-    const { data: questionRows } = await supabase
-      .from("questions")
-      .select("id, type, prompt, expected_answer, explanation, sort_order, status")
-      .eq("course_id", courseId)
-      .in("status", ["active", "trashed"])
-      .order("sort_order");
+    // Keyset-paginated — a plain .select() here silently caps at Supabase's 1000-row default,
+    // which a large course's question count (or its total option-row count) can exceed outright.
+    const questionRowsUnsorted = await fetchAllRows<{
+      id: string;
+      type: "objective" | "application";
+      prompt: string;
+      expected_answer: string | null;
+      explanation: string | null;
+      sort_order: number;
+      status: "active" | "trashed";
+    }>((after) => {
+      let q = supabase
+        .from("questions")
+        .select("id, type, prompt, expected_answer, explanation, sort_order, status")
+        .eq("course_id", courseId)
+        .in("status", ["active", "trashed"])
+        .order("id")
+        .limit(1000);
+      if (after) q = q.gt("id", after);
+      return q;
+    });
+    // fetchAllRows paginates by id for correctness, not display order — this page's own
+    // question order comes from sort_order, applied here instead.
+    const questionRows = [...questionRowsUnsorted].sort((a, b) => a.sort_order - b.sort_order);
 
-    const questionIds = (questionRows ?? []).map((q) => q.id);
-    const { data: optionRows } =
+    const questionIds = questionRows.map((q) => q.id);
+    const optionRows =
       questionIds.length > 0
-        ? await supabase
-            .from("question_options")
-            .select("id, question_id, label, body, is_correct")
-            .in("question_id", questionIds)
-            .order("sort_order")
-        : { data: [] };
+        ? await fetchAllRows<{
+            id: string;
+            question_id: string;
+            label: string;
+            body: string;
+            is_correct: boolean;
+            sort_order: number;
+          }>((after) => {
+            let q = supabase
+              .from("question_options")
+              .select("id, question_id, label, body, is_correct, sort_order")
+              .in("question_id", questionIds)
+              .order("id")
+              .limit(1000);
+            if (after) q = q.gt("id", after);
+            return q;
+          })
+        : [];
 
     setQuestions(
-      (questionRows ?? []).map((q) => ({
+      questionRows.map((q) => ({
         ...q,
-        options: (optionRows ?? []).filter((o) => o.question_id === q.id),
+        options: optionRows
+          .filter((o) => o.question_id === q.id)
+          .sort((a, b) => a.sort_order - b.sort_order),
       })),
     );
 

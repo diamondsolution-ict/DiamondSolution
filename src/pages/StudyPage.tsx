@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/supabasePaging";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import { LoadingScreen } from "@/components/LoadingScreen";
@@ -112,44 +113,72 @@ export default function StudyPage() {
         }
       }
 
-      const [
-        { data: questionRows },
-        { data: outlineRows },
-        { data: progress },
-      ] = await Promise.all([
-        supabase
-          .from("questions")
-          .select("id, type, prompt, expected_answer, explanation, sort_order")
-          .eq("course_id", courseId)
-          .eq("status", "active")
-          .order("sort_order"),
-        supabase
-          .from("course_outline_sections")
-          .select("title, start_question_order, end_question_order")
-          .eq("course_id", courseId)
-          .order("sort_order"),
-        supabase
-          .from("study_progress")
-          .select("current_order, completed")
-          .eq("user_id", user.id)
-          .eq("course_id", courseId)
-          .maybeSingle(),
-      ]);
+      const [questionRowsUnsorted, { data: outlineRows }, { data: progress }] =
+        await Promise.all([
+          // Keyset-paginated — a plain .select() here silently caps at Supabase's 1000-row
+          // default, which a large course's question count can exceed outright.
+          fetchAllRows<{
+            id: string;
+            type: QuestionType;
+            prompt: string;
+            expected_answer: string | null;
+            explanation: string | null;
+            sort_order: number;
+          }>((after) => {
+            let q = supabase
+              .from("questions")
+              .select("id, type, prompt, expected_answer, explanation, sort_order")
+              .eq("course_id", courseId)
+              .eq("status", "active")
+              .order("id")
+              .limit(1000);
+            if (after) q = q.gt("id", after);
+            return q;
+          }),
+          supabase
+            .from("course_outline_sections")
+            .select("title, start_question_order, end_question_order")
+            .eq("course_id", courseId)
+            .order("sort_order"),
+          supabase
+            .from("study_progress")
+            .select("current_order, completed")
+            .eq("user_id", user.id)
+            .eq("course_id", courseId)
+            .maybeSingle(),
+        ]);
+      // fetchAllRows paginates by id for correctness, not display order — the quiz's own
+      // question order comes from sort_order, applied here instead.
+      const questionRows = [...questionRowsUnsorted].sort((a, b) => a.sort_order - b.sort_order);
 
-      const questionIds = (questionRows ?? []).map((q) => q.id);
-      const { data: optionRows } =
+      const questionIds = questionRows.map((q) => q.id);
+      const optionRows =
         questionIds.length > 0
-          ? await supabase
-              .from("question_options")
-              .select("id, question_id, label, body, is_correct")
-              .in("question_id", questionIds)
-              .order("sort_order")
-          : { data: [] };
+          ? await fetchAllRows<{
+              id: string;
+              question_id: string;
+              label: string;
+              body: string;
+              is_correct: boolean;
+              sort_order: number;
+            }>((after) => {
+              let q = supabase
+                .from("question_options")
+                .select("id, question_id, label, body, is_correct, sort_order")
+                .in("question_id", questionIds)
+                .order("id")
+                .limit(1000);
+              if (after) q = q.gt("id", after);
+              return q;
+            })
+          : [];
 
       setQuestions(
-        (questionRows ?? []).map((q) => ({
+        questionRows.map((q) => ({
           ...q,
-          options: (optionRows ?? []).filter((o) => o.question_id === q.id),
+          options: optionRows
+            .filter((o) => o.question_id === q.id)
+            .sort((a, b) => a.sort_order - b.sort_order),
         })),
       );
       setOutline(outlineRows ?? []);
