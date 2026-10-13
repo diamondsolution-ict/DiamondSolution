@@ -45,8 +45,9 @@ interface PaystackTransferResult {
   data: { transfer_code: string; status: string; reference: string };
 }
 
-// NGN bank-transfer payouts only — Paystack's Transfer API has no PayPal/USDT/wire equivalent,
-// so those payout methods are settled manually by an admin outside this function.
+// NGN bank-transfer payouts only — every other currency is settled manually by an admin
+// outside this function (Paystack's Transfer API only moves NGN out of the account's own
+// balance).
 export async function createTransferRecipient(args: {
   accountNumber: string;
   bankCode: string;
@@ -99,6 +100,31 @@ export async function initiateTransfer(args: {
       reason: args.reason,
     }),
   });
+  return res.json();
+}
+
+// A Paystack transfer's status at initiateTransfer() time isn't necessarily final — it can come
+// back "pending" (queued for review/OTP finalization on Paystack's own side) and only resolve to
+// "success"/"failed"/"reversed" sometime after. This re-checks a transfer already initiated, by
+// its transfer_code, against Paystack's own current record of it — used by request-payout's
+// "recheck" action so an admin can confirm whether a withdrawal actually went through rather
+// than trusting whatever status was recorded at initiation.
+export async function verifyPaystackTransfer(
+  transferCode: string,
+): Promise<PaystackTransferResult> {
+  if (!PAYSTACK_SECRET_KEY) {
+    throw new Error(
+      "PAYSTACK_SECRET_KEY is not configured — set it with `supabase secrets set PAYSTACK_SECRET_KEY=sk_...`",
+    );
+  }
+
+  const res = await fetch(
+    `https://api.paystack.co/transfer/verify/${encodeURIComponent(transferCode)}`,
+    { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` } },
+  );
+  if (!res.ok) {
+    throw new Error(`Paystack transfer verify request failed with status ${res.status}`);
+  }
   return res.json();
 }
 

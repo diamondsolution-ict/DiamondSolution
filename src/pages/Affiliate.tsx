@@ -10,6 +10,7 @@ import {
   Gift,
   History,
   Landmark,
+  Trash2,
   Users,
   Wallet,
   XCircle,
@@ -57,8 +58,6 @@ interface Referral {
   referred_at: string;
 }
 
-const MIN_WITHDRAWAL = { NGN: 10000, USD: 10 };
-
 function randomCode(seed: string) {
   const base =
     seed
@@ -84,6 +83,12 @@ export default function Affiliate() {
   const [payoutMethods, setPayoutMethods] = useState<PayoutMethod[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [settings, setSettings] = useState({
+    commissionRate: 0.25,
+    minWithdrawalNgn: 10000,
+    minWithdrawalUsd: 10,
+  });
+  const [deletingMethodId, setDeletingMethodId] = useState<string | null>(null);
 
   const [methodForm, setMethodForm] = useState({
     currency: "NGN" as "NGN" | "USD",
@@ -101,12 +106,26 @@ export default function Affiliate() {
     if (!user) return;
     setLoading(true);
 
-    const { data: affiliateRow } = await supabase
-      .from("affiliate_profiles")
-      .select("referral_code, status, activated_at")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const [{ data: affiliateRow }, { data: settingsRow }] = await Promise.all([
+      supabase
+        .from("affiliate_profiles")
+        .select("referral_code, status, activated_at")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("app_settings")
+        .select("commission_rate, min_withdrawal_ngn, min_withdrawal_usd")
+        .eq("id", 1)
+        .maybeSingle(),
+    ]);
     setAffiliate(affiliateRow ?? null);
+    if (settingsRow) {
+      setSettings({
+        commissionRate: settingsRow.commission_rate,
+        minWithdrawalNgn: settingsRow.min_withdrawal_ngn,
+        minWithdrawalUsd: settingsRow.min_withdrawal_usd,
+      });
+    }
 
     if (affiliateRow) {
       const [
@@ -250,6 +269,30 @@ export default function Affiliate() {
     void load();
   }
 
+  async function deletePayoutMethod(id: string) {
+    if (!window.confirm("Remove this payout method?")) return;
+    setDeletingMethodId(id);
+    setError(null);
+    const { error: deleteError } = await supabase
+      .from("payout_methods")
+      .delete()
+      .eq("id", id);
+    setDeletingMethodId(null);
+    if (deleteError) {
+      setError(
+        deleteError.code === "23503"
+          ? "Can't remove this payout method — it's attached to a withdrawal request on record. Contact support if you need it changed."
+          : deleteError.message,
+      );
+      return;
+    }
+    if (withdrawForm.payoutMethodId === id) {
+      setWithdrawForm((f) => ({ ...f, payoutMethodId: "" }));
+    }
+    setInfo("Payout method removed.");
+    void load();
+  }
+
   async function requestWithdrawal(e: FormEvent) {
     e.preventDefault();
     if (!user) return;
@@ -257,7 +300,10 @@ export default function Affiliate() {
     setInfo(null);
 
     const amount = Number(withdrawForm.amount);
-    const min = MIN_WITHDRAWAL[withdrawForm.currency];
+    const min =
+      withdrawForm.currency === "NGN"
+        ? settings.minWithdrawalNgn
+        : settings.minWithdrawalUsd;
     if (!amount || amount < min) {
       setError(`Minimum withdrawal is ${min} ${withdrawForm.currency}.`);
       return;
@@ -327,8 +373,9 @@ export default function Affiliate() {
           </h2>
           <p className="mt-2 text-sm text-text-3">
             Share your personal link. When someone you refer pays for department
-            access, you earn a 25% commission — paid out to your bank account or
-            wallet once your balance clears the minimum withdrawal.
+            access, you earn a {Math.round(settings.commissionRate * 100)}%
+            commission — paid out to your bank account once your balance clears
+            the minimum withdrawal.
           </p>
           {error && (
             <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -450,6 +497,12 @@ export default function Affiliate() {
               </option>
             ))}
           </select>
+          <p className="text-xs text-text-3">
+            Minimum{" "}
+            {withdrawForm.currency === "NGN"
+              ? `₦${settings.minWithdrawalNgn.toLocaleString()}`
+              : `$${settings.minWithdrawalUsd.toLocaleString()}`}
+          </p>
           <button
             type="submit"
             className="btn-primary flex w-full items-center justify-center gap-2"
@@ -463,11 +516,40 @@ export default function Affiliate() {
       <div className="card-luxury mt-4 p-5">
         <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
           <Landmark size={16} className="text-royal" />
-          Add a payout method
+          Payout methods
         </h2>
         <p className="mt-1 text-xs text-text-3">
-          Bank transfer only — payouts are sent automatically via Paystack.
+          Bank transfer only — payouts are sent via Paystack.
         </p>
+
+        {payoutMethods.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {payoutMethods.map((m) => (
+              <li
+                key={m.id}
+                className="flex items-center justify-between gap-2 rounded-xl border border-canvas-border px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-text-1">
+                    {m.account_name}
+                  </p>
+                  <p className="text-xs text-text-3">
+                    {m.account_number} · {m.currency}
+                  </p>
+                </div>
+                <button
+                  onClick={() => void deletePayoutMethod(m.id)}
+                  disabled={deletingMethodId === m.id}
+                  aria-label={`Remove payout method ${m.account_name}`}
+                  className="shrink-0 rounded-lg p-1.5 text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
         <form onSubmit={addPayoutMethod} className="mt-3 space-y-3">
           <select
             value={methodForm.currency}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
 import { Download, Link2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
-import { StepUpModal } from "@/components/StepUpModal";
 import { downloadCSV } from "@/lib/csv";
 
 type SubTab = "matrix" | "registry";
@@ -44,12 +44,6 @@ export default function AdminAffiliates() {
   const [displayNames, setDisplayNames] = useState<Record<string, string>>({});
   const [emails, setEmails] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
-  const [pendingCommissionId, setPendingCommissionId] = useState<string | null>(
-    null,
-  );
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -111,26 +105,6 @@ export default function AdminAffiliates() {
   useEffect(() => {
     void load();
   }, []);
-
-  async function authorizePayment(otpToken: string) {
-    if (!pendingCommissionId) return;
-    setBusyId(pendingCommissionId);
-    setError(null);
-    const { data, error: invokeError } = await supabase.functions.invoke(
-      "admin-approve-commission",
-      { body: { commission_id: pendingCommissionId, otp_token: otpToken } },
-    );
-    setBusyId(null);
-    setPendingCommissionId(null);
-    if (invokeError || !data?.success) {
-      setError(
-        `Couldn't approve payment: ${invokeError?.message ?? data?.error ?? "unknown error"}`,
-      );
-      return;
-    }
-    setInfo("Commission marked as paid.");
-    void load();
-  }
 
   function balancesFor(userId: string) {
     return balances.filter((b) => b.user_id === userId);
@@ -197,17 +171,6 @@ export default function AdminAffiliates() {
         Export
       </button>
 
-      {error && (
-        <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {error}
-        </p>
-      )}
-      {info && (
-        <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {info}
-        </p>
-      )}
-
       {loading ? (
         <p className="mt-4 text-sm text-text-3">Loading…</p>
       ) : subTab === "matrix" ? (
@@ -218,8 +181,13 @@ export default function AdminAffiliates() {
           </div>
         ) : (
           <>
-          {/* Below sm: 4 columns including the action button don't fit a phone screen —
-              a stacked card keeps "Authorize payment" visible instead of scrolled off. */}
+          {/* Read-only ledger — there used to be an "Authorize payment" action here that just
+              flipped commissions.status without moving any money or affecting the affiliate's
+              actual balance (affiliate_balances sums every commission regardless of status).
+              Removed: it looked like a real payout control but wasn't one. The real payout
+              mechanism — the Withdrawals tab, backed by Paystack transfers or a manual
+              mark-as-paid — is unaffected by this; this tab is purely "what was earned, when".
+              Below sm: 3 columns still don't fit a phone screen — a stacked card instead. */}
           <div className="mt-4 space-y-3 sm:hidden">
             {commissions.map((c) => (
               <div key={c.id} className="card-luxury p-4">
@@ -227,26 +195,13 @@ export default function AdminAffiliates() {
                   <p className="truncate font-semibold text-text-1">
                     {usernames[c.referrer_user_id] ?? c.referrer_user_id}
                   </p>
-                  <span className="badge-royal shrink-0">
-                    {c.status === "paid" ? "Paid" : "Success"}
-                  </span>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-canvas-border pt-3">
-                  <p className="font-bold text-emerald-600 line-through decoration-2">
+                  <p className="shrink-0 font-bold text-text-1">
                     {money(c.commission_amount, c.commission_currency)}
                   </p>
-                  {c.status === "paid" ? (
-                    <span className="text-xs font-semibold text-text-3">Settled</span>
-                  ) : (
-                    <button
-                      onClick={() => setPendingCommissionId(c.id)}
-                      disabled={busyId === c.id}
-                      className="rounded-xl border border-royal/30 bg-royal-soft px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-royal transition-colors hover:bg-royal/15 disabled:opacity-50"
-                    >
-                      Authorize payment
-                    </button>
-                  )}
                 </div>
+                <p className="mt-1 text-xs text-text-3">
+                  {format(new Date(c.created_at), "yyyy-MM-dd HH:mm")}
+                </p>
               </div>
             ))}
           </div>
@@ -257,8 +212,7 @@ export default function AdminAffiliates() {
                 <tr className="border-b border-canvas-border bg-canvas-soft text-[11px] font-bold uppercase tracking-widest text-text-3">
                   <th className="px-5 py-3 font-bold">Commission referrer</th>
                   <th className="px-5 py-3 font-bold">Accrued amount</th>
-                  <th className="px-5 py-3 font-bold">Protocol status</th>
-                  <th className="px-5 py-3 font-bold">Actions</th>
+                  <th className="px-5 py-3 font-bold">Earned</th>
                 </tr>
               </thead>
               <tbody>
@@ -267,28 +221,11 @@ export default function AdminAffiliates() {
                     <td className="px-5 py-4 font-semibold text-text-1">
                       {usernames[c.referrer_user_id] ?? c.referrer_user_id}
                     </td>
-                    <td className="px-5 py-4 font-bold text-emerald-600 line-through decoration-2">
+                    <td className="px-5 py-4 font-bold text-text-1">
                       {money(c.commission_amount, c.commission_currency)}
                     </td>
-                    <td className="px-5 py-4">
-                      <span className="badge-royal">
-                        {c.status === "paid" ? "Paid" : "Success"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      {c.status === "paid" ? (
-                        <span className="text-xs font-semibold text-text-3">
-                          Settled
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => setPendingCommissionId(c.id)}
-                          disabled={busyId === c.id}
-                          className="rounded-xl border border-royal/30 bg-royal-soft px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-royal transition-colors hover:bg-royal/15 disabled:opacity-50"
-                        >
-                          Authorize payment
-                        </button>
-                      )}
+                    <td className="px-5 py-4 text-xs text-text-3">
+                      {format(new Date(c.created_at), "yyyy-MM-dd HH:mm")}
                     </td>
                   </tr>
                 ))}
@@ -409,15 +346,6 @@ export default function AdminAffiliates() {
           </table>
         </div>
         </>
-      )}
-
-      {pendingCommissionId && (
-        <StepUpModal
-          title="Authorize commission payment"
-          description="Marks this commission as paid. This is bookkeeping only — it doesn't move money; use the Withdrawals tab for the actual payout."
-          onCancel={() => setPendingCommissionId(null)}
-          onVerified={(token) => void authorizePayment(token)}
-        />
       )}
     </AdminLayout>
   );

@@ -5,11 +5,13 @@ import {
   KeyRound,
   Mail,
   MessageCircle,
+  Percent,
   Save,
   Send,
   Settings,
   ShieldCheck,
   Twitter,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -99,13 +101,32 @@ export default function AdminSettings() {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [codeInfo, setCodeInfo] = useState<string | null>(null);
 
+  const [commissionRate, setCommissionRate] = useState("25");
+  const [minWithdrawalNgn, setMinWithdrawalNgn] = useState("10000");
+  const [minWithdrawalUsd, setMinWithdrawalUsd] = useState("10");
+  const [autoPayoutEnabled, setAutoPayoutEnabled] = useState(true);
+  const [affiliateSaving, setAffiliateSaving] = useState(false);
+  const [affiliateError, setAffiliateError] = useState<string | null>(null);
+  const [affiliateInfo, setAffiliateInfo] = useState<string | null>(null);
+
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("institutional_links")
-      .select("telegram, whatsapp, facebook, twitter, instagram, support_email")
-      .eq("id", 1)
-      .maybeSingle();
+    const [{ data }, { data: affiliateSettings }] = await Promise.all([
+      supabase
+        .from("institutional_links")
+        .select(
+          "telegram, whatsapp, facebook, twitter, instagram, support_email",
+        )
+        .eq("id", 1)
+        .maybeSingle(),
+      supabase
+        .from("app_settings")
+        .select(
+          "commission_rate, min_withdrawal_ngn, min_withdrawal_usd, withdrawal_auto_payout_enabled",
+        )
+        .eq("id", 1)
+        .maybeSingle(),
+    ]);
     if (data) {
       setLinks({
         telegram: data.telegram ?? "",
@@ -115,6 +136,12 @@ export default function AdminSettings() {
         instagram: data.instagram ?? "",
         support_email: data.support_email ?? "",
       });
+    }
+    if (affiliateSettings) {
+      setCommissionRate(String(Math.round(affiliateSettings.commission_rate * 100)));
+      setMinWithdrawalNgn(String(affiliateSettings.min_withdrawal_ngn));
+      setMinWithdrawalUsd(String(affiliateSettings.min_withdrawal_usd));
+      setAutoPayoutEnabled(affiliateSettings.withdrawal_auto_payout_enabled);
     }
     setLoading(false);
   }
@@ -143,6 +170,43 @@ export default function AdminSettings() {
       return;
     }
     setInfo("Settings saved.");
+  }
+
+  async function saveAffiliateSettings(e: FormEvent) {
+    e.preventDefault();
+    setAffiliateError(null);
+    setAffiliateInfo(null);
+
+    const rate = Number(commissionRate);
+    const ngn = Number(minWithdrawalNgn);
+    const usd = Number(minWithdrawalUsd);
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+      setAffiliateError("Commission rate must be between 0 and 100.");
+      return;
+    }
+    if (!Number.isFinite(ngn) || ngn <= 0 || !Number.isFinite(usd) || usd <= 0) {
+      setAffiliateError("Minimum withdrawal amounts must be greater than 0.");
+      return;
+    }
+
+    setAffiliateSaving(true);
+    const { error: updateError } = await supabase
+      .from("app_settings")
+      .update({
+        commission_rate: rate / 100,
+        min_withdrawal_ngn: ngn,
+        min_withdrawal_usd: usd,
+        withdrawal_auto_payout_enabled: autoPayoutEnabled,
+        updated_by: user?.id,
+      })
+      .eq("id", 1);
+    setAffiliateSaving(false);
+
+    if (updateError) {
+      setAffiliateError(updateError.message);
+      return;
+    }
+    setAffiliateInfo("Affiliate program settings saved.");
   }
 
   async function changeStepUpCode(e: FormEvent) {
@@ -234,6 +298,107 @@ export default function AdminSettings() {
       )}
 
       <form
+        onSubmit={saveAffiliateSettings}
+        className="card-luxury mt-6 space-y-4 p-6"
+      >
+        <div>
+          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+            <Percent size={17} className="text-royal" />
+            Affiliate program
+          </h2>
+          <p className="mt-1 text-sm text-text-3">
+            Controls what a referrer earns, the smallest withdrawal they can request, and how
+            payouts get settled.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label className="text-sm font-medium text-text-2">
+              Commission rate (%)
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step="0.1"
+              value={commissionRate}
+              onChange={(e) => setCommissionRate(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+            />
+            <p className="mt-1 text-xs text-text-3">
+              % of a referred payment credited to the referrer.
+            </p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-text-2">
+              Min withdrawal (₦)
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={minWithdrawalNgn}
+              onChange={(e) => setMinWithdrawalNgn(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-text-2">
+              Min withdrawal ($)
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={minWithdrawalUsd}
+              onChange={(e) => setMinWithdrawalUsd(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+            />
+          </div>
+        </div>
+
+        <label className="flex items-start gap-3 rounded-xl border border-canvas-border bg-canvas-soft p-4">
+          <input
+            type="checkbox"
+            checked={autoPayoutEnabled}
+            onChange={(e) => setAutoPayoutEnabled(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-royal"
+          />
+          <span>
+            <span className="flex items-center gap-1.5 text-sm font-semibold text-text-1">
+              <Wallet size={14} className="text-royal" />
+              Automatic payouts
+            </span>
+            <span className="mt-0.5 block text-xs text-text-3">
+              When on, approving an eligible NGN bank-transfer withdrawal (Withdrawals tab) sends
+              it via Paystack immediately. When off, every withdrawal — eligible or not — must be
+              settled with "Mark as paid manually", so nothing pays out unless an admin confirms
+              it happened outside this app.
+            </span>
+          </span>
+        </label>
+
+        {affiliateError && (
+          <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {affiliateError}
+          </p>
+        )}
+        {affiliateInfo && (
+          <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {affiliateInfo}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={affiliateSaving}
+          className="btn-primary flex items-center gap-2"
+        >
+          <Save size={15} />
+          {affiliateSaving ? "Saving…" : "Save affiliate settings"}
+        </button>
+      </form>
+
+      <form
         onSubmit={changeStepUpCode}
         className="card-luxury mt-6 space-y-4 p-6"
       >
@@ -244,8 +409,8 @@ export default function AdminSettings() {
           </h2>
           <p className="mt-1 text-sm text-text-3">
             Entered in the "Security Clearance Required" prompt before destructive admin
-            actions (suspending/deleting users, changing roles, approving commissions).
-            Default is <span className="font-mono font-semibold">12345</span> — change it here.
+            actions (suspending/deleting users, changing roles). Default is{" "}
+            <span className="font-mono font-semibold">12345</span> — change it here.
           </p>
         </div>
 

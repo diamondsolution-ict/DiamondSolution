@@ -183,10 +183,11 @@ export async function processDepartmentAccessPayment({
   return { alreadyProcessed: false };
 }
 
-// 25% of the base price, credited only when the buyer was referred by a currently-active
-// affiliate (opt-in — see 03-BUSINESS-RULES-REDESIGN.md §1). The rate is hardcoded for now,
-// same as the withdrawal minimums, pending an app_settings table. Silently a no-op when there's
-// no referral or the referrer never activated — never blocks the payment itself.
+// A configurable % of the base price (app_settings.commission_rate, admin-editable from
+// Admin → Settings — see 20261013150000_affiliate_program_configurable.sql), credited only
+// when the buyer was referred by a currently-active affiliate (opt-in — see
+// 03-BUSINESS-RULES-REDESIGN.md §1). Silently a no-op when there's no referral or the referrer
+// never activated — never blocks the payment itself.
 async function creditReferralCommission({
   db,
   paymentId,
@@ -200,8 +201,6 @@ async function creditReferralCommission({
   baseAmount: number;
   baseCurrency: string;
 }) {
-  const COMMISSION_RATE = 0.25;
-
   const { data: referral } = await db
     .from("referrals")
     .select("referrer_user_id")
@@ -218,7 +217,16 @@ async function creditReferralCommission({
 
   if (affiliate?.status !== "active") return;
 
-  const commissionAmount = Math.round(baseAmount * COMMISSION_RATE * 100) / 100;
+  const { data: settings } = await db
+    .from("app_settings")
+    .select("commission_rate")
+    .eq("id", 1)
+    .maybeSingle();
+  // Falls back to the long-standing 25% only if the singleton row is somehow missing — it's
+  // seeded by migration and admin-only to write, so this should never actually trigger.
+  const commissionRate = settings?.commission_rate ?? 0.25;
+
+  const commissionAmount = Math.round(baseAmount * commissionRate * 100) / 100;
 
   // unique(payment_id) makes this safe against the same payment being processed twice
   // (webhook + client verify both landing) — the second insert just violates the constraint.
@@ -228,7 +236,7 @@ async function creditReferralCommission({
     referred_user_id: referredUserId,
     base_amount: baseAmount,
     base_currency: baseCurrency,
-    commission_rate: COMMISSION_RATE,
+    commission_rate: commissionRate,
     commission_amount: commissionAmount,
     commission_currency: baseCurrency,
   });
