@@ -5,6 +5,7 @@ import {
   BookX,
   CheckCircle2,
   ChevronLeft,
+  ChevronRight,
   Lightbulb,
   Lock,
   PartyPopper,
@@ -498,162 +499,184 @@ export default function StudyPage() {
     );
   }
 
+  const progressPct = ((currentIndex + 1) / questions.length) * 100;
+
   return (
-    <Layout title={courseTitle} onBack={() => navigate(-1)}>
-      <div className="card-luxury p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="min-w-0 truncate text-xs font-bold text-text-3">
-            {activeSection ? activeSection.title : courseTitle}
-          </p>
-          <p className="shrink-0 text-xs font-bold text-royal">
-            Question {currentIndex + 1} of {questions.length}
-          </p>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-canvas-soft">
-          <div
-            className="h-full bg-royal transition-all"
-            style={{
-              width: `${((currentIndex + 1) / questions.length) * 100}%`,
-            }}
-          />
-        </div>
-        <div className="mt-3 flex items-center gap-2">
+    <div className="min-h-screen bg-canvas-soft pb-28">
+      <header className="sticky top-0 z-10 bg-navy text-white">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+          <button
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+            className="rounded-full p-1.5 text-slate-300 hover:bg-white/10 hover:text-white"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-bold">
+              {activeSection ? activeSection.title : courseTitle}
+            </p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              Question {currentIndex + 1} of {questions.length}
+            </p>
+          </div>
           <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
+            className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-bold ${
               secondsLeft <= 10
-                ? "animate-pulse bg-rose-50 text-rose-600"
-                : "bg-canvas-soft text-text-2"
+                ? "animate-pulse bg-rose-500/20 text-rose-300"
+                : "bg-white/10 text-slate-200"
             }`}
           >
             <Timer size={12} />
             {secondsLeft}s
           </span>
-          <span className="rounded-full bg-canvas-soft px-2.5 py-1 text-xs font-bold text-text-2">
+          <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold text-gold">
             Score: {totalCorrect}
           </span>
         </div>
-      </div>
+        <div className="h-1 w-full bg-white/10">
+          <div
+            className="h-full bg-gold transition-all"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </header>
 
-      <div className="mt-4 card-luxury p-6">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-text-3">
-          Archive query · {question.type === "objective" ? "MCQ" : "Application"}
-        </p>
-        <p className="mt-2 whitespace-pre-wrap font-medium text-text-1">
-          {question.prompt}
-        </p>
+      <main className="mx-auto max-w-3xl px-4 py-5">
+        <div className="card-luxury p-6">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-text-3">
+            Archive query · {question.type === "objective" ? "MCQ" : "Application"}
+          </p>
+          <p className="mt-2 whitespace-pre-wrap font-medium text-text-1">
+            {question.prompt}
+          </p>
 
-        {question.type === "objective" ? (
-          <div className="mt-4 space-y-2">
-            {question.options.map((opt) => {
-              const isSelected = selectedOptionId === opt.id;
-              const showCorrect = submitted && opt.is_correct;
-              const showWrong = submitted && isSelected && !opt.is_correct;
-              return (
-                <button
-                  key={opt.id}
-                  disabled={submitted}
-                  onClick={() => setSelectedOptionId(opt.id)}
-                  className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
-                    showCorrect
-                      ? "border-emerald-400 bg-emerald-50 text-emerald-800"
-                      : showWrong
-                        ? "border-rose-400 bg-rose-50 text-rose-800"
-                        : isSelected
-                          ? "border-royal bg-royal-soft text-royal"
-                          : submitted
-                            ? "border-canvas-border opacity-50"
-                            : "border-canvas-border hover:border-royal/40"
-                  }`}
-                >
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+          {question.type === "objective" ? (
+            <div className="mt-4 space-y-2">
+              {question.options.map((opt) => {
+                const isSelected = selectedOptionId === opt.id;
+                const showCorrect = submitted && opt.is_correct;
+                const showWrong = submitted && isSelected && !opt.is_correct;
+                return (
+                  <button
+                    key={opt.id}
+                    disabled={submitted}
+                    onClick={() => setSelectedOptionId(opt.id)}
+                    className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
                       showCorrect
-                        ? "bg-emerald-500 text-white"
+                        ? "border-royal bg-royal-soft text-royal"
                         : showWrong
-                          ? "bg-rose-500 text-white"
+                          ? "border-rose-400 bg-rose-50 text-rose-800"
                           : isSelected
-                            ? "bg-royal text-white"
-                            : "bg-canvas-soft text-text-2"
+                            ? "border-royal bg-royal-soft text-royal"
+                            : submitted
+                              ? "border-canvas-border opacity-50"
+                              : "border-canvas-border hover:border-royal/40"
                     }`}
                   >
-                    {opt.label}
-                  </span>
-                  <span className="flex-1 whitespace-pre-wrap">
-                    {opt.body}
-                  </span>
-                  {showCorrect && (
-                    <CheckCircle2
-                      size={16}
-                      className="shrink-0 text-emerald-600"
-                    />
-                  )}
-                  {showWrong && (
-                    <XCircle size={16} className="shrink-0 text-rose-600" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="mt-4">
-            {submitted && (
-              <div className="diamond-gradient rounded-xl p-4 text-sm text-white">
-                <p className="flex items-center gap-2 font-semibold">
-                  <CheckCircle2 size={15} />
-                  Expected response
-                </p>
-                <p className="mt-1 whitespace-pre-wrap text-white/90">
-                  {question.expected_answer || "No expected answer recorded."}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                        showCorrect
+                          ? "bg-royal text-white"
+                          : showWrong
+                            ? "bg-rose-500 text-white"
+                            : isSelected
+                              ? "bg-royal text-white"
+                              : "bg-canvas-soft text-text-2"
+                      }`}
+                    >
+                      {opt.label}
+                    </span>
+                    <span className="flex-1 whitespace-pre-wrap">
+                      {opt.body}
+                    </span>
+                    {showCorrect && (
+                      <CheckCircle2 size={16} className="shrink-0 text-royal" />
+                    )}
+                    {showWrong && (
+                      <XCircle size={16} className="shrink-0 text-rose-600" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-4">
+              {submitted && (
+                <div className="diamond-gradient rounded-xl p-4 text-sm text-white">
+                  <p className="flex items-center gap-2 font-semibold">
+                    <CheckCircle2 size={15} />
+                    Expected response
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-white/90">
+                    {question.expected_answer || "No expected answer recorded."}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
-        {submitted && question.explanation && (
-          <div className="mt-4 rounded-xl bg-navy p-4 text-sm text-white">
-            <p className="flex items-center gap-2 font-semibold">
-              <Lightbulb size={15} />
-              Explanation
-            </p>
-            <p className="mt-1 whitespace-pre-wrap text-white/90">
-              {question.explanation}
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <button
-          onClick={handlePrevious}
-          disabled={currentIndex === 0}
-          className="btn-outline flex items-center gap-1.5 text-sm disabled:opacity-40"
-        >
-          <ChevronLeft size={15} />
-          Previous
-        </button>
+          {submitted && question.explanation && (
+            <div className="mt-4 rounded-xl bg-navy p-4 text-sm text-white">
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gold">
+                <Lightbulb size={15} />
+                Explanation
+              </p>
+              <p className="mt-1.5 whitespace-pre-wrap text-white/90">
+                {question.explanation}
+              </p>
+            </div>
+          )}
+        </div>
 
         <button
           onClick={() => navigate(-1)}
-          className="text-xs font-semibold text-text-3 hover:text-text-1 hover:underline"
+          className="mx-auto mt-4 block text-xs font-semibold text-text-3 hover:text-text-1 hover:underline"
         >
           Exit quiz
         </button>
+      </main>
 
-        {!submitted ? (
-          <button
-            onClick={() => void handleSubmit(false)}
-            disabled={question.type === "objective" && !selectedOptionId}
-            className="btn-primary disabled:opacity-40"
-          >
-            {question.type === "application" ? "Check answer" : "Submit"}
-          </button>
-        ) : (
-          <button onClick={handleNext} className="btn-primary">
-            {currentIndex === questions.length - 1 ? "Finish" : "Next"}
-          </button>
-        )}
-      </div>
-    </Layout>
+      <footer className="fixed inset-x-0 bottom-0 z-10 bg-navy text-white">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              onClick={handlePrevious}
+              disabled={currentIndex === 0}
+              aria-label="Previous question"
+              className="shrink-0 rounded-full p-1.5 text-slate-300 hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-30"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="min-w-0">
+              <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                Protocol status
+              </span>
+              <span className="block truncate text-xs font-bold text-gold">
+                {submitted ? "Synthesis complete" : "Awaiting response"}
+              </span>
+            </span>
+          </div>
+
+          {!submitted ? (
+            <button
+              onClick={() => void handleSubmit(false)}
+              disabled={question.type === "objective" && !selectedOptionId}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-gold px-5 py-2.5 text-sm font-bold text-navy transition-all hover:bg-gold-light active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+            >
+              {question.type === "application" ? "Check answer" : "Submit"}
+            </button>
+          ) : (
+            <button
+              onClick={handleNext}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-gold px-5 py-2.5 text-sm font-bold text-navy transition-all hover:bg-gold-light active:scale-[0.98]"
+            >
+              {currentIndex === questions.length - 1 ? "Finish" : "Next"}
+              <ChevronRight size={15} />
+            </button>
+          )}
+        </div>
+      </footer>
+    </div>
   );
 }

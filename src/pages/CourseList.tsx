@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePaystackPayment } from "react-paystack";
-import { BookOpen, FolderOpen, Lock, Sparkles } from "lucide-react";
+import { BookOpen, ChevronRight, FolderOpen, Lock, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -196,10 +196,20 @@ export default function CourseList() {
                     {d.name.charAt(0)}
                   </div>
                 )}
-                <span className="flex-1 font-heading font-bold text-text-1">
-                  {d.name}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-heading font-bold text-text-1">
+                    {d.name}
+                  </span>
+                  {granted && (
+                    <span className="badge-royal mt-1 inline-flex">Authorized</span>
+                  )}
                 </span>
-                {granted && <span className="badge-royal">Authorized</span>}
+                <span
+                  aria-hidden="true"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-royal-soft text-royal"
+                >
+                  <ChevronRight size={18} />
+                </span>
               </button>
             );
           })}
