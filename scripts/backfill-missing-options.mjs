@@ -169,8 +169,20 @@ async function main() {
         noMatch++;
         continue;
       }
-      if (candidates.length > 1) {
-        unresolved.push({ q, reason: `${candidates.length} export questions share this exact prompt — ambiguous` });
+      // Two export questions sharing a prompt isn't necessarily a real conflict — the same
+      // question legitimately appears in more than one old course (e.g. "Pharmacotherapeutics"
+      // and "Clinical Pharmacy" both carrying the same medication-reconciliation questions
+      // verbatim). When every candidate has byte-for-byte identical options and the same
+      // correct answer, there's nothing to actually choose between — any of them gives the
+      // same result. Only flag it when the candidates genuinely disagree.
+      const distinctContent = new Set(
+        candidates.map((c) => JSON.stringify(c.options) + "|" + c.correctAnswer),
+      );
+      if (distinctContent.size > 1) {
+        unresolved.push({
+          q,
+          reason: `${candidates.length} export questions share this exact prompt with different options/answers — ambiguous`,
+        });
         ambiguous++;
         continue;
       }
