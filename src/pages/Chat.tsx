@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
@@ -13,6 +14,7 @@ interface ChatMessage {
 }
 
 export default function Chat() {
+  const { user } = useAuth();
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -37,10 +39,19 @@ export default function Chat() {
   // Finds (or confirms the absence of) the student's own thread and loads its history.
   // Throws on any failure instead of swallowing it, so init() below can tell "real error,
   // worth retrying" apart from "no thread yet — a genuinely new conversation".
-  async function loadOwnThread() {
+  //
+  // Explicitly scoped to this user's id rather than leaning on RLS alone: the select policy is
+  // `user_id = auth.uid() or is_moderator_or_admin()`, so for a staff account (who can also be
+  // a logged-in student here) an unscoped select returns every thread in the table, not just
+  // their own — and .maybeSingle() throws "JSON object requested, multiple (or no) rows
+  // returned" the moment a second thread exists anywhere. Confirmed by reproducing it directly:
+  // a moderator/admin account opening this page saw exactly that error once another student had
+  // messaged support.
+  async function loadOwnThread(userId: string) {
     const { data, error: fetchError } = await supabase
       .from("chat_threads")
       .select("id")
+      .eq("user_id", userId)
       .maybeSingle();
     if (fetchError) throw fetchError;
     if (data) {
@@ -55,10 +66,11 @@ export default function Chat() {
   // `error` entirely, silently rendering the "Say hello" empty state even for a student with
   // a real conversation already in progress, as if no thread existed at all.
   async function init(isRetry = false) {
+    if (!user) return;
     setLoading(true);
     setLoadError(false);
     try {
-      await loadOwnThread();
+      await loadOwnThread(user.id);
       setLoading(false);
     } catch (err) {
       if (!isRetry) {
@@ -83,7 +95,8 @@ export default function Chat() {
 
   useEffect(() => {
     void init();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Live delivery for admin replies — the one Realtime subscription in this app
   // (20261006100000_chat.sql). Only wired up once a thread exists: the first message
