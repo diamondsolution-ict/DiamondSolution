@@ -28,6 +28,17 @@ interface PaymentRow {
   verified_at: string | null;
   raw_provider_response: Record<string, unknown> | null;
   departments: { name: string } | null;
+  access_grants: { expires_at: string | null }[] | null;
+}
+
+function accessSummary(p: PaymentRow): string | null {
+  if (p.purpose !== "department_access") return null;
+  if (p.status !== "success") return null;
+  const grant = p.access_grants?.[0];
+  if (!grant) return null;
+  return grant.expires_at
+    ? `Access until ${format(new Date(grant.expires_at), "MMM d, yyyy")}`
+    : "Lifetime access";
 }
 
 type StatusFilter = "all" | "success" | "pending" | "failed";
@@ -75,7 +86,7 @@ export default function PaymentHistory() {
     const { data } = await supabase
       .from("payments")
       .select(
-        "id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, departments ( name )",
+        "id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, departments ( name ), access_grants ( expires_at )",
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -128,7 +139,7 @@ export default function PaymentHistory() {
       const { data: fresh } = await supabase
         .from("payments")
         .select(
-          "id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, departments ( name )",
+          "id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, departments ( name ), access_grants ( expires_at )",
         )
         .eq("id", selected.id)
         .maybeSingle();
@@ -225,8 +236,12 @@ export default function PaymentHistory() {
                   {p.departments?.name ?? PURPOSE_LABEL[p.purpose]}
                 </p>
                 <p className="mt-0.5 text-xs text-text-3">
-                  {format(new Date(p.created_at), "MMM d, yyyy · HH:mm")} · {p.provider}
+                  {PURPOSE_LABEL[p.purpose]} · {format(new Date(p.created_at), "MMM d, yyyy · HH:mm")} ·{" "}
+                  {p.provider}
                 </p>
+                {accessSummary(p) && (
+                  <p className="mt-0.5 text-xs font-medium text-royal">{accessSummary(p)}</p>
+                )}
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-sm font-bold text-text-1">
@@ -283,12 +298,18 @@ export default function PaymentHistory() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-text-3">
-                  For
+                  What for
                 </p>
-                <p className="text-text-1">
-                  {selected.departments?.name ?? PURPOSE_LABEL[selected.purpose]}
-                </p>
+                <p className="text-text-1">{PURPOSE_LABEL[selected.purpose]}</p>
               </div>
+              {selected.departments?.name && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-text-3">
+                    Department
+                  </p>
+                  <p className="text-text-1">{selected.departments.name}</p>
+                </div>
+              )}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-text-3">
                   Provider
@@ -304,12 +325,22 @@ export default function PaymentHistory() {
                 </p>
               </div>
               {selected.verified_at && (
-                <div className="col-span-2">
+                <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-text-3">
                     Verified
                   </p>
                   <p className="text-text-1">
                     {format(new Date(selected.verified_at), "yyyy-MM-dd HH:mm:ss")}
+                  </p>
+                </div>
+              )}
+              {accessSummary(selected) && (
+                <div className="col-span-2 rounded-lg bg-emerald-50 px-3 py-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    Access granted
+                  </p>
+                  <p className="text-sm font-semibold text-emerald-800">
+                    {accessSummary(selected)}
                   </p>
                 </div>
               )}
