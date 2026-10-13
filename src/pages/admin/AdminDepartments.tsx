@@ -445,11 +445,11 @@ export default function AdminDepartments() {
                       <td className="px-5 py-4">
                         {ngn > 0 ? (
                           <>
-                            <p className="font-bold text-royal line-through decoration-2">
+                            <p className="font-bold text-text-1">
                               ₦{ngn.toLocaleString()}
                             </p>
                             {usd > 0 && (
-                              <p className="text-xs font-semibold text-royal line-through decoration-2">
+                              <p className="text-xs font-semibold text-text-3">
                                 ${usd.toLocaleString()}
                               </p>
                             )}

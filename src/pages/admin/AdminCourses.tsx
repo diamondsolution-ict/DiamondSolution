@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
@@ -6,6 +6,7 @@ import {
   BookPlus,
   ListChecks,
   Pencil,
+  Plus,
   X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -60,6 +61,19 @@ export default function AdminCourses() {
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("published");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!showForm) return;
+    titleRef.current?.focus();
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") resetForm();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm]);
 
   async function load() {
     setLoading(true);
@@ -107,6 +121,12 @@ export default function AdminCourses() {
     setQuestionType("objective");
     setDescription("");
     setStatus("published");
+    setShowForm(false);
+  }
+
+  function openAdd() {
+    resetForm();
+    setShowForm(true);
   }
 
   function startEdit(c: Course) {
@@ -116,6 +136,7 @@ export default function AdminCourses() {
     setQuestionType(c.default_question_type);
     setDescription(c.description ?? "");
     setStatus(c.status as (typeof STATUSES)[number]);
+    setShowForm(true);
   }
 
   async function handleSubmitForm(e: FormEvent) {
@@ -200,133 +221,163 @@ export default function AdminCourses() {
 
       {departmentId && (
         <>
-          <form
-            onSubmit={handleSubmitForm}
-            className="card-luxury mt-6 space-y-4 p-6"
+          <button
+            onClick={openAdd}
+            className="btn-primary mt-6 flex items-center gap-2"
           >
-            <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
-                {editingId ? (
-                  <Pencil size={17} className="text-royal" />
-                ) : (
-                  <BookPlus size={17} className="text-royal" />
-                )}
-                {editingId ? "Edit course" : "Add course"}
-              </h2>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="flex items-center gap-1 text-xs font-semibold text-text-3 hover:text-text-1"
-                >
-                  <X size={13} />
-                  Cancel edit
-                </button>
-              )}
-            </div>
+            <Plus size={16} />
+            Add course
+          </button>
 
-            {error && (
-              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                {error}
-              </p>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-text-2">
-                  Title
-                </label>
-                <input
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-2">
-                  Level
-                </label>
-                <select
-                  required
-                  value={levelId}
-                  onChange={(e) => setLevelId(e.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">Select a level</option>
-                  {levels.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-2">
-                Question type
-              </label>
-              <select
-                value={questionType}
-                onChange={(e) =>
-                  setQuestionType(e.target.value as "objective" | "application")
-                }
-                className={`${inputClass} max-w-xs`}
-              >
-                <option value="objective">Objective (multiple choice)</option>
-                <option value="application">Application</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-2">
-                Description (optional)
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className={inputClass}
-                rows={3}
-              />
-            </div>
-
-            {editingId && (
-              <div>
-                <label className="block text-sm font-medium text-text-2">
-                  Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value as (typeof STATUSES)[number])
-                  }
-                  className={`${inputClass} max-w-xs capitalize`}
-                >
-                  {STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn-primary flex items-center gap-2"
+          {showForm && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 p-4"
+              onClick={resetForm}
             >
-              {editingId ? <Pencil size={15} /> : <BookPlus size={15} />}
-              {saving
-                ? editingId
-                  ? "Saving…"
-                  : "Creating…"
-                : editingId
-                  ? "Save changes"
-                  : "Create course"}
-            </button>
-          </form>
+              <form
+                onSubmit={handleSubmitForm}
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="course-form-heading"
+                className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+              >
+                <div className="flex items-center justify-between">
+                  <h2
+                    id="course-form-heading"
+                    className="flex items-center gap-2 font-heading text-base font-bold text-text-1"
+                  >
+                    {editingId ? (
+                      <Pencil size={17} className="text-royal" />
+                    ) : (
+                      <BookPlus size={17} className="text-royal" />
+                    )}
+                    {editingId ? "Edit course" : "Add course"}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    aria-label={editingId ? "Cancel edit" : "Close"}
+                    className="flex items-center gap-1 text-xs font-semibold text-text-3 hover:text-text-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal"
+                  >
+                    <X size={13} aria-hidden="true" />
+                    {editingId ? "Cancel edit" : "Close"}
+                  </button>
+                </div>
+
+                {error && (
+                  <p
+                    role="alert"
+                    className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                  >
+                    {error}
+                  </p>
+                )}
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="course-title" className="block text-sm font-medium text-text-2">
+                      Title
+                    </label>
+                    <input
+                      id="course-title"
+                      ref={titleRef}
+                      required
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="course-level" className="block text-sm font-medium text-text-2">
+                      Level
+                    </label>
+                    <select
+                      id="course-level"
+                      required
+                      value={levelId}
+                      onChange={(e) => setLevelId(e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">Select a level</option>
+                      {levels.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label htmlFor="course-question-type" className="block text-sm font-medium text-text-2">
+                    Question type
+                  </label>
+                  <select
+                    id="course-question-type"
+                    value={questionType}
+                    onChange={(e) =>
+                      setQuestionType(e.target.value as "objective" | "application")
+                    }
+                    className={`${inputClass} max-w-xs`}
+                  >
+                    <option value="objective">Objective (multiple choice)</option>
+                    <option value="application">Application</option>
+                  </select>
+                </div>
+
+                <div className="mt-4">
+                  <label htmlFor="course-description" className="block text-sm font-medium text-text-2">
+                    Description (optional)
+                  </label>
+                  <textarea
+                    id="course-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className={inputClass}
+                    rows={3}
+                  />
+                </div>
+
+                {editingId && (
+                  <div className="mt-4">
+                    <label htmlFor="course-status" className="block text-sm font-medium text-text-2">
+                      Status
+                    </label>
+                    <select
+                      id="course-status"
+                      value={status}
+                      onChange={(e) =>
+                        setStatus(e.target.value as (typeof STATUSES)[number])
+                      }
+                      className={`${inputClass} max-w-xs capitalize`}
+                    >
+                      {STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="btn-primary mt-6 flex items-center gap-2"
+                >
+                  {editingId ? <Pencil size={15} /> : <BookPlus size={15} />}
+                  {saving
+                    ? editingId
+                      ? "Saving…"
+                      : "Creating…"
+                    : editingId
+                      ? "Save changes"
+                      : "Create course"}
+                </button>
+              </form>
+            </div>
+          )}
 
           <div className="mt-8">
             {loading ? (
