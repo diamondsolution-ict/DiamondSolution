@@ -338,7 +338,7 @@ export default function StudyPage() {
     return (
       <Layout
         title="Restricted"
-        onBack={() => navigate(`/courses/${courseId}`)}
+        onBack={() => navigate(-1)}
       >
         <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-50">
@@ -356,7 +356,7 @@ export default function StudyPage() {
     return (
       <Layout
         title={courseTitle}
-        onBack={() => navigate(`/courses/${courseId}`)}
+        onBack={() => navigate(-1)}
       >
         <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
           <BookX size={28} className="text-text-3" />
@@ -376,7 +376,7 @@ export default function StudyPage() {
     return (
       <Layout
         title={courseTitle}
-        onBack={() => navigate(`/courses/${courseId}`)}
+        onBack={() => navigate(-1)}
       >
         <div className="card-luxury p-8 text-center">
           <div className="diamond-gradient mx-auto flex h-14 w-14 items-center justify-center rounded-full">
@@ -400,7 +400,7 @@ export default function StudyPage() {
               Re-sync
             </button>
             <button
-              onClick={() => navigate(`/courses/${courseId}`)}
+              onClick={() => navigate(-1)}
               className="btn-primary flex-1"
             >
               Exit
@@ -438,7 +438,7 @@ export default function StudyPage() {
     return (
       <Layout
         title={courseTitle}
-        onBack={() => navigate(`/courses/${courseId}`)}
+        onBack={() => navigate(-1)}
       >
         <div className="card-luxury p-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
@@ -454,7 +454,7 @@ export default function StudyPage() {
           <p className="mt-1 text-sm text-text-3">{message}</p>
           <div className="mt-6 flex gap-3">
             <button
-              onClick={() => navigate(`/courses/${courseId}`)}
+              onClick={() => navigate(-1)}
               className="btn-outline flex-1"
             >
               Outline
@@ -472,7 +472,7 @@ export default function StudyPage() {
   }
 
   return (
-    <Layout title={courseTitle} onBack={() => navigate(`/courses/${courseId}`)}>
+    <Layout title={courseTitle} onBack={() => navigate(-1)}>
       <div className="card-luxury p-4">
         <div className="flex items-center justify-between gap-3">
           <p className="min-w-0 truncate text-xs font-bold text-text-3">
@@ -607,7 +607,7 @@ export default function StudyPage() {
         </button>
 
         <button
-          onClick={() => navigate(`/courses/${courseId}`)}
+          onClick={() => navigate(-1)}
           className="text-xs font-semibold text-text-3 hover:text-text-1 hover:underline"
         >
           Exit quiz
