@@ -43,17 +43,23 @@ async function main() {
 
   console.log(DRY_RUN ? "Running in --dry-run mode (no writes).\n" : "Running for real — this will write to Supabase.\n");
 
+  // Keyset (WHERE id > lastSeenId ORDER BY id LIMIT N), not OFFSET — OFFSET-based paging
+  // (.range()) makes Postgres walk and discard every earlier row on every page request, which
+  // gets slower the deeper it goes and, on a table this size with no index beyond the primary
+  // key, can exceed Supabase's statement timeout outright (confirmed against the live database).
+  // `columns` must include "id" for this to work.
   async function fetchAll(table, columns, applyFilters) {
     const rows = [];
-    let from = 0;
+    let lastId = null;
     for (;;) {
-      let query = supabase.from(table).select(columns).order("id").range(from, from + PAGE_SIZE - 1);
+      let query = supabase.from(table).select(columns).order("id").limit(PAGE_SIZE);
       if (applyFilters) query = applyFilters(query);
+      if (lastId) query = query.gt("id", lastId);
       const { data, error } = await query;
       if (error) throw error;
       rows.push(...data);
       if (data.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
+      lastId = data[data.length - 1].id;
     }
     return rows;
   }

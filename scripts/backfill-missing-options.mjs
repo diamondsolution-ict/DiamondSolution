@@ -86,22 +86,33 @@ async function main() {
   // question_options specifically that's dangerous, not just incomplete: it's read here to
   // build the "does this question already have options" check, so a truncated read would wrongly
   // treat plenty of already-correct questions as having zero options and insert a duplicate set
-  // into them. Ordering by id keeps each page's boundary stable across requests.
+  // into them.
+  //
+  // Paginated by keyset (WHERE id > lastSeenId ORDER BY id LIMIT N), not OFFSET — OFFSET-based
+  // paging (.range()) makes Postgres walk and discard every earlier row on every single page
+  // request, so it gets slower the deeper it goes and, on tables this size with no index beyond
+  // the primary key, can exceed Supabase's statement timeout outright (confirmed: that's exactly
+  // what happened on the first real run against the live database). Keyset pagination instead
+  // resumes directly from the primary key index at the last row already seen, so every page costs
+  // the same regardless of how many pages came before it. `columns` must include "id" for this to
+  // work, even if the caller doesn't otherwise need it.
+  //
   // Overridable only so a test can exercise multi-page pagination without seeding 1000+ rows —
   // leave unset in real use, where Supabase's actual per-request cap is 1000 regardless of what
   // this says.
   const PAGE_SIZE = Number(process.env.BACKFILL_PAGE_SIZE) || 1000;
   async function fetchAll(table, columns, applyFilters) {
     const rows = [];
-    let from = 0;
+    let lastId = null;
     for (;;) {
-      let query = supabase.from(table).select(columns).order("id").range(from, from + PAGE_SIZE - 1);
+      let query = supabase.from(table).select(columns).order("id").limit(PAGE_SIZE);
       if (applyFilters) query = applyFilters(query);
+      if (lastId) query = query.gt("id", lastId);
       const { data, error } = await query;
       if (error) throw error;
       rows.push(...data);
       if (data.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
+      lastId = data[data.length - 1].id;
     }
     return rows;
   }
@@ -129,7 +140,7 @@ async function main() {
     q.eq("status", "active").eq("type", "objective"),
   );
 
-  const existingOptionRows = await fetchAll("question_options", "question_id");
+  const existingOptionRows = await fetchAll("question_options", "id, question_id");
   const hasOptions = new Set(existingOptionRows.map((o) => o.question_id));
 
   const broken = allObjective.filter((q) => !hasOptions.has(q.id));
