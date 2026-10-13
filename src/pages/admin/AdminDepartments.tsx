@@ -1,17 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowRight,
   FolderPlus,
   GraduationCap,
   Layers,
   LayoutGrid,
   Pencil,
   Plus,
+  Trash2,
   X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const DEPT_STATUSES = ["active", "archived"] as const;
 
@@ -20,6 +21,7 @@ interface Department {
   name: string;
   slug: string;
   status: string;
+  image_path: string | null;
 }
 
 interface PriceRow {
@@ -44,22 +46,35 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function publicImageUrl(path: string | null): string | null {
+  if (!path) return null;
+  return supabase.storage.from("media").getPublicUrl(path).data.publicUrl;
+}
+
 export default function AdminDepartments() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+
+  const [modal, setModal] = useState<"create" | "edit" | "levels" | null>(
+    null,
+  );
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [priceNgn, setPriceNgn] = useState("10000");
+  const [priceUsd, setPriceUsd] = useState("");
   const [levelInput, setLevelInput] = useState("100L, 200L, 300L, 400L");
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [editStatus, setEditStatus] =
     useState<(typeof DEPT_STATUSES)[number]>("active");
+  const [editImagePath, setEditImagePath] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
   const [newLevelLabel, setNewLevelLabel] = useState("");
-  const [addingLevelFor, setAddingLevelFor] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -67,7 +82,7 @@ export default function AdminDepartments() {
       await Promise.all([
         supabase
           .from("departments")
-          .select("id, name, slug, status")
+          .select("id, name, slug, status, image_path")
           .order("name"),
         supabase
           .from("department_pricing")
@@ -89,52 +104,72 @@ export default function AdminDepartments() {
     void load();
   }, []);
 
-  function resetForm() {
-    setEditingId(null);
+  function priceAmountFor(deptId: string, currency: "NGN" | "USD"): number {
+    return (
+      prices.find((p) => p.department_id === deptId && p.currency === currency)
+        ?.amount ?? 0
+    );
+  }
+
+  function levelsFor(deptId: string) {
+    return levels
+      .filter((l) => l.department_id === deptId)
+      .sort((a, b) => a.sort_order - b.sort_order);
+  }
+
+  function activeDept() {
+    return departments.find((d) => d.id === activeId) ?? null;
+  }
+
+  function openCreate() {
     setName("");
     setPriceNgn("10000");
+    setPriceUsd("");
     setLevelInput("100L, 200L, 300L, 400L");
-    setEditStatus("active");
+    setFormError(null);
+    setModal("create");
   }
 
-  function startEdit(d: Department) {
-    setEditingId(d.id);
+  function openEdit(d: Department) {
+    setActiveId(d.id);
     setName(d.name);
-    setPriceNgn(String(priceAmountFor(d.id)));
+    setPriceNgn(String(priceAmountFor(d.id, "NGN") || ""));
+    setPriceUsd(String(priceAmountFor(d.id, "USD") || ""));
     setEditStatus(d.status as (typeof DEPT_STATUSES)[number]);
+    setEditImagePath(d.image_path);
+    setFormError(null);
+    setModal("edit");
   }
 
-  async function handleSubmitForm(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSaving(true);
+  function openLevels(d: Department) {
+    setActiveId(d.id);
+    setNewLevelLabel("");
+    setModal("levels");
+  }
 
-    if (editingId) {
-      const { error: updateError } = await supabase
-        .from("departments")
-        .update({ name, slug: slugify(name), status: editStatus })
-        .eq("id", editingId);
-      if (updateError) {
-        setSaving(false);
-        setError(updateError.message);
-        return;
-      }
-      // A new row, not an update-in-place: department_pricing is a price-history table
-      // (unique on department_id/currency/effective_from, see its migration) — every price
-      // that was ever actually charged stays on record, and processDepartmentAccessPayment
-      // already resolves "the current price" as the latest effective_from <= now(), so a
-      // plain insert here becomes the new current price without touching history.
-      const amount = Number(priceNgn);
-      if (amount !== priceAmountFor(editingId)) {
-        await supabase
-          .from("department_pricing")
-          .insert({ department_id: editingId, currency: "NGN", amount });
-      }
-      resetForm();
-      setSaving(false);
-      await load();
+  function closeModal() {
+    setModal(null);
+    setActiveId(null);
+  }
+
+  async function upsertPrice(
+    departmentId: string,
+    currency: "NGN" | "USD",
+    raw: string,
+  ) {
+    const amount = raw.trim() === "" ? 0 : Number(raw);
+    if (!Number.isFinite(amount) || amount === priceAmountFor(departmentId, currency)) {
       return;
     }
+    await supabase
+      .from("department_pricing")
+      .insert({ department_id: departmentId, currency, amount });
+  }
+
+  async function handleCreate(e: FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    setSaving(true);
 
     const slug = slugify(name);
     const { data: dept, error: deptError } = await supabase
@@ -145,15 +180,21 @@ export default function AdminDepartments() {
 
     if (deptError || !dept) {
       setSaving(false);
-      setError(deptError?.message ?? "Failed to create department.");
+      setFormError(deptError?.message ?? "Failed to create department.");
       return;
     }
 
-    const amount = Number(priceNgn);
-    if (amount > 0) {
+    const ngn = Number(priceNgn);
+    if (ngn > 0) {
       await supabase
         .from("department_pricing")
-        .insert({ department_id: dept.id, currency: "NGN", amount });
+        .insert({ department_id: dept.id, currency: "NGN", amount: ngn });
+    }
+    const usd = Number(priceUsd);
+    if (usd > 0) {
+      await supabase
+        .from("department_pricing")
+        .insert({ department_id: dept.id, currency: "USD", amount: usd });
     }
 
     const levelLabels = levelInput
@@ -170,255 +211,463 @@ export default function AdminDepartments() {
       );
     }
 
-    resetForm();
     setSaving(false);
+    closeModal();
     await load();
   }
 
-  async function addLevel(deptId: string) {
+  async function handleEditSave(e: FormEvent) {
+    e.preventDefault();
+    if (!activeId) return;
+    setFormError(null);
+    setSaving(true);
+
+    const { error: updateError } = await supabase
+      .from("departments")
+      .update({ name, slug: slugify(name), status: editStatus })
+      .eq("id", activeId);
+    if (updateError) {
+      setSaving(false);
+      setFormError(updateError.message);
+      return;
+    }
+
+    // department_pricing is a price-history table (unique on department_id/currency/
+    // effective_from) — a changed amount becomes a new row, not an in-place update, so every
+    // price that was ever actually charged stays on record.
+    await Promise.all([
+      upsertPrice(activeId, "NGN", priceNgn),
+      upsertPrice(activeId, "USD", priceUsd),
+    ]);
+
+    setSaving(false);
+    closeModal();
+    await load();
+  }
+
+  async function addLevel() {
+    if (!activeId) return;
     const label = newLevelLabel.trim();
     if (!label) return;
     const nextOrder =
       Math.max(
         -1,
         ...levels
-          .filter((l) => l.department_id === deptId)
+          .filter((l) => l.department_id === activeId)
           .map((l) => l.sort_order ?? 0),
       ) + 1;
     await supabase
       .from("department_levels")
-      .insert({ department_id: deptId, label, sort_order: nextOrder });
+      .insert({ department_id: activeId, label, sort_order: nextOrder });
     setNewLevelLabel("");
-    setAddingLevelFor(null);
     await load();
   }
 
-  function priceAmountFor(deptId: string): number {
-    return (
-      prices.find((p) => p.department_id === deptId && p.currency === "NGN")
-        ?.amount ?? 0
-    );
-  }
-
-  function priceFor(deptId: string) {
-    const amount = priceAmountFor(deptId);
-    return amount > 0 ? `₦${amount.toLocaleString()}` : "No price set";
-  }
-
-  function levelsFor(deptId: string) {
-    return levels.filter((l) => l.department_id === deptId).map((l) => l.label);
+  async function handleDelete(d: Department) {
+    if (
+      !window.confirm(
+        `Delete "${d.name}"? This can't be undone. Departments with existing courses, pricing history, or students can't be deleted — archive them instead.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(d.id);
+    setListError(null);
+    const { error } = await supabase.from("departments").delete().eq("id", d.id);
+    setDeletingId(null);
+    if (error) {
+      setListError(
+        error.code === "23503"
+          ? `Can't delete "${d.name}" — it still has courses, pricing history, or students attached. Archive it instead (Edit Details → Status).`
+          : error.message,
+      );
+      return;
+    }
+    await load();
   }
 
   return (
     <AdminLayout>
-      <h1 className="font-heading text-2xl font-bold text-text-1">
-        Departments
-      </h1>
-      <p className="mt-1 text-sm text-text-3">
-        Create a department, set its price, and define its levels. Courses are
-        added per department on the Courses tab.
-      </p>
-
-      <form
-        onSubmit={handleSubmitForm}
-        className="card-luxury mt-6 space-y-4 p-6"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
-            {editingId ? (
-              <Pencil size={17} className="text-royal" />
-            ) : (
-              <FolderPlus size={17} className="text-royal" />
-            )}
-            {editingId ? "Edit department" : "Add department"}
-          </h2>
-          {editingId && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="flex items-center gap-1 text-xs font-semibold text-text-3 hover:text-text-1"
-            >
-              <X size={13} />
-              Cancel edit
-            </button>
-          )}
-        </div>
-
-        {error && (
-          <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            {error}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-text-1">
+            Departments &amp; Faculties
+          </h1>
+          <p className="mt-1 text-sm text-text-3">
+            Manage department tuition fees, custom levels, and pictures.
           </p>
-        )}
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-text-2">
-              Name
-            </label>
-            <input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputClass}
-              placeholder="Nursing"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text-2">
-              Price (₦)
-            </label>
-            <input
-              type="number"
-              min={0}
-              value={priceNgn}
-              onChange={(e) => setPriceNgn(e.target.value)}
-              className={inputClass}
-            />
-          </div>
         </div>
-
-        {editingId ? (
-          <div>
-            <label className="block text-sm font-medium text-text-2">
-              Status
-            </label>
-            <select
-              value={editStatus}
-              onChange={(e) =>
-                setEditStatus(e.target.value as (typeof DEPT_STATUSES)[number])
-              }
-              className={`${inputClass} max-w-xs capitalize`}
-            >
-              {DEPT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-text-3">
-              Levels are managed per-department below — editing here never
-              touches existing levels (courses may already use them).
-            </p>
-          </div>
-        ) : (
-          <div>
-            <label className="block text-sm font-medium text-text-2">
-              Levels (comma-separated)
-            </label>
-            <input
-              value={levelInput}
-              onChange={(e) => setLevelInput(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        )}
-
         <button
-          type="submit"
-          disabled={saving}
-          className="btn-primary flex items-center gap-2"
+          onClick={openCreate}
+          className="btn-primary flex items-center gap-1.5 text-xs uppercase tracking-wide"
         >
-          {editingId ? <Pencil size={15} /> : <FolderPlus size={15} />}
-          {saving
-            ? editingId
-              ? "Saving…"
-              : "Creating…"
-            : editingId
-              ? "Save changes"
-              : "Create department"}
+          <Plus size={14} />
+          Manifest new department
         </button>
-      </form>
+      </div>
 
-      <div className="mt-8">
+      {listError && (
+        <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {listError}
+        </p>
+      )}
+
+      <div className="mt-6">
         {loading ? (
           <p className="text-sm text-text-3">Loading…</p>
         ) : departments.length === 0 ? (
           <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
             <LayoutGrid size={28} className="text-text-3" />
             <p className="text-sm text-text-3">
-              No departments yet — add one above.
+              No departments yet — manifest one above.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {departments.map((d) => (
-              <div
-                key={d.id}
-                className={`card-luxury p-4 ${editingId === d.id ? "ring-2 ring-royal" : ""}`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="diamond-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
-                    <GraduationCap size={17} className="text-white" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-heading font-bold text-text-1">
-                      {d.name}
-                      {d.status === "archived" && (
-                        <span className="ml-2 text-xs font-normal text-text-3">
-                          (archived)
+          <div className="overflow-x-auto rounded-2xl border border-canvas-border bg-white">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-canvas-border bg-canvas-soft text-[11px] font-bold uppercase tracking-widest text-text-3">
+                  <th className="px-5 py-3 font-bold">Picture &amp; name</th>
+                  <th className="px-5 py-3 font-bold">System slug</th>
+                  <th className="px-5 py-3 font-bold">Tuition base</th>
+                  <th className="px-5 py-3 font-bold">Operational mode</th>
+                  <th className="px-5 py-3 font-bold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {departments.map((d) => {
+                  const imageUrl = publicImageUrl(d.image_path);
+                  const ngn = priceAmountFor(d.id, "NGN");
+                  const usd = priceAmountFor(d.id, "USD");
+                  const isActive = d.status === "active";
+                  return (
+                    <tr
+                      key={d.id}
+                      className="border-b border-canvas-border last:border-0"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt=""
+                              className="h-10 w-10 shrink-0 rounded-xl object-cover"
+                            />
+                          ) : (
+                            <div className="diamond-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                              <GraduationCap size={17} className="text-white" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-bold text-text-1">{d.name}</p>
+                            <p
+                              className={`text-xs ${imageUrl ? "text-emerald-600" : "text-text-3"}`}
+                            >
+                              {imageUrl ? "✓ Picture uploaded" : "No picture"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 font-mono text-xs italic text-text-3">
+                        {d.slug}
+                      </td>
+                      <td className="px-5 py-4">
+                        {ngn > 0 ? (
+                          <>
+                            <p className="font-bold text-royal line-through decoration-2">
+                              ₦{ngn.toLocaleString()}
+                            </p>
+                            {usd > 0 && (
+                              <p className="text-xs font-semibold text-royal line-through decoration-2">
+                                ${usd.toLocaleString()}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-xs text-text-3">No price set</p>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide">
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-text-3"}`}
+                          />
+                          <span className={isActive ? "text-emerald-600" : "text-text-3"}>
+                            {isActive ? "Admin customized" : "Archived"}
+                          </span>
                         </span>
-                      )}
-                    </p>
-                    <p className="flex items-center gap-1 text-sm text-text-3">
-                      <Layers size={12} />
-                      {priceFor(d.id)} ·{" "}
-                      {levelsFor(d.id).join(", ") || "no levels"}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => startEdit(d)}
-                    className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
-                  >
-                    <Pencil size={13} />
-                    Edit
-                  </button>
-                  <Link
-                    to={`/admin/courses?department=${d.id}`}
-                    className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
-                  >
-                    Manage courses <ArrowRight size={13} />
-                  </Link>
-                </div>
-
-                {addingLevelFor === d.id ? (
-                  <div className="mt-3 flex items-center gap-2 border-t border-canvas-border pt-3">
-                    <input
-                      autoFocus
-                      value={newLevelLabel}
-                      onChange={(e) => setNewLevelLabel(e.target.value)}
-                      placeholder="e.g. 600L"
-                      className={`${inputClass} mt-0 max-w-[160px]`}
-                    />
-                    <button
-                      onClick={() => void addLevel(d.id)}
-                      className="btn-secondary px-3 py-1.5 text-xs"
-                    >
-                      Add
-                    </button>
-                    <button
-                      onClick={() => {
-                        setAddingLevelFor(null);
-                        setNewLevelLabel("");
-                      }}
-                      className="text-xs font-semibold text-text-3 hover:text-text-1"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingLevelFor(d.id)}
-                    className="mt-2 flex items-center gap-1 text-xs font-semibold text-royal hover:underline"
-                  >
-                    <Plus size={12} />
-                    Add a level
-                  </button>
-                )}
-              </div>
-            ))}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-bold tracking-wide">
+                          <Link
+                            to={`/admin/courses?department=${d.id}`}
+                            className="uppercase text-royal hover:underline"
+                          >
+                            Edit archives
+                          </Link>
+                          <button
+                            onClick={() => openEdit(d)}
+                            className="uppercase text-emerald-600 hover:underline"
+                          >
+                            Edit details
+                          </button>
+                          <button
+                            onClick={() => openLevels(d)}
+                            className="flex items-center gap-1 uppercase text-amber-600 hover:underline"
+                          >
+                            <Layers size={12} />
+                            Levels
+                          </button>
+                          <button
+                            onClick={() => void handleDelete(d)}
+                            disabled={deletingId === d.id}
+                            className="text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                            title="Delete department"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
+
+      {modal === "create" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 py-8">
+          <form
+            onSubmit={handleCreate}
+            className="card-luxury w-full max-w-md space-y-4 p-6"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+                <FolderPlus size={17} className="text-royal" />
+                Manifest new department
+              </h2>
+              <button type="button" onClick={closeModal} className="text-text-3 hover:text-text-1">
+                <X size={18} />
+              </button>
+            </div>
+
+            {formError && (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {formError}
+              </p>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-text-2">Name</label>
+              <input
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={inputClass}
+                placeholder="Nursing"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-2">Price (₦)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={priceNgn}
+                  onChange={(e) => setPriceNgn(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-2">
+                  Price ($) <span className="font-normal text-text-3">optional</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={priceUsd}
+                  onChange={(e) => setPriceUsd(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-2">
+                Levels (comma-separated)
+              </label>
+              <input
+                value={levelInput}
+                onChange={(e) => setLevelInput(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={closeModal} className="btn-outline flex-1">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn-primary flex flex-1 items-center justify-center gap-2"
+              >
+                <FolderPlus size={15} />
+                {saving ? "Creating…" : "Create department"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {modal === "edit" && activeDept() && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 py-8">
+          <form
+            onSubmit={handleEditSave}
+            className="card-luxury flex max-h-full w-full max-w-md flex-col overflow-y-auto space-y-4 p-6"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+                <Pencil size={17} className="text-royal" />
+                Edit details
+              </h2>
+              <button type="button" onClick={closeModal} className="text-text-3 hover:text-text-1">
+                <X size={18} />
+              </button>
+            </div>
+
+            {formError && (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {formError}
+              </p>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-text-2">Picture</label>
+              <div className="mt-1">
+                <ImageUpload
+                  currentPath={editImagePath}
+                  folder="departments"
+                  entityId={activeId!}
+                  onUploaded={(path) => setEditImagePath(path)}
+                  onRemoved={() => setEditImagePath(null)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-2">Name</label>
+              <input
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-2">Price (₦)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={priceNgn}
+                  onChange={(e) => setPriceNgn(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-2">Price ($)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={priceUsd}
+                  onChange={(e) => setPriceUsd(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-2">Status</label>
+              <select
+                value={editStatus}
+                onChange={(e) =>
+                  setEditStatus(e.target.value as (typeof DEPT_STATUSES)[number])
+                }
+                className={`${inputClass} capitalize`}
+              >
+                {DEPT_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-text-3">
+                Levels are managed separately (the Levels action) — they're never touched here.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={closeModal} className="btn-outline flex-1">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn-primary flex flex-1 items-center justify-center gap-2"
+              >
+                <Pencil size={15} />
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {modal === "levels" && activeDept() && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 py-8">
+          <div className="card-luxury w-full max-w-md p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+                <Layers size={17} className="text-royal" />
+                Levels — {activeDept()!.name}
+              </h2>
+              <button onClick={closeModal} className="text-text-3 hover:text-text-1">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-1.5">
+              {levelsFor(activeId!).length === 0 ? (
+                <p className="text-sm text-text-3">No levels yet.</p>
+              ) : (
+                levelsFor(activeId!).map((l) => (
+                  <div
+                    key={l.id}
+                    className="flex items-center justify-between rounded-lg border border-canvas-border px-3 py-2 text-sm"
+                  >
+                    <span className="font-semibold text-text-1">{l.label}</span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 border-t border-canvas-border pt-4">
+              <input
+                value={newLevelLabel}
+                onChange={(e) => setNewLevelLabel(e.target.value)}
+                placeholder="e.g. 600L"
+                className={`${inputClass} mt-0`}
+              />
+              <button
+                onClick={() => void addLevel()}
+                className="btn-secondary shrink-0 px-3 py-2.5 text-xs"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
