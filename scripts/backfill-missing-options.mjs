@@ -27,6 +27,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 const OPTION_LABELS = ["A", "B", "C", "D", "E"];
+const INSERT_CHUNK_SIZE = 200;
 
 function env(name) {
   const v = process.env[name];
@@ -78,33 +79,57 @@ async function main() {
 
   const exportedCourses = loadExportedCourses();
 
-  const { data: departments, error: deptErr } = await supabase.from("departments").select("id, name");
-  if (deptErr) throw deptErr;
+  // Supabase/PostgREST caps a single request at 1000 rows by default — silently, with no error,
+  // just fewer rows than actually exist. `questions` (~102,700 objective rows) and
+  // `question_options` (hundreds of thousands of rows) are both far past that, so an
+  // unpaginated .select() on either would only ever see an arbitrary first page. For
+  // question_options specifically that's dangerous, not just incomplete: it's read here to
+  // build the "does this question already have options" check, so a truncated read would wrongly
+  // treat plenty of already-correct questions as having zero options and insert a duplicate set
+  // into them. Ordering by id keeps each page's boundary stable across requests.
+  // Overridable only so a test can exercise multi-page pagination without seeding 1000+ rows —
+  // leave unset in real use, where Supabase's actual per-request cap is 1000 regardless of what
+  // this says.
+  const PAGE_SIZE = Number(process.env.BACKFILL_PAGE_SIZE) || 1000;
+  async function fetchAll(table, columns, applyFilters) {
+    const rows = [];
+    let from = 0;
+    for (;;) {
+      let query = supabase.from(table).select(columns).order("id").range(from, from + PAGE_SIZE - 1);
+      if (applyFilters) query = applyFilters(query);
+      const { data, error } = await query;
+      if (error) throw error;
+      rows.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    return rows;
+  }
+
+  async function insertInChunks(table, rows) {
+    for (let i = 0; i < rows.length; i += INSERT_CHUNK_SIZE) {
+      const chunk = rows.slice(i, i + INSERT_CHUNK_SIZE);
+      const { error } = await supabase.from(table).insert(chunk);
+      if (error) return error;
+    }
+    return null;
+  }
+
+  const departments = await fetchAll("departments", "id, name");
   const deptNameById = new Map(departments.map((d) => [d.id, d.name]));
 
-  const { data: levels, error: levelErr } = await supabase.from("department_levels").select("id, label");
-  if (levelErr) throw levelErr;
+  const levels = await fetchAll("department_levels", "id, label");
   const levelLabelById = new Map(levels.map((l) => [l.id, l.label]));
 
-  const { data: courses, error: courseErr } = await supabase
-    .from("courses")
-    .select("id, title, department_id, level_id")
-    .is("deleted_at", null);
-  if (courseErr) throw courseErr;
+  const courses = await fetchAll("courses", "id, title, department_id, level_id", (q) => q.is("deleted_at", null));
   const courseById = new Map(courses.map((c) => [c.id, c]));
 
   // Every active objective question with zero rows in question_options.
-  const { data: allObjective, error: qErr } = await supabase
-    .from("questions")
-    .select("id, course_id, prompt, sort_order")
-    .eq("status", "active")
-    .eq("type", "objective");
-  if (qErr) throw qErr;
+  const allObjective = await fetchAll("questions", "id, course_id, prompt, sort_order", (q) =>
+    q.eq("status", "active").eq("type", "objective"),
+  );
 
-  const { data: existingOptionRows, error: optCheckErr } = await supabase
-    .from("question_options")
-    .select("question_id");
-  if (optCheckErr) throw optCheckErr;
+  const existingOptionRows = await fetchAll("question_options", "question_id");
   const hasOptions = new Set(existingOptionRows.map((o) => o.question_id));
 
   const broken = allObjective.filter((q) => !hasOptions.has(q.id));
@@ -212,7 +237,7 @@ async function main() {
     }
 
     if (!DRY_RUN && optionRowsForCourse.length > 0) {
-      const { error: insErr } = await supabase.from("question_options").insert(optionRowsForCourse);
+      const insErr = await insertInChunks("question_options", optionRowsForCourse);
       if (insErr) {
         console.error(`  Insert failed for course ${course.title}: ${insErr.message}`);
       }
