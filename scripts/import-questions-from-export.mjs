@@ -37,6 +37,7 @@
 // untouched. Safe to re-run: anything already imported is skipped on the next run.
 
 import { readdirSync, readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 const DRY_RUN = process.argv.includes("--dry-run");
@@ -44,6 +45,15 @@ const OPTION_LABELS = ["A", "B", "C", "D", "E"];
 const PLACEHOLDER_MARKER =
   "[PLACEHOLDER — auto-generated, safe to delete once real questions are added]";
 const MEDIA_BUCKET = "media";
+// How many rows go in a single INSERT — one request per course instead of one per question
+// would be faster still, but risks hitting a request-body-size limit on a large course (one
+// real course here has 760 questions); 200 keeps each request small while still cutting round
+// trips by roughly two orders of magnitude versus one-row-at-a-time.
+const INSERT_CHUNK_SIZE = 200;
+// Previously unbounded — ensureThumbnail()'s fetch() had no timeout, so a single slow/dead
+// image host could hang forever and stall the entire import behind it (everything here runs
+// sequentially, nothing else proceeds while an await is pending).
+const THUMBNAIL_FETCH_TIMEOUT_MS = 15000;
 
 function env(name) {
   const v = process.env[name];
@@ -189,7 +199,14 @@ async function main() {
       return thumbnailPathByUrl.get(imageUrl);
     }
     try {
-      const res = await fetch(imageUrl);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), THUMBNAIL_FETCH_TIMEOUT_MS);
+      let res;
+      try {
+        res = await fetch(imageUrl, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const contentType = res.headers.get("content-type") || "image/jpeg";
       const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
@@ -207,6 +224,21 @@ async function main() {
       thumbnailPathByUrl.set(imageUrl, null);
       return null;
     }
+  }
+
+  // Inserting one question (then one question_options call) per loop iteration meant up to
+  // ~224,000 sequential network round trips for the full ~112,000-question bank — that's what
+  // actually turned this into a multi-day run, not anything about the data itself. Batching
+  // per course (chunked, so one huge course's single INSERT can't blow past a request-size
+  // limit) cuts that to roughly 2 round trips per course — a couple hundred total instead of a
+  // couple hundred thousand.
+  async function insertInChunks(table, rows) {
+    for (let i = 0; i < rows.length; i += INSERT_CHUNK_SIZE) {
+      const chunk = rows.slice(i, i + INSERT_CHUNK_SIZE);
+      const { error } = await supabase.from(table).insert(chunk);
+      if (error) return { error, insertedBeforeFailure: i };
+    }
+    return { error: null, insertedBeforeFailure: rows.length };
   }
 
   const skippedNoDepartment = [];
@@ -410,6 +442,8 @@ async function main() {
 
     let sortOrder = 0;
     const sortedQuestions = [...oldCourse.questions].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const questionRows = [];
+    const optionRows = [];
     for (const oq of sortedQuestions) {
       if (oq.isDeleted === true) continue;
       const isApplication = oq.type === "application";
@@ -419,52 +453,68 @@ async function main() {
         continue;
       }
 
-      const { data: inserted, error: qErr } = await supabase
-        .from("questions")
-        .insert({
-          course_id: course.id,
-          type: isApplication ? "application" : "objective",
-          prompt,
-          expected_answer: isApplication
-            ? normalizeContent(oq.answerText || oq.explanation) || null
-            : null,
-          explanation: isApplication ? null : normalizeContent(oq.explanation) || null,
-          sort_order: sortOrder++,
-        })
-        .select("id")
-        .single();
-      if (qErr || !inserted) {
-        dataWarnings.push(`${oldCourse.title}: question ${oq.id} failed to insert — ${qErr?.message}`);
-        continue;
-      }
+      const questionId = randomUUID();
+      questionRows.push({
+        id: questionId,
+        course_id: course.id,
+        type: isApplication ? "application" : "objective",
+        prompt,
+        expected_answer: isApplication
+          ? normalizeContent(oq.answerText || oq.explanation) || null
+          : null,
+        explanation: isApplication ? null : normalizeContent(oq.explanation) || null,
+        sort_order: sortOrder++,
+      });
 
       if (!isApplication) {
         const rawOptions = Array.isArray(oq.options) ? oq.options : [];
-        const optionRows = rawOptions
+        const builtOptions = rawOptions
           .map((body, i) => ({ label: OPTION_LABELS[i], body: normalizeContent(body), i }))
           .filter((o) => o.label && o.body)
           .map((o) => ({
-            question_id: inserted.id,
+            question_id: questionId,
             label: o.label,
             body: o.body,
             is_correct: o.i === oq.correctAnswer,
             sort_order: o.i,
           }));
-        if (optionRows.length < 2) {
+        if (builtOptions.length < 2) {
           dataWarnings.push(`${oldCourse.title}: question ${oq.id} has fewer than 2 usable options.`);
         }
-        if (!optionRows.some((o) => o.is_correct)) {
+        if (!builtOptions.some((o) => o.is_correct)) {
           dataWarnings.push(
             `${oldCourse.title}: question ${oq.id} — no option matched its correctAnswer index (${oq.correctAnswer}); check it manually.`,
           );
         }
+        optionRows.push(...builtOptions);
+      }
+    }
+
+    if (questionRows.length > 0) {
+      const { error: qBatchErr, insertedBeforeFailure } = await insertInChunks("questions", questionRows);
+      if (qBatchErr) {
+        dataWarnings.push(
+          `${oldCourse.title}: inserting its questions failed partway (${insertedBeforeFailure}/${questionRows.length} ` +
+            `succeeded before the error) — ${qBatchErr.message}. This course is now partially imported; review it in ` +
+            `the admin UI (it won't be auto-retried by re-running this script, since it already has some real questions).`,
+        );
+        questionsImported += insertedBeforeFailure;
+      } else {
+        questionsImported += questionRows.length;
         if (optionRows.length > 0) {
-          const { error: optErr } = await supabase.from("question_options").insert(optionRows);
-          if (optErr) dataWarnings.push(`${oldCourse.title}: question ${oq.id} options failed — ${optErr.message}`);
+          const { error: optBatchErr, insertedBeforeFailure: optsInserted } = await insertInChunks(
+            "question_options",
+            optionRows,
+          );
+          if (optBatchErr) {
+            dataWarnings.push(
+              `${oldCourse.title}: all ${questionRows.length} question(s) were created, but inserting their options ` +
+                `failed partway (${optsInserted}/${optionRows.length} succeeded) — ${optBatchErr.message}. Fix the ` +
+                `affected question(s) manually in the admin UI.`,
+            );
+          }
         }
       }
-
-      questionsImported++;
     }
     coursesImported++;
   }
