@@ -5,16 +5,16 @@ import {
   Check,
   CheckCircle2,
   Clock,
-  Coins,
   Copy,
+  Gem,
   Gift,
-  History,
   Landmark,
   Trash2,
   Users,
   Wallet,
   X,
   XCircle,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -90,6 +90,8 @@ export default function Affiliate() {
   });
   const [deletingMethodId, setDeletingMethodId] = useState<string | null>(null);
   const [methodPendingDelete, setMethodPendingDelete] = useState<PayoutMethod | null>(null);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showMethodModal, setShowMethodModal] = useState(false);
 
   const [methodForm, setMethodForm] = useState({
     bankCode: "",
@@ -257,12 +259,9 @@ export default function Affiliate() {
       setError(insertError.message);
       return;
     }
-    setMethodForm({
-      bankCode: "",
-      accountNumber: "",
-      accountName: "",
-    });
+    setMethodForm({ bankCode: "", accountNumber: "", accountName: "" });
     setInfo("Payout method added.");
+    setShowMethodModal(false);
     void load();
   }
 
@@ -327,6 +326,7 @@ export default function Affiliate() {
     }
     setWithdrawForm({ amount: "", payoutMethodId: "" });
     setInfo("Withdrawal requested — an admin will process it shortly.");
+    setShowWithdrawModal(false);
     void load();
   }
 
@@ -343,6 +343,9 @@ export default function Affiliate() {
   const methodsForWithdrawCurrency = payoutMethods.filter(
     (m) => m.currency === "NGN",
   );
+  const ngnBalance = balances.find((b) => b.currency === "NGN")?.balance ?? 0;
+  const ngnEarned =
+    balances.find((b) => b.currency === "NGN")?.total_earned ?? 0;
 
   if (loading) {
     return (
@@ -387,49 +390,106 @@ export default function Affiliate() {
 
   return (
     <Layout title="Affiliate">
-      <div className="card-luxury p-5">
-        <p className="text-xs uppercase tracking-wide text-text-3">
-          Your referral link
-        </p>
-        <div className="mt-2 flex items-center gap-2">
-          <input
-            readOnly
-            value={referralLink}
-            className="flex-1 rounded-xl border border-canvas-border bg-canvas-soft px-3 py-2 text-xs text-text-2"
-          />
-          <button onClick={copyLink} className="btn-secondary px-3 py-2">
-            {copied ? <Check size={16} /> : <Copy size={16} />}
+      <p className="-mt-2 text-[11px] font-bold uppercase tracking-widest text-text-3">
+        Institutional growth & revenue share
+      </p>
+
+      <div className="mt-4 card-luxury p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-widest text-text-3">
+              Withdrawable endowment
+            </p>
+            <p className="mt-1 truncate font-heading text-3xl font-bold text-text-1 sm:text-4xl">
+              <span className="text-gold">₦</span>
+              {ngnBalance.toLocaleString()}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowWithdrawModal(true)}
+            disabled={ngnBalance <= 0 || payoutMethods.length === 0}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-navy px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-navy-light active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+          >
+            <Banknote size={14} />
+            Place withdrawal
           </button>
         </div>
-        <span className="badge-royal mt-3 inline-block">
-          {affiliate.referral_code}
-        </span>
-      </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        {balances.length === 0 && (
-          <div className="card-luxury col-span-2 flex flex-col items-center gap-2 p-8 text-center">
-            <Coins size={26} className="text-text-3" />
-            <p className="text-sm text-text-3">
-              No earnings yet — share your link to get started.
+        <div className="mt-4 rounded-xl bg-royal-soft p-4">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-royal">
+            <Landmark size={14} />
+            Account details
+          </p>
+          {payoutMethods.length === 0 ? (
+            <>
+              <p className="mt-1.5 text-xs text-text-3">
+                Authorize your institutional bank account to enable revenue
+                redistribution.
+              </p>
+              <button
+                onClick={() => setShowMethodModal(true)}
+                className="mt-2 text-xs font-bold text-royal hover:underline"
+              >
+                Initialize credentials →
+              </button>
+            </>
+          ) : (
+            <div className="mt-2.5 space-y-1.5">
+              {payoutMethods.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-text-1">
+                      {m.account_name}
+                    </p>
+                    <p className="text-[11px] text-text-3">
+                      {m.account_number}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setMethodPendingDelete(m)}
+                    disabled={deletingMethodId === m.id}
+                    aria-label={`Remove payout method ${m.account_name}`}
+                    className="shrink-0 rounded-lg p-1 text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setShowMethodModal(true)}
+                className="text-xs font-bold text-royal hover:underline"
+              >
+                + Add another
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-widest text-text-3">
+              Referral line
             </p>
+            <span className="badge-royal">{affiliate.referral_code}</span>
           </div>
-        )}
-        {balances.map((b) => (
-          <div key={b.currency} className="card-luxury p-4">
-            <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-text-3">
-              <Wallet size={12} />
-              {b.currency} balance
-            </p>
-            <p className="font-heading text-xl font-bold text-royal">
-              {b.balance.toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs text-text-3">
-              Earned {b.total_earned.toLocaleString()} · Withdrawn{" "}
-              {b.total_withdrawn.toLocaleString()}
-            </p>
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              readOnly
+              value={referralLink}
+              className="flex-1 truncate rounded-xl border border-canvas-border bg-canvas-soft px-3 py-2 text-xs text-text-2"
+            />
+            <button
+              onClick={copyLink}
+              aria-label="Copy referral link"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-navy text-white transition-colors hover:bg-navy-light"
+            >
+              {copied ? <Check size={15} /> : <Copy size={15} />}
+            </button>
           </div>
-        ))}
+        </div>
       </div>
 
       {info && (
@@ -443,209 +503,169 @@ export default function Affiliate() {
         </p>
       )}
 
-      <div className="card-luxury mt-4 p-5">
-        <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
-          <Banknote size={16} className="text-royal" />
-          Request a withdrawal
-        </h2>
-        <form onSubmit={requestWithdrawal} className="mt-3 space-y-3">
-          <input
-            type="number"
-            placeholder="Amount (₦)"
-            value={withdrawForm.amount}
-            onChange={(e) =>
-              setWithdrawForm((f) => ({ ...f, amount: e.target.value }))
-            }
-            className={inputClass}
-          />
-          <select
-            value={withdrawForm.payoutMethodId}
-            onChange={(e) =>
-              setWithdrawForm((f) => ({ ...f, payoutMethodId: e.target.value }))
-            }
-            className={inputClass}
-          >
-            <option value="">Select payout method</option>
-            {methodsForWithdrawCurrency.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.account_name} · {m.account_number}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-text-3">
-            Minimum ₦{settings.minWithdrawalNgn.toLocaleString()}
-          </p>
-          <button
-            type="submit"
-            className="btn-primary flex w-full items-center justify-center gap-2"
-          >
-            <Banknote size={15} />
-            Request withdrawal
-          </button>
-        </form>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile
+          icon={Users}
+          value={referrals.length.toLocaleString()}
+          label="Referred assets"
+        />
+        <StatTile
+          icon={Gem}
+          value={`₦${ngnEarned.toLocaleString()}`}
+          label="Total earned"
+        />
+        <StatTile
+          icon={Zap}
+          iconClass="bg-emerald-50 text-emerald-600"
+          value={`${Math.round(settings.commissionRate * 100)}%`}
+          label="Revenue share"
+        />
+        <StatTile
+          icon={Wallet}
+          value={`₦${ngnBalance.toLocaleString()}`}
+          label="Net balance"
+        />
       </div>
 
-      <div className="card-luxury mt-4 p-5">
-        <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
-          <Landmark size={16} className="text-royal" />
-          Payout methods
-        </h2>
-        <p className="mt-1 text-xs text-text-3">
-          Bank transfer only — payouts are sent via Paystack.
-        </p>
-
-        {payoutMethods.length > 0 && (
-          <ul className="mt-3 space-y-2">
-            {payoutMethods.map((m) => (
-              <li
-                key={m.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-canvas-border px-3 py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-text-1">
-                    {m.account_name}
-                  </p>
-                  <p className="text-xs text-text-3">
-                    {m.account_number} · {m.currency}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setMethodPendingDelete(m)}
-                  disabled={deletingMethodId === m.id}
-                  aria-label={`Remove payout method ${m.account_name}`}
-                  className="shrink-0 rounded-lg p-1.5 text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <form onSubmit={addPayoutMethod} className="mt-3 space-y-3">
-          <input
-            placeholder="Bank code"
-            value={methodForm.bankCode}
-            onChange={(e) =>
-              setMethodForm((f) => ({ ...f, bankCode: e.target.value }))
-            }
-            className={inputClass}
-          />
-          <input
-            placeholder="Account number"
-            value={methodForm.accountNumber}
-            onChange={(e) =>
-              setMethodForm((f) => ({ ...f, accountNumber: e.target.value }))
-            }
-            className={inputClass}
-          />
-          <input
-            placeholder="Account name"
-            value={methodForm.accountName}
-            onChange={(e) =>
-              setMethodForm((f) => ({ ...f, accountName: e.target.value }))
-            }
-            className={inputClass}
-          />
-          <button
-            type="submit"
-            className="btn-secondary flex w-full items-center justify-center gap-2"
+      <ArchiveSection
+        label="Commission archives"
+        labelClass="text-emerald-600"
+        empty={commissions.length === 0}
+        emptyText="Awaiting your first institutional endowment"
+      >
+        {commissions.map((c) => (
+          <div
+            key={c.id}
+            className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
           >
-            <Landmark size={15} />
-            Add payout method
-          </button>
-        </form>
-      </div>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-text-1">
+                {names.get(c.referred_user_id) ?? "A referral"}
+              </p>
+              <p className="text-xs text-text-3">
+                {format(new Date(c.created_at), "MMM d, yyyy")}
+              </p>
+            </div>
+            <span className="shrink-0 font-semibold text-royal">
+              +{c.commission_amount.toLocaleString()} {c.commission_currency}
+            </span>
+          </div>
+        ))}
+      </ArchiveSection>
 
-      <div className="card-luxury mt-4 p-5">
-        <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
-          <History size={16} className="text-royal" />
-          Withdrawal history
-        </h2>
-        {withdrawals.length === 0 && (
-          <p className="mt-2 text-sm text-text-3">No withdrawals yet.</p>
-        )}
-        <ul className="mt-2 divide-y divide-canvas-border">
-          {withdrawals.map((w) => (
-            <li
-              key={w.id}
-              className="flex items-center justify-between py-2 text-sm"
+      <ArchiveSection
+        label="Revenue redistributions"
+        labelClass="text-royal"
+        empty={withdrawals.length === 0}
+        emptyText="No redistributed revenue found in archives"
+      >
+        {withdrawals.map((w) => (
+          <div
+            key={w.id}
+            className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+          >
+            <div>
+              <p className="font-semibold text-text-2">
+                {w.amount.toLocaleString()} {w.currency}
+              </p>
+              <p className="text-xs text-text-3">
+                {format(new Date(w.requested_at), "MMM d, yyyy")}
+              </p>
+            </div>
+            <StatusBadge status={w.status} />
+          </div>
+        ))}
+      </ArchiveSection>
+
+      <ArchiveSection
+        label="Network synchronization"
+        labelClass="text-text-3"
+        empty={referrals.length === 0}
+        emptyText="Awaiting network expansion…"
+      >
+        {referrals.map((r) => {
+          const earnings = commissions.filter(
+            (c) => c.referred_user_id === r.referred_user_id,
+          );
+          // Group by currency — almost always one entry, but a referral who paid for
+          // departments priced in different currencies would have more than one.
+          const totalsByCurrency = new Map<string, number>();
+          for (const c of earnings) {
+            totalsByCurrency.set(
+              c.commission_currency,
+              (totalsByCurrency.get(c.commission_currency) ?? 0) +
+                c.commission_amount,
+            );
+          }
+          return (
+            <div
+              key={r.referred_user_id}
+              className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
             >
-              <span>
-                <span className="block text-text-2">
-                  {w.amount.toLocaleString()} {w.currency}
+              <span className="flex min-w-0 items-center gap-2 text-text-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-royal-soft text-[10px] font-bold text-royal">
+                  {(names.get(r.referred_user_id) ?? "?")
+                    .charAt(0)
+                    .toUpperCase()}
                 </span>
-                <span className="text-xs text-text-3">
-                  {format(new Date(w.requested_at), "MMM d, yyyy")}
+                <span className="min-w-0">
+                  <span className="block truncate">
+                    {names.get(r.referred_user_id) ?? "A referral"}
+                  </span>
+                  <span className="text-xs text-text-3">
+                    Signed up {format(new Date(r.referred_at), "MMM d, yyyy")}
+                  </span>
                 </span>
               </span>
-              <StatusBadge status={w.status} />
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="card-luxury mt-4 p-5">
-        <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
-          <Users size={16} className="text-royal" />
-          My referrals
-        </h2>
-        {referrals.length === 0 && (
-          <p className="mt-2 text-sm text-text-3">
-            No one has signed up with your link yet.
-          </p>
-        )}
-        <ul className="mt-2 divide-y divide-canvas-border">
-          {referrals.map((r) => {
-            const earnings = commissions.filter(
-              (c) => c.referred_user_id === r.referred_user_id,
-            );
-            // Group by currency — almost always one entry, but a referral who paid for
-            // departments priced in different currencies would have more than one.
-            const totalsByCurrency = new Map<string, number>();
-            for (const c of earnings) {
-              totalsByCurrency.set(
-                c.commission_currency,
-                (totalsByCurrency.get(c.commission_currency) ?? 0) +
-                  c.commission_amount,
-              );
-            }
-            return (
-              <li
-                key={r.referred_user_id}
-                className="flex items-center justify-between gap-2 py-2 text-sm"
-              >
-                <span className="flex min-w-0 items-center gap-2 text-text-2">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-royal-soft text-[10px] font-bold text-royal">
-                    {(names.get(r.referred_user_id) ?? "?")
-                      .charAt(0)
-                      .toUpperCase()}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate">
-                      {names.get(r.referred_user_id) ?? "A referral"}
-                    </span>
-                    <span className="text-xs text-text-3">
-                      Signed up {format(new Date(r.referred_at), "MMM d, yyyy")}
-                    </span>
-                  </span>
+              {totalsByCurrency.size > 0 ? (
+                <span className="shrink-0 text-right font-semibold text-royal">
+                  {[...totalsByCurrency.entries()]
+                    .map(([cur, amt]) => `+${amt.toLocaleString()} ${cur}`)
+                    .join(", ")}
                 </span>
-                {totalsByCurrency.size > 0 ? (
-                  <span className="shrink-0 text-right font-semibold text-royal">
-                    {[...totalsByCurrency.entries()]
-                      .map(([cur, amt]) => `+${amt.toLocaleString()} ${cur}`)
-                      .join(", ")}
-                  </span>
-                ) : (
-                  <span className="shrink-0 text-xs text-text-3">
-                    Not converted yet
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+              ) : (
+                <span className="shrink-0 text-xs text-text-3">
+                  Not converted yet
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </ArchiveSection>
+
+      {showWithdrawModal && (
+        <WithdrawModal
+          amount={withdrawForm.amount}
+          payoutMethodId={withdrawForm.payoutMethodId}
+          methods={methodsForWithdrawCurrency}
+          minWithdrawal={settings.minWithdrawalNgn}
+          error={error}
+          onAmountChange={(v) => setWithdrawForm((f) => ({ ...f, amount: v }))}
+          onMethodChange={(v) =>
+            setWithdrawForm((f) => ({ ...f, payoutMethodId: v }))
+          }
+          onSubmit={requestWithdrawal}
+          onClose={() => {
+            setShowWithdrawModal(false);
+            setError(null);
+          }}
+        />
+      )}
+
+      {showMethodModal && (
+        <AddMethodModal
+          form={methodForm}
+          error={error}
+          onChange={(field, value) =>
+            setMethodForm((f) => ({ ...f, [field]: value }))
+          }
+          onSubmit={addPayoutMethod}
+          onClose={() => {
+            setShowMethodModal(false);
+            setError(null);
+          }}
+        />
+      )}
 
       {methodPendingDelete && (
         <DeletePayoutMethodModal
@@ -656,6 +676,287 @@ export default function Affiliate() {
         />
       )}
     </Layout>
+  );
+}
+
+function StatTile({
+  icon: Icon,
+  iconClass = "bg-royal-soft text-royal",
+  value,
+  label,
+}: {
+  icon: typeof Users;
+  iconClass?: string;
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="card-luxury p-4">
+      <div
+        className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconClass}`}
+      >
+        <Icon size={15} />
+      </div>
+      <p className="mt-2 truncate font-heading text-lg font-bold text-text-1">
+        {value}
+      </p>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-text-3">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function ArchiveSection({
+  label,
+  labelClass,
+  empty,
+  emptyText,
+  children,
+}: {
+  label: string;
+  labelClass: string;
+  empty: boolean;
+  emptyText: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-2">
+        <p
+          className={`shrink-0 text-[11px] font-bold uppercase tracking-widest ${labelClass}`}
+        >
+          {label}
+        </p>
+        <div className="h-px flex-1 bg-canvas-border" />
+      </div>
+      {empty ? (
+        <div className="mt-3 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-canvas-border p-8 text-center">
+          <Clock size={22} className="text-text-3" />
+          <p className="text-xs italic text-text-3">{emptyText}</p>
+        </div>
+      ) : (
+        <div className="mt-3 card-luxury divide-y divide-canvas-border p-0">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WithdrawModal({
+  amount,
+  payoutMethodId,
+  methods,
+  minWithdrawal,
+  error,
+  onAmountChange,
+  onMethodChange,
+  onSubmit,
+  onClose,
+}: {
+  amount: string;
+  payoutMethodId: string;
+  methods: PayoutMethod[];
+  minWithdrawal: number;
+  error: string | null;
+  onAmountChange: (v: string) => void;
+  onMethodChange: (v: string) => void;
+  onSubmit: (e: FormEvent) => void;
+  onClose: () => void;
+}) {
+  const amountRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    amountRef.current?.focus();
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="withdraw-heading"
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+      >
+        <div className="flex items-center justify-between">
+          <h2 id="withdraw-heading" className="font-heading text-lg font-bold text-text-1">
+            Place withdrawal
+          </h2>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-full p-1 text-text-3 hover:bg-canvas-soft"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <form onSubmit={onSubmit} className="mt-4 space-y-3">
+          <div>
+            <label htmlFor="withdraw-amount" className="text-xs font-semibold text-text-2">
+              Amount (₦)
+            </label>
+            <input
+              ref={amountRef}
+              id="withdraw-amount"
+              type="number"
+              value={amount}
+              onChange={(e) => onAmountChange(e.target.value)}
+              className={`${inputClass} mt-1`}
+            />
+          </div>
+          <div>
+            <label htmlFor="withdraw-method" className="text-xs font-semibold text-text-2">
+              Payout method
+            </label>
+            <select
+              id="withdraw-method"
+              value={payoutMethodId}
+              onChange={(e) => onMethodChange(e.target.value)}
+              className={`${inputClass} mt-1`}
+            >
+              <option value="">Select payout method</option>
+              {methods.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.account_name} · {m.account_number}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-text-3">
+            Minimum ₦{minWithdrawal.toLocaleString()}
+          </p>
+          {error && (
+            <p role="alert" className="text-xs font-medium text-rose-600">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            className="btn-primary flex w-full items-center justify-center gap-2"
+          >
+            <Banknote size={15} />
+            Request withdrawal
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AddMethodModal({
+  form,
+  error,
+  onChange,
+  onSubmit,
+  onClose,
+}: {
+  form: { bankCode: string; accountNumber: string; accountName: string };
+  error: string | null;
+  onChange: (
+    field: "bankCode" | "accountNumber" | "accountName",
+    value: string,
+  ) => void;
+  onSubmit: (e: FormEvent) => void;
+  onClose: () => void;
+}) {
+  const firstFieldRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    firstFieldRef.current?.focus();
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-method-heading"
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+      >
+        <div className="flex items-center justify-between">
+          <h2 id="add-method-heading" className="font-heading text-lg font-bold text-text-1">
+            Initialize credentials
+          </h2>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-full p-1 text-text-3 hover:bg-canvas-soft"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-text-3">
+          Bank transfer only — payouts are sent via Paystack.
+        </p>
+        <form onSubmit={onSubmit} className="mt-4 space-y-3">
+          <div>
+            <label htmlFor="method-bank-code" className="text-xs font-semibold text-text-2">
+              Bank code
+            </label>
+            <input
+              ref={firstFieldRef}
+              id="method-bank-code"
+              value={form.bankCode}
+              onChange={(e) => onChange("bankCode", e.target.value)}
+              className={`${inputClass} mt-1`}
+            />
+          </div>
+          <div>
+            <label htmlFor="method-account-number" className="text-xs font-semibold text-text-2">
+              Account number
+            </label>
+            <input
+              id="method-account-number"
+              value={form.accountNumber}
+              onChange={(e) => onChange("accountNumber", e.target.value)}
+              className={`${inputClass} mt-1`}
+            />
+          </div>
+          <div>
+            <label htmlFor="method-account-name" className="text-xs font-semibold text-text-2">
+              Account name
+            </label>
+            <input
+              id="method-account-name"
+              value={form.accountName}
+              onChange={(e) => onChange("accountName", e.target.value)}
+              className={`${inputClass} mt-1`}
+            />
+          </div>
+          {error && (
+            <p role="alert" className="text-xs font-medium text-rose-600">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            className="btn-primary flex w-full items-center justify-center gap-2"
+          >
+            <Landmark size={15} />
+            Add payout method
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 
