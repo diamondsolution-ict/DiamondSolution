@@ -402,7 +402,53 @@ export default function AdminPayments() {
           <p className="text-sm text-text-3">No transactions match.</p>
         </div>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-canvas-border bg-white">
+        <>
+        {/* Below sm: this table has 7 columns, which a phone can't show at once — scrolling it
+            sideways would hide the amount/status/actions with no sign there's more, so a
+            stacked card shows the essentials plus a View button for the rest. */}
+        <div className="mt-4 space-y-3 sm:hidden">
+          {filtered.map((p) => {
+            const StatusIcon = statusIcon[p.status];
+            return (
+              <button
+                key={p.id}
+                onClick={() => void openDetail(p)}
+                className="card-luxury w-full p-4 text-left"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-text-1">
+                      {profileNames[p.user_id] ?? "Unknown"}
+                    </p>
+                    <p className="truncate text-xs text-text-3">
+                      {profileEmails[p.user_id] ?? ""}
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-bold text-text-1">
+                    {p.currency === "NGN" ? "₦" : "$"}
+                    {Number(p.amount).toLocaleString()}
+                  </p>
+                </div>
+                <p className="mt-2 truncate font-mono text-xs text-text-3">
+                  {p.provider_reference}
+                </p>
+                <div className="mt-3 flex items-center justify-between border-t border-canvas-border pt-3">
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold capitalize ${statusStyle[p.status]}`}
+                  >
+                    <StatusIcon size={11} />
+                    {p.status}
+                  </span>
+                  <span className="text-xs text-text-3">
+                    {format(new Date(p.created_at), "yyyy-MM-dd HH:mm")}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 hidden overflow-x-auto rounded-2xl border border-canvas-border bg-white sm:block">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-canvas-border bg-canvas-soft text-[11px] font-bold uppercase tracking-widest text-text-3">
@@ -476,6 +522,7 @@ export default function AdminPayments() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {selected && (

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Send } from "lucide-react";
+import { ArrowLeft, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -169,8 +169,15 @@ export default function AdminSupport() {
         the student's Chat tab.
       </p>
 
+      {/* Below sm: the two panes (conversation list, messages) can't sit side by side on a
+          phone width — show one at a time, switching on whether a thread is open, with a
+          back button to return to the list. sm and up keeps the classic two-pane layout. */}
       <div className="mt-4 flex h-[calc(100vh-220px)] overflow-hidden rounded-2xl border border-canvas-border bg-white">
-        <div className="w-full max-w-xs shrink-0 overflow-y-auto border-r border-canvas-border">
+        <div
+          className={`w-full shrink-0 overflow-y-auto border-r border-canvas-border sm:block sm:max-w-xs ${
+            activeId ? "hidden" : "block"
+          }`}
+        >
           {loading ? (
             <p className="p-4 text-sm text-text-3">Loading…</p>
           ) : threads.length === 0 ? (
@@ -205,18 +212,31 @@ export default function AdminSupport() {
           )}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div
+          className={`min-w-0 flex-1 flex-col sm:flex ${
+            activeId ? "flex" : "hidden"
+          }`}
+        >
           {!activeThread ? (
-            <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-text-3">
+            <div className="hidden flex-1 items-center justify-center p-6 text-center text-sm text-text-3 sm:flex">
               Select a conversation to view messages.
             </div>
           ) : (
             <>
-              <div className="border-b border-canvas-border px-4 py-3">
-                <p className="text-sm font-semibold text-text-1">
-                  {activeThread.display_name || "Scholar"}
-                </p>
-                <p className="text-xs text-text-3">{activeThread.email}</p>
+              <div className="flex items-center gap-2 border-b border-canvas-border px-4 py-3">
+                <button
+                  onClick={() => setActiveId(null)}
+                  aria-label="Back to conversations"
+                  className="-ml-1 rounded-lg p-1 text-text-3 hover:bg-canvas-soft sm:hidden"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <div>
+                  <p className="text-sm font-semibold text-text-1">
+                    {activeThread.display_name || "Scholar"}
+                  </p>
+                  <p className="text-xs text-text-3">{activeThread.email}</p>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-3">

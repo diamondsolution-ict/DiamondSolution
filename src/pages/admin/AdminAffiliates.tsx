@@ -217,7 +217,41 @@ export default function AdminAffiliates() {
             <p className="text-sm text-text-3">No commissions yet.</p>
           </div>
         ) : (
-          <div className="mt-4 overflow-hidden rounded-2xl border border-canvas-border bg-white">
+          <>
+          {/* Below sm: 4 columns including the action button don't fit a phone screen —
+              a stacked card keeps "Authorize payment" visible instead of scrolled off. */}
+          <div className="mt-4 space-y-3 sm:hidden">
+            {commissions.map((c) => (
+              <div key={c.id} className="card-luxury p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="truncate font-semibold text-text-1">
+                    {usernames[c.referrer_user_id] ?? c.referrer_user_id}
+                  </p>
+                  <span className="badge-royal shrink-0">
+                    {c.status === "paid" ? "Paid" : "Success"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-canvas-border pt-3">
+                  <p className="font-bold text-emerald-600 line-through decoration-2">
+                    {money(c.commission_amount, c.commission_currency)}
+                  </p>
+                  {c.status === "paid" ? (
+                    <span className="text-xs font-semibold text-text-3">Settled</span>
+                  ) : (
+                    <button
+                      onClick={() => setPendingCommissionId(c.id)}
+                      disabled={busyId === c.id}
+                      className="rounded-xl border border-royal/30 bg-royal-soft px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-royal transition-colors hover:bg-royal/15 disabled:opacity-50"
+                    >
+                      Authorize payment
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 hidden overflow-hidden rounded-2xl border border-canvas-border bg-white sm:block">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-canvas-border bg-canvas-soft text-[11px] font-bold uppercase tracking-widest text-text-3">
@@ -261,6 +295,7 @@ export default function AdminAffiliates() {
               </tbody>
             </table>
           </div>
+          </>
         )
       ) : affiliates.length === 0 ? (
         <div className="card-luxury mt-4 flex flex-col items-center gap-2 p-10 text-center">
@@ -268,7 +303,64 @@ export default function AdminAffiliates() {
           <p className="text-sm text-text-3">No partners yet.</p>
         </div>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-canvas-border bg-white">
+        <>
+        {/* Below sm: 5 columns of financial detail don't fit a phone screen — a stacked card
+            keeps earned/paid/balance all visible together instead of needing a sideways
+            scroll to compare them. */}
+        <div className="mt-4 space-y-3 sm:hidden">
+          {affiliates.map((a) => {
+            const b = balancesFor(a.user_id);
+            const primary = b[0];
+            const currency = primary?.currency ?? "NGN";
+            const earned = b.reduce((s, x) => s + x.total_earned, 0);
+            const withdrawn = b.reduce((s, x) => s + x.total_withdrawn, 0);
+            const balance = b.reduce((s, x) => s + x.balance, 0);
+            return (
+              <div key={a.user_id} className="card-luxury p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-text-1">
+                      {displayNames[a.user_id] ?? a.user_id}
+                    </p>
+                    <p className="truncate text-xs text-text-3">{emails[a.user_id] ?? ""}</p>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-royal/30 bg-royal-soft px-2.5 py-1 font-mono text-xs font-bold uppercase text-royal">
+                    <Link2 size={11} />
+                    {a.referral_code}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-canvas-border pt-3 text-center">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-text-3">
+                      Earned
+                    </p>
+                    <p className="font-bold text-text-1 line-through decoration-2">
+                      {money(earned, currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-text-3">
+                      Paid
+                    </p>
+                    <p className="font-bold text-emerald-600 line-through decoration-2">
+                      {money(withdrawn, currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-text-3">
+                      Balance
+                    </p>
+                    <p className="font-bold text-royal line-through decoration-2">
+                      {money(balance, currency)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 hidden overflow-x-auto rounded-2xl border border-canvas-border bg-white sm:block">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-canvas-border bg-canvas-soft text-[11px] font-bold uppercase tracking-widest text-text-3">
@@ -316,6 +408,7 @@ export default function AdminAffiliates() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {pendingCommissionId && (

@@ -349,7 +349,41 @@ export default function AdminAnalytics() {
                 No practice activity in this period.
               </p>
             ) : (
-              <div className="mt-2 overflow-x-auto">
+              <>
+              {/* Below sm: the 600px-min table needs a sideways scroll with nothing to show
+                  there's more past "Rank"/"Scholar" — a stacked card keeps every stat visible. */}
+              <div className="mt-2 space-y-2 sm:hidden">
+                {scholars.map((s, i) => (
+                  <div
+                    key={s.user_id}
+                    className="rounded-xl border border-canvas-border p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-sm font-semibold text-text-1">
+                        #{i + 1} {s.display_name}
+                      </p>
+                      <p className="shrink-0 text-xs text-text-3">
+                        {s.department_name ?? "—"}
+                      </p>
+                    </div>
+                    <div className="mt-1.5 flex gap-4 text-xs text-text-2">
+                      <span>{s.attempted} attempted</span>
+                      <span>
+                        {s.attempted > 0
+                          ? Math.round((s.correct / s.attempted) * 100)
+                          : 0}
+                        % accuracy
+                      </span>
+                      <span>
+                        {Math.floor(s.study_seconds / 3600)}h{" "}
+                        {Math.round((s.study_seconds % 3600) / 60)}m
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-2 hidden overflow-x-auto sm:block">
                 <table className="w-full min-w-[600px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-canvas-border text-[10px] font-bold uppercase tracking-wide text-text-3">
@@ -387,6 +421,7 @@ export default function AdminAnalytics() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </div>
         </>

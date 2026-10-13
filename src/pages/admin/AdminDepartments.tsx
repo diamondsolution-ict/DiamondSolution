@@ -394,7 +394,105 @@ export default function AdminDepartments() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-canvas-border bg-white">
+          <>
+          {/* Below sm: the table's 5 columns don't fit a phone screen and scrolling it
+              sideways hides whichever columns (price, status, actions) aren't currently in
+              view with no sign more exist — a stacked card shows every field at once instead. */}
+          <div className="space-y-3 sm:hidden">
+            {departments.map((d) => {
+              const imageUrl = publicImageUrl(d.image_path);
+              const ngn = priceAmountFor(d.id, "NGN");
+              const usd = priceAmountFor(d.id, "USD");
+              const isActive = d.status === "active";
+              return (
+                <div key={d.id} className="card-luxury p-4">
+                  <div className="flex items-center gap-3">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt=""
+                        className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="diamond-gradient flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+                        <GraduationCap size={18} className="text-white" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-bold text-text-1">{d.name}</p>
+                      <p className="truncate font-mono text-xs italic text-text-3">
+                        {d.slug}
+                      </p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold uppercase tracking-wide">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-text-3"}`}
+                      />
+                      <span className={isActive ? "text-emerald-600" : "text-text-3"}>
+                        {isActive ? "Active" : "Archived"}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between border-t border-canvas-border pt-3">
+                    <div>
+                      {ngn > 0 ? (
+                        <>
+                          <p className="font-bold text-text-1">
+                            ₦{ngn.toLocaleString()}
+                          </p>
+                          {usd > 0 && (
+                            <p className="text-xs font-semibold text-text-3">
+                              ${usd.toLocaleString()}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs text-text-3">No price set</p>
+                      )}
+                    </div>
+                    <p
+                      className={`text-xs ${imageUrl ? "text-emerald-600" : "text-text-3"}`}
+                    >
+                      {imageUrl ? "✓ Picture uploaded" : "No picture"}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-canvas-border pt-3 text-xs font-bold tracking-wide">
+                    <Link
+                      to={`/admin/courses?department=${d.id}`}
+                      className="uppercase text-royal hover:underline"
+                    >
+                      Edit archives
+                    </Link>
+                    <button
+                      onClick={() => openEdit(d)}
+                      className="uppercase text-emerald-600 hover:underline"
+                    >
+                      Edit details
+                    </button>
+                    <button
+                      onClick={() => openLevels(d)}
+                      className="flex items-center gap-1 uppercase text-amber-600 hover:underline"
+                    >
+                      <Layers size={12} />
+                      Levels
+                    </button>
+                    <button
+                      onClick={() => void handleDelete(d)}
+                      disabled={deletingId === d.id}
+                      aria-label="Delete department"
+                      className="ml-auto text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-2xl border border-canvas-border bg-white sm:block">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-canvas-border bg-canvas-soft text-[11px] font-bold uppercase tracking-widest text-text-3">
@@ -505,6 +603,7 @@ export default function AdminDepartments() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

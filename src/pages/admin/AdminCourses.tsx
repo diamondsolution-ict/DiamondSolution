@@ -394,34 +394,38 @@ export default function AdminCourses() {
                 {courses.map((c) => (
                   <div
                     key={c.id}
-                    className={`card-luxury flex items-center gap-3 p-4 ${editingId === c.id ? "ring-2 ring-royal" : ""}`}
+                    className={`card-luxury p-4 ${editingId === c.id ? "ring-2 ring-royal" : ""}`}
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-royal-soft">
-                      <BookOpen size={17} className="text-royal" />
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-royal-soft">
+                        <BookOpen size={17} className="text-royal" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-heading font-bold text-text-1">
+                          {c.title}
+                        </p>
+                        <p className="truncate text-sm text-text-3">
+                          {levelLabel(c.level_id)} · {c.default_question_type} ·{" "}
+                          {c.status}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-heading font-bold text-text-1">
-                        {c.title}
-                      </p>
-                      <p className="text-sm text-text-3">
-                        {levelLabel(c.level_id)} · {c.default_question_type} ·{" "}
-                        {c.status}
-                      </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-canvas-border pt-3">
+                      <button
+                        onClick={() => startEdit(c)}
+                        className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
+                      >
+                        <Pencil size={13} />
+                        Edit
+                      </button>
+                      <Link
+                        to={`/admin/courses/${c.id}/questions`}
+                        className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
+                      >
+                        <ListChecks size={13} />
+                        Manage questions <ArrowRight size={13} />
+                      </Link>
                     </div>
-                    <button
-                      onClick={() => startEdit(c)}
-                      className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
-                    >
-                      <Pencil size={13} />
-                      Edit
-                    </button>
-                    <Link
-                      to={`/admin/courses/${c.id}/questions`}
-                      className="flex shrink-0 items-center gap-1 text-sm font-semibold text-royal hover:underline"
-                    >
-                      <ListChecks size={13} />
-                      Manage questions <ArrowRight size={13} />
-                    </Link>
                   </div>
                 ))}
               </div>
