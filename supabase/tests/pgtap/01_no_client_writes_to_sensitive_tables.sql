@@ -75,7 +75,7 @@ select throws_ok(
 
 -- --- As an admin — staff get read access to these tables, never write access; the write
 -- path is exclusively the service_role Edge Functions (admin-manage-user,
--- admin-approve-commission, verify-payment, ...). ---
+-- request-payout, verify-payment, ...). ---
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-2222-2222-222222222222', 'role', 'authenticated')::text, true);

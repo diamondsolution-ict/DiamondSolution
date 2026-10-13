@@ -1,8 +1,8 @@
 // Admin step-up via a static, admin-changeable code instead of email-OTP (see the
 // admin_stepup_code migration header for why). Mirrors verifyOtp()'s contract: on a correct
 // code, writes a consumed security_otp_tokens row (purpose='admin_step_up') and returns its id
-// as the capability token — consumeStepUpToken() (used unchanged by admin-manage-user and
-// admin-approve-commission) doesn't care how that row got there.
+// as the capability token — consumeStepUpToken() (used unchanged by admin-manage-user) doesn't
+// care how that row got there.
 import { handleOptions, jsonResponse } from "../_shared/cors.ts";
 import {
   anonClient,
