@@ -110,6 +110,7 @@ export default function AdminQuestions() {
   const [levels, setLevels] = useState<Level[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -156,91 +157,90 @@ export default function AdminQuestions() {
   async function load() {
     if (!courseId) return;
     setLoading(true);
+    setLoadError(null);
 
-    const [{ data: courseRow }, { data: deptRows }, { data: levelRows }] =
-      await Promise.all([
-        supabase
-          .from("courses")
+    try {
+      const [{ data: courseRow }, { data: deptRows }, { data: levelRows }] =
+        await Promise.all([
+          supabase
+            .from("courses")
+            .select(
+              "id, title, slug, department_id, level_id, default_question_type, description, image_path",
+            )
+            .eq("id", courseId)
+            .single(),
+          supabase.from("departments").select("id, name").order("name"),
+          supabase
+            .from("department_levels")
+            .select("id, department_id, label")
+            .order("sort_order"),
+        ]);
+      setCourse(courseRow);
+      setDepartments(deptRows ?? []);
+      setLevels(levelRows ?? []);
+      if (courseRow) setType(courseRow.default_question_type);
+
+      // Keyset-paginated — a plain .select() here silently caps at Supabase's 1000-row default,
+      // which a large course's question count can exceed outright. Options come embedded in the
+      // same query (a PostgREST foreign-table select, already used elsewhere in this app) rather
+      // than a separate .in(questionIds) fetch — for a course with hundreds of questions that
+      // .in() filter's URL grew large enough on every single page request to risk failing
+      // outright, since it had to repeat the full id list on every page, not just the first.
+      const questionRowsUnsorted = await fetchAllRows<{
+        id: string;
+        type: "objective" | "application";
+        prompt: string;
+        expected_answer: string | null;
+        explanation: string | null;
+        sort_order: number;
+        status: "active" | "trashed";
+        question_options: {
+          id: string;
+          label: string;
+          body: string;
+          is_correct: boolean;
+          sort_order: number;
+        }[];
+      }>((after) => {
+        let q = supabase
+          .from("questions")
           .select(
-            "id, title, slug, department_id, level_id, default_question_type, description, image_path",
+            "id, type, prompt, expected_answer, explanation, sort_order, status, question_options(id, label, body, is_correct, sort_order)",
           )
-          .eq("id", courseId)
-          .single(),
-        supabase.from("departments").select("id, name").order("name"),
-        supabase
-          .from("department_levels")
-          .select("id, department_id, label")
-          .order("sort_order"),
-      ]);
-    setCourse(courseRow);
-    setDepartments(deptRows ?? []);
-    setLevels(levelRows ?? []);
-    if (courseRow) setType(courseRow.default_question_type);
+          .eq("course_id", courseId)
+          .in("status", ["active", "trashed"])
+          .order("id")
+          .limit(1000);
+        if (after) q = q.gt("id", after);
+        return q;
+      });
+      // fetchAllRows paginates by id for correctness, not display order — this page's own
+      // question order comes from sort_order, applied here instead.
+      const questionRows = [...questionRowsUnsorted].sort((a, b) => a.sort_order - b.sort_order);
 
-    // Keyset-paginated — a plain .select() here silently caps at Supabase's 1000-row default,
-    // which a large course's question count (or its total option-row count) can exceed outright.
-    const questionRowsUnsorted = await fetchAllRows<{
-      id: string;
-      type: "objective" | "application";
-      prompt: string;
-      expected_answer: string | null;
-      explanation: string | null;
-      sort_order: number;
-      status: "active" | "trashed";
-    }>((after) => {
-      let q = supabase
-        .from("questions")
-        .select("id, type, prompt, expected_answer, explanation, sort_order, status")
+      setQuestions(
+        questionRows.map((q) => ({
+          ...q,
+          options: [...q.question_options].sort((a, b) => a.sort_order - b.sort_order),
+        })),
+      );
+
+      const { data: outlineRows } = await supabase
+        .from("course_outline_sections")
+        .select("id, title, start_question_order, end_question_order, sort_order")
         .eq("course_id", courseId)
-        .in("status", ["active", "trashed"])
-        .order("id")
-        .limit(1000);
-      if (after) q = q.gt("id", after);
-      return q;
-    });
-    // fetchAllRows paginates by id for correctness, not display order — this page's own
-    // question order comes from sort_order, applied here instead.
-    const questionRows = [...questionRowsUnsorted].sort((a, b) => a.sort_order - b.sort_order);
-
-    const questionIds = questionRows.map((q) => q.id);
-    const optionRows =
-      questionIds.length > 0
-        ? await fetchAllRows<{
-            id: string;
-            question_id: string;
-            label: string;
-            body: string;
-            is_correct: boolean;
-            sort_order: number;
-          }>((after) => {
-            let q = supabase
-              .from("question_options")
-              .select("id, question_id, label, body, is_correct, sort_order")
-              .in("question_id", questionIds)
-              .order("id")
-              .limit(1000);
-            if (after) q = q.gt("id", after);
-            return q;
-          })
-        : [];
-
-    setQuestions(
-      questionRows.map((q) => ({
-        ...q,
-        options: optionRows
-          .filter((o) => o.question_id === q.id)
-          .sort((a, b) => a.sort_order - b.sort_order),
-      })),
-    );
-
-    const { data: outlineRows } = await supabase
-      .from("course_outline_sections")
-      .select("id, title, start_question_order, end_question_order, sort_order")
-      .eq("course_id", courseId)
-      .order("sort_order");
-    setOutline(outlineRows ?? []);
-
-    setLoading(false);
+        .order("sort_order");
+      setOutline(outlineRows ?? []);
+    } catch (err) {
+      // Previously unhandled — any failure here (a timeout, a bad response) left the loading
+      // spinner showing forever with no error and no way to tell what went wrong.
+      console.error("AdminQuestions load failed:", err);
+      setLoadError(
+        err instanceof Error ? err.message : "Something went wrong loading this course.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -688,6 +688,21 @@ export default function AdminQuestions() {
     setImporting(false);
     await load();
     alert(`${imported} question(s) imported.`);
+  }
+
+  if (loadError && !loading) {
+    return (
+      <AdminLayout>
+        <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+          <AlertTriangle size={24} className="text-rose-500" />
+          <p className="text-sm font-semibold text-text-1">Couldn't load this course</p>
+          <p className="text-sm text-text-3">{loadError}</p>
+          <button onClick={() => void load()} className="btn-primary mt-2">
+            Retry
+          </button>
+        </div>
+      </AdminLayout>
+    );
   }
 
   if (!course && !loading) {

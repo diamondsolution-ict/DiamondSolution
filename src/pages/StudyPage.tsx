@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
+  AlertTriangle,
   BookX,
   CheckCircle2,
   ChevronLeft,
@@ -50,6 +51,7 @@ export default function StudyPage() {
   const [searchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [courseTitle, setCourseTitle] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -84,119 +86,122 @@ export default function StudyPage() {
     async function load() {
       if (!courseId || !user) return;
       setLoading(true);
+      setLoadError(null);
 
-      const { data: courseRow } = await supabase
-        .from("courses")
-        .select("id, title, department_id")
-        .eq("id", courseId)
-        .single();
-      if (!courseRow) {
-        setLoading(false);
-        return;
-      }
-      setCourseTitle(courseRow.title);
-
-      // Admins read everything for free, matching has_department_access()'s own is_admin()
-      // OR — the backend already allowed this; the paywall gate just didn't know to skip
-      // itself for them.
-      if (!isAdmin) {
-        const { data: grant } = await supabase
-          .from("access_grants")
-          .select("department_id")
-          .eq("user_id", user.id)
-          .eq("department_id", courseRow.department_id)
-          .maybeSingle();
-        if (!grant) {
-          setAccessDenied(true);
+      try {
+        const { data: courseRow } = await supabase
+          .from("courses")
+          .select("id, title, department_id")
+          .eq("id", courseId)
+          .single();
+        if (!courseRow) {
           setLoading(false);
           return;
         }
-      }
+        setCourseTitle(courseRow.title);
 
-      const [questionRowsUnsorted, { data: outlineRows }, { data: progress }] =
-        await Promise.all([
-          // Keyset-paginated — a plain .select() here silently caps at Supabase's 1000-row
-          // default, which a large course's question count can exceed outright.
-          fetchAllRows<{
-            id: string;
-            type: QuestionType;
-            prompt: string;
-            expected_answer: string | null;
-            explanation: string | null;
-            sort_order: number;
-          }>((after) => {
-            let q = supabase
-              .from("questions")
-              .select("id, type, prompt, expected_answer, explanation, sort_order")
-              .eq("course_id", courseId)
-              .eq("status", "active")
-              .order("id")
-              .limit(1000);
-            if (after) q = q.gt("id", after);
-            return q;
-          }),
-          supabase
-            .from("course_outline_sections")
-            .select("title, start_question_order, end_question_order")
-            .eq("course_id", courseId)
-            .order("sort_order"),
-          supabase
-            .from("study_progress")
-            .select("current_order, completed")
+        // Admins read everything for free, matching has_department_access()'s own is_admin()
+        // OR — the backend already allowed this; the paywall gate just didn't know to skip
+        // itself for them.
+        if (!isAdmin) {
+          const { data: grant } = await supabase
+            .from("access_grants")
+            .select("department_id")
             .eq("user_id", user.id)
-            .eq("course_id", courseId)
-            .maybeSingle(),
-        ]);
-      // fetchAllRows paginates by id for correctness, not display order — the quiz's own
-      // question order comes from sort_order, applied here instead.
-      const questionRows = [...questionRowsUnsorted].sort((a, b) => a.sort_order - b.sort_order);
+            .eq("department_id", courseRow.department_id)
+            .maybeSingle();
+          if (!grant) {
+            setAccessDenied(true);
+            setLoading(false);
+            return;
+          }
+        }
 
-      const questionIds = questionRows.map((q) => q.id);
-      const optionRows =
-        questionIds.length > 0
-          ? await fetchAllRows<{
+        const [questionRowsUnsorted, { data: outlineRows }, { data: progress }] =
+          await Promise.all([
+            // Keyset-paginated — a plain .select() here silently caps at Supabase's 1000-row
+            // default, which a large course's question count can exceed outright. Options come
+            // embedded in the same query (a PostgREST foreign-table select, already used
+            // elsewhere in this app) rather than a separate .in(questionIds) fetch — for a
+            // course with hundreds of questions that .in() filter's URL grew large enough on
+            // every single page request to risk failing outright, since it had to repeat the
+            // full id list on every page, not just the first.
+            fetchAllRows<{
               id: string;
-              question_id: string;
-              label: string;
-              body: string;
-              is_correct: boolean;
+              type: QuestionType;
+              prompt: string;
+              expected_answer: string | null;
+              explanation: string | null;
               sort_order: number;
+              question_options: {
+                id: string;
+                label: string;
+                body: string;
+                is_correct: boolean;
+                sort_order: number;
+              }[];
             }>((after) => {
               let q = supabase
-                .from("question_options")
-                .select("id, question_id, label, body, is_correct, sort_order")
-                .in("question_id", questionIds)
+                .from("questions")
+                .select(
+                  "id, type, prompt, expected_answer, explanation, sort_order, question_options(id, label, body, is_correct, sort_order)",
+                )
+                .eq("course_id", courseId)
+                .eq("status", "active")
                 .order("id")
                 .limit(1000);
               if (after) q = q.gt("id", after);
               return q;
-            })
-          : [];
+            }),
+            supabase
+              .from("course_outline_sections")
+              .select("title, start_question_order, end_question_order")
+              .eq("course_id", courseId)
+              .order("sort_order"),
+            supabase
+              .from("study_progress")
+              .select("current_order, completed")
+              .eq("user_id", user.id)
+              .eq("course_id", courseId)
+              .maybeSingle(),
+          ]);
+        // fetchAllRows paginates by id for correctness, not display order — the quiz's own
+        // question order comes from sort_order, applied here instead.
+        const questionRows = [...questionRowsUnsorted].sort(
+          (a, b) => a.sort_order - b.sort_order,
+        );
 
-      setQuestions(
-        questionRows.map((q) => ({
-          ...q,
-          options: optionRows
-            .filter((o) => o.question_id === q.id)
-            .sort((a, b) => a.sort_order - b.sort_order),
-        })),
-      );
-      setOutline(outlineRows ?? []);
+        setQuestions(
+          questionRows.map((q) => ({
+            ...q,
+            options: [...q.question_options].sort((a, b) => a.sort_order - b.sort_order),
+          })),
+        );
+        setOutline(outlineRows ?? []);
 
-      // A "Jump to question N" or "Resume session" link from CourseDetail carries an explicit
-      // ?start= — honor it over study_progress (even past a completed run), since the student
-      // deliberately chose this starting point rather than asking to continue where they left
-      // off or see their last result.
-      const startParam = Number(searchParams.get("start"));
-      const total = questionRows?.length ?? 0;
-      if (Number.isInteger(startParam) && startParam >= 1 && total > 0) {
-        setCurrentIndex(Math.min(startParam - 1, total - 1));
-      } else if (progress?.completed) {
-        setShowResults(true);
-      } else if (progress) {
-        setCurrentIndex(Math.min(progress.current_order, Math.max(total - 1, 0)));
+        // A "Jump to question N" or "Resume session" link from CourseDetail carries an explicit
+        // ?start= — honor it over study_progress (even past a completed run), since the student
+        // deliberately chose this starting point rather than asking to continue where they left
+        // off or see their last result.
+        const startParam = Number(searchParams.get("start"));
+        const total = questionRows.length;
+        if (Number.isInteger(startParam) && startParam >= 1 && total > 0) {
+          setCurrentIndex(Math.min(startParam - 1, total - 1));
+        } else if (progress?.completed) {
+          setShowResults(true);
+        } else if (progress) {
+          setCurrentIndex(Math.min(progress.current_order, Math.max(total - 1, 0)));
+        }
+      } catch (err) {
+        // Previously unhandled — any failure here (a timeout, a bad response) left the loading
+        // spinner showing forever with no error and no way out beside the header's back button.
+        console.error("StudyPage load failed:", err);
+        setLoadError(
+          err instanceof Error ? err.message : "Something went wrong loading this course.",
+        );
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -330,6 +335,28 @@ export default function StudyPage() {
     return (
       <Layout title="Studying" onBack={() => navigate(-1)}>
         <LoadingScreen />
+      </Layout>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Layout title="Studying" onBack={() => navigate(-1)}>
+        <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-50">
+            <AlertTriangle size={22} className="text-rose-500" />
+          </div>
+          <p className="text-sm font-semibold text-text-1">
+            Couldn't load this course
+          </p>
+          <p className="text-sm text-text-3">{loadError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-primary mt-2"
+          >
+            Retry
+          </button>
+        </div>
       </Layout>
     );
   }
