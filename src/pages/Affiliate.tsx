@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { format } from "date-fns";
 import {
   Banknote,
@@ -13,6 +13,7 @@ import {
   Trash2,
   Users,
   Wallet,
+  X,
   XCircle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -25,7 +26,7 @@ interface AffiliateProfile {
   activated_at: string | null;
 }
 interface Balance {
-  currency: "NGN" | "USD";
+  currency: string;
   total_earned: number;
   total_withdrawn: number;
   balance: number;
@@ -40,7 +41,7 @@ interface Commission {
 }
 interface PayoutMethod {
   id: string;
-  currency: "NGN" | "USD";
+  currency: string;
   method: string;
   bank_code: string | null;
   account_number: string | null;
@@ -86,19 +87,17 @@ export default function Affiliate() {
   const [settings, setSettings] = useState({
     commissionRate: 0.25,
     minWithdrawalNgn: 10000,
-    minWithdrawalUsd: 10,
   });
   const [deletingMethodId, setDeletingMethodId] = useState<string | null>(null);
+  const [methodPendingDelete, setMethodPendingDelete] = useState<PayoutMethod | null>(null);
 
   const [methodForm, setMethodForm] = useState({
-    currency: "NGN" as "NGN" | "USD",
     bankCode: "",
     accountNumber: "",
     accountName: "",
   });
   const [withdrawForm, setWithdrawForm] = useState({
     amount: "",
-    currency: "NGN" as "NGN" | "USD",
     payoutMethodId: "",
   });
 
@@ -114,7 +113,7 @@ export default function Affiliate() {
         .maybeSingle(),
       supabase
         .from("app_settings")
-        .select("commission_rate, min_withdrawal_ngn, min_withdrawal_usd")
+        .select("commission_rate, min_withdrawal_ngn")
         .eq("id", 1)
         .maybeSingle(),
     ]);
@@ -123,7 +122,6 @@ export default function Affiliate() {
       setSettings({
         commissionRate: settingsRow.commission_rate,
         minWithdrawalNgn: settingsRow.min_withdrawal_ngn,
-        minWithdrawalUsd: settingsRow.min_withdrawal_usd,
       });
     }
 
@@ -249,7 +247,7 @@ export default function Affiliate() {
       .from("payout_methods")
       .insert({
         user_id: user.id,
-        currency: methodForm.currency,
+        currency: "NGN",
         method: "bank_transfer",
         bank_code: methodForm.bankCode,
         account_number: methodForm.accountNumber,
@@ -260,7 +258,6 @@ export default function Affiliate() {
       return;
     }
     setMethodForm({
-      currency: "NGN",
       bankCode: "",
       accountNumber: "",
       accountName: "",
@@ -269,15 +266,17 @@ export default function Affiliate() {
     void load();
   }
 
-  async function deletePayoutMethod(id: string) {
-    if (!window.confirm("Remove this payout method?")) return;
-    setDeletingMethodId(id);
+  async function confirmDeletePayoutMethod() {
+    const method = methodPendingDelete;
+    if (!method) return;
+    setDeletingMethodId(method.id);
     setError(null);
     const { error: deleteError } = await supabase
       .from("payout_methods")
       .delete()
-      .eq("id", id);
+      .eq("id", method.id);
     setDeletingMethodId(null);
+    setMethodPendingDelete(null);
     if (deleteError) {
       setError(
         deleteError.code === "23503"
@@ -286,7 +285,7 @@ export default function Affiliate() {
       );
       return;
     }
-    if (withdrawForm.payoutMethodId === id) {
+    if (withdrawForm.payoutMethodId === method.id) {
       setWithdrawForm((f) => ({ ...f, payoutMethodId: "" }));
     }
     setInfo("Payout method removed.");
@@ -300,29 +299,25 @@ export default function Affiliate() {
     setInfo(null);
 
     const amount = Number(withdrawForm.amount);
-    const min =
-      withdrawForm.currency === "NGN"
-        ? settings.minWithdrawalNgn
-        : settings.minWithdrawalUsd;
+    const min = settings.minWithdrawalNgn;
     if (!amount || amount < min) {
-      setError(`Minimum withdrawal is ${min} ${withdrawForm.currency}.`);
+      setError(`Minimum withdrawal is ₦${min.toLocaleString()}.`);
       return;
     }
-    const balance =
-      balances.find((b) => b.currency === withdrawForm.currency)?.balance ?? 0;
+    const balance = balances.find((b) => b.currency === "NGN")?.balance ?? 0;
     if (amount > balance) {
-      setError(`You only have ${balance} ${withdrawForm.currency} available.`);
+      setError(`You only have ₦${balance.toLocaleString()} available.`);
       return;
     }
     if (!withdrawForm.payoutMethodId) {
-      setError("Add a payout method for this currency first.");
+      setError("Add a payout method first.");
       return;
     }
 
     const { error: insertError } = await supabase.from("withdrawals").insert({
       user_id: user.id,
       amount,
-      currency: withdrawForm.currency,
+      currency: "NGN",
       payout_method_id: withdrawForm.payoutMethodId,
       status: "pending",
     });
@@ -330,11 +325,7 @@ export default function Affiliate() {
       setError(insertError.message);
       return;
     }
-    setWithdrawForm({
-      amount: "",
-      currency: withdrawForm.currency,
-      payoutMethodId: "",
-    });
+    setWithdrawForm({ amount: "", payoutMethodId: "" });
     setInfo("Withdrawal requested — an admin will process it shortly.");
     void load();
   }
@@ -350,7 +341,7 @@ export default function Affiliate() {
   }
 
   const methodsForWithdrawCurrency = payoutMethods.filter(
-    (m) => m.currency === withdrawForm.currency,
+    (m) => m.currency === "NGN",
   );
 
   if (loading) {
@@ -458,31 +449,15 @@ export default function Affiliate() {
           Request a withdrawal
         </h2>
         <form onSubmit={requestWithdrawal} className="mt-3 space-y-3">
-          <div className="flex gap-2">
-            <select
-              value={withdrawForm.currency}
-              onChange={(e) =>
-                setWithdrawForm((f) => ({
-                  ...f,
-                  currency: e.target.value as "NGN" | "USD",
-                  payoutMethodId: "",
-                }))
-              }
-              className={inputClass}
-            >
-              <option value="NGN">NGN</option>
-              <option value="USD">USD</option>
-            </select>
-            <input
-              type="number"
-              placeholder="Amount"
-              value={withdrawForm.amount}
-              onChange={(e) =>
-                setWithdrawForm((f) => ({ ...f, amount: e.target.value }))
-              }
-              className={inputClass}
-            />
-          </div>
+          <input
+            type="number"
+            placeholder="Amount (₦)"
+            value={withdrawForm.amount}
+            onChange={(e) =>
+              setWithdrawForm((f) => ({ ...f, amount: e.target.value }))
+            }
+            className={inputClass}
+          />
           <select
             value={withdrawForm.payoutMethodId}
             onChange={(e) =>
@@ -498,10 +473,7 @@ export default function Affiliate() {
             ))}
           </select>
           <p className="text-xs text-text-3">
-            Minimum{" "}
-            {withdrawForm.currency === "NGN"
-              ? `₦${settings.minWithdrawalNgn.toLocaleString()}`
-              : `$${settings.minWithdrawalUsd.toLocaleString()}`}
+            Minimum ₦{settings.minWithdrawalNgn.toLocaleString()}
           </p>
           <button
             type="submit"
@@ -538,7 +510,7 @@ export default function Affiliate() {
                   </p>
                 </div>
                 <button
-                  onClick={() => void deletePayoutMethod(m.id)}
+                  onClick={() => setMethodPendingDelete(m)}
                   disabled={deletingMethodId === m.id}
                   aria-label={`Remove payout method ${m.account_name}`}
                   className="shrink-0 rounded-lg p-1.5 text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50"
@@ -551,19 +523,6 @@ export default function Affiliate() {
         )}
 
         <form onSubmit={addPayoutMethod} className="mt-3 space-y-3">
-          <select
-            value={methodForm.currency}
-            onChange={(e) =>
-              setMethodForm((f) => ({
-                ...f,
-                currency: e.target.value as "NGN" | "USD",
-              }))
-            }
-            className={inputClass}
-          >
-            <option value="NGN">NGN</option>
-            <option value="USD">USD</option>
-          </select>
           <input
             placeholder="Bank code"
             value={methodForm.bankCode}
@@ -687,7 +646,94 @@ export default function Affiliate() {
           })}
         </ul>
       </div>
+
+      {methodPendingDelete && (
+        <DeletePayoutMethodModal
+          method={methodPendingDelete}
+          deleting={deletingMethodId === methodPendingDelete.id}
+          onCancel={() => setMethodPendingDelete(null)}
+          onConfirm={() => void confirmDeletePayoutMethod()}
+        />
+      )}
     </Layout>
+  );
+}
+
+function DeletePayoutMethodModal({
+  method,
+  deleting,
+  onCancel,
+  onConfirm,
+}: {
+  method: PayoutMethod;
+  deleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 p-4"
+      onClick={onCancel}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-payout-method-heading"
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+      >
+        <div className="flex items-center justify-between">
+          <h2
+            id="delete-payout-method-heading"
+            className="font-heading text-lg font-bold text-text-1"
+          >
+            Remove payout method?
+          </h2>
+          <button
+            onClick={onCancel}
+            aria-label="Close"
+            className="rounded-full p-1 text-text-3 hover:bg-canvas-soft"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <p className="mt-3 text-sm text-text-3">
+          <span className="font-semibold text-text-1">{method.account_name}</span>
+          <br />
+          {method.account_number} · {method.currency}
+        </p>
+        <p className="mt-2 text-sm text-text-3">
+          You won't be able to use it for future withdrawals. This can't be undone.
+        </p>
+        <div className="mt-5 flex gap-2">
+          <button
+            ref={cancelRef}
+            onClick={onCancel}
+            className="btn-secondary flex-1"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={deleting}
+            className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
+          >
+            {deleting ? "Removing…" : "Remove"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

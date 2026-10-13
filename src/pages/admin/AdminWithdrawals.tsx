@@ -188,14 +188,11 @@ export default function AdminWithdrawals() {
   const summary = useMemo(() => {
     const pending = withdrawals.filter((w) => w.status === "pending");
     const success = withdrawals.filter((w) => w.status === "success");
-    const sumBy = (rows: Withdrawal[], currency: "NGN" | "USD") =>
-      rows.filter((w) => w.currency === currency).reduce((s, w) => s + Number(w.amount), 0);
+    const sumBy = (rows: Withdrawal[]) => rows.reduce((s, w) => s + Number(w.amount), 0);
     return {
       pendingCount: pending.length,
-      pendingNgn: sumBy(pending, "NGN"),
-      pendingUsd: sumBy(pending, "USD"),
-      paidNgn: sumBy(success, "NGN"),
-      paidUsd: sumBy(success, "USD"),
+      pendingNgn: sumBy(pending),
+      paidNgn: sumBy(success),
     };
   }, [withdrawals]);
 
@@ -228,10 +225,7 @@ export default function AdminWithdrawals() {
             {summary.pendingCount}
           </p>
           <p className="text-[11px] text-text-3">
-            {summary.pendingNgn > 0 && `₦${summary.pendingNgn.toLocaleString()}`}
-            {summary.pendingNgn > 0 && summary.pendingUsd > 0 && " · "}
-            {summary.pendingUsd > 0 && `$${summary.pendingUsd.toLocaleString()}`}
-            {summary.pendingNgn === 0 && summary.pendingUsd === 0 && "—"}
+            {summary.pendingNgn > 0 ? `₦${summary.pendingNgn.toLocaleString()}` : "—"}
           </p>
         </div>
         <div className="card-luxury p-4">
@@ -242,9 +236,7 @@ export default function AdminWithdrawals() {
           <p className="mt-1 font-heading text-xl font-bold text-emerald-600">
             ₦{summary.paidNgn.toLocaleString()}
           </p>
-          <p className="text-[11px] text-text-3">
-            {summary.paidUsd > 0 ? `+ $${summary.paidUsd.toLocaleString()}` : "Last 200 requests"}
-          </p>
+          <p className="text-[11px] text-text-3">Last 200 requests</p>
         </div>
         <div className="card-luxury col-span-2 p-4 sm:col-span-1">
           <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-text-3">

@@ -104,7 +104,6 @@ export default function AdminSettings() {
 
   const [commissionRate, setCommissionRate] = useState("25");
   const [minWithdrawalNgn, setMinWithdrawalNgn] = useState("10000");
-  const [minWithdrawalUsd, setMinWithdrawalUsd] = useState("10");
   const [autoPayoutEnabled, setAutoPayoutEnabled] = useState(true);
   const [affiliateSaving, setAffiliateSaving] = useState(false);
   const [affiliateError, setAffiliateError] = useState<string | null>(null);
@@ -123,7 +122,7 @@ export default function AdminSettings() {
       supabase
         .from("app_settings")
         .select(
-          "commission_rate, min_withdrawal_ngn, min_withdrawal_usd, withdrawal_auto_payout_enabled",
+          "commission_rate, min_withdrawal_ngn, withdrawal_auto_payout_enabled",
         )
         .eq("id", 1)
         .maybeSingle(),
@@ -141,7 +140,6 @@ export default function AdminSettings() {
     if (affiliateSettings) {
       setCommissionRate(String(Math.round(affiliateSettings.commission_rate * 100)));
       setMinWithdrawalNgn(String(affiliateSettings.min_withdrawal_ngn));
-      setMinWithdrawalUsd(String(affiliateSettings.min_withdrawal_usd));
       setAutoPayoutEnabled(affiliateSettings.withdrawal_auto_payout_enabled);
     }
     setLoading(false);
@@ -180,13 +178,12 @@ export default function AdminSettings() {
 
     const rate = Number(commissionRate);
     const ngn = Number(minWithdrawalNgn);
-    const usd = Number(minWithdrawalUsd);
     if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
       setAffiliateError("Commission rate must be between 0 and 100.");
       return;
     }
-    if (!Number.isFinite(ngn) || ngn <= 0 || !Number.isFinite(usd) || usd <= 0) {
-      setAffiliateError("Minimum withdrawal amounts must be greater than 0.");
+    if (!Number.isFinite(ngn) || ngn <= 0) {
+      setAffiliateError("Minimum withdrawal must be greater than 0.");
       return;
     }
 
@@ -196,7 +193,6 @@ export default function AdminSettings() {
       .update({
         commission_rate: rate / 100,
         min_withdrawal_ngn: ngn,
-        min_withdrawal_usd: usd,
         withdrawal_auto_payout_enabled: autoPayoutEnabled,
         updated_by: user?.id,
       })
@@ -311,7 +307,7 @@ export default function AdminSettings() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="text-sm font-medium text-text-2">
               Commission rate (%)
@@ -338,18 +334,6 @@ export default function AdminSettings() {
               min={1}
               value={minWithdrawalNgn}
               onChange={(e) => setMinWithdrawalNgn(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-text-2">
-              Min withdrawal ($)
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={minWithdrawalUsd}
-              onChange={(e) => setMinWithdrawalUsd(e.target.value)}
               className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
             />
           </div>

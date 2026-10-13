@@ -209,6 +209,12 @@ async function creditReferralCommission({
 
   if (!referral) return;
 
+  // The affiliate program is NGN-only — a referred student paying in USD earns their referrer
+  // nothing, rather than minting a commission in a currency the affiliate program no longer
+  // supports (no withdrawal, payout method, or balance UI for it, and no FX rate to convert it
+  // into NGN).
+  if (baseCurrency !== "NGN") return;
+
   const { data: affiliate } = await db
     .from("affiliate_profiles")
     .select("status")
