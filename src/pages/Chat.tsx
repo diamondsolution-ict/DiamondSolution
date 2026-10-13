@@ -20,6 +20,7 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   async function loadMessages(id: string) {
@@ -59,12 +60,22 @@ export default function Chat() {
     try {
       await loadOwnThread();
       setLoading(false);
-    } catch {
+    } catch (err) {
       if (!isRetry) {
         await new Promise((r) => setTimeout(r, 800));
         await init(true);
         return;
       }
+      // A Postgrest/RPC failure resolves as `{ data, error }` rather than rejecting, and the
+      // `error` there is a plain `{code, details, hint, message}` object, not an Error instance
+      // (supabase-js only wraps it in a real Error when `.throwOnError()` is used, which this
+      // app doesn't) — `err instanceof Error` is false for it, so checking for a `.message`
+      // string directly is what actually catches both that shape and a genuine thrown Error.
+      const message =
+        err && typeof err === "object" && typeof (err as { message?: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : "Something went wrong — check your connection and try again.";
+      setLoadErrorMessage(message);
       setLoadError(true);
       setLoading(false);
     }
@@ -153,7 +164,7 @@ export default function Chat() {
                 Couldn't load your conversation
               </p>
               <p className="max-w-xs text-sm text-text-3">
-                Check your connection and try again.
+                {loadErrorMessage ?? "Check your connection and try again."}
               </p>
               <button onClick={() => void init()} className="btn-secondary mt-2">
                 Retry
