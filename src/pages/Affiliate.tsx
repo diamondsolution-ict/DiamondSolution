@@ -19,6 +19,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
+import { functionErrorMessage } from "@/lib/functionError";
 
 interface AffiliateProfile {
   referral_code: string;
@@ -44,8 +45,13 @@ interface PayoutMethod {
   currency: string;
   method: string;
   bank_code: string | null;
+  bank_name: string | null;
   account_number: string | null;
   account_name: string | null;
+}
+interface Bank {
+  name: string;
+  code: string;
 }
 interface Withdrawal {
   id: string;
@@ -92,12 +98,8 @@ export default function Affiliate() {
   const [methodPendingDelete, setMethodPendingDelete] = useState<PayoutMethod | null>(null);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showMethodModal, setShowMethodModal] = useState(false);
+  const [addingMethod, setAddingMethod] = useState(false);
 
-  const [methodForm, setMethodForm] = useState({
-    bankCode: "",
-    accountNumber: "",
-    accountName: "",
-  });
   const [withdrawForm, setWithdrawForm] = useState({
     amount: "",
     payoutMethodId: "",
@@ -147,7 +149,7 @@ export default function Affiliate() {
         supabase
           .from("payout_methods")
           .select(
-            "id, currency, method, bank_code, account_number, account_name",
+            "id, currency, method, bank_code, bank_name, account_number, account_name",
           )
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
@@ -241,25 +243,32 @@ export default function Affiliate() {
     setActivating(false);
   }
 
-  async function addPayoutMethod(e: FormEvent) {
-    e.preventDefault();
+  // Called only once the add-method modal has resolved a real account name from Paystack, so
+  // account_name is always what the institution itself reports, never something the student
+  // typed.
+  async function addPayoutMethod(resolved: {
+    bankCode: string;
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+  }) {
     if (!user) return;
     setError(null);
-    const { error: insertError } = await supabase
-      .from("payout_methods")
-      .insert({
-        user_id: user.id,
-        currency: "NGN",
-        method: "bank_transfer",
-        bank_code: methodForm.bankCode,
-        account_number: methodForm.accountNumber,
-        account_name: methodForm.accountName,
-      });
+    setAddingMethod(true);
+    const { error: insertError } = await supabase.from("payout_methods").insert({
+      user_id: user.id,
+      currency: "NGN",
+      method: "bank_transfer",
+      bank_code: resolved.bankCode,
+      bank_name: resolved.bankName,
+      account_number: resolved.accountNumber,
+      account_name: resolved.accountName,
+    });
+    setAddingMethod(false);
     if (insertError) {
       setError(insertError.message);
       return;
     }
-    setMethodForm({ bankCode: "", accountNumber: "", accountName: "" });
     setInfo("Payout method added.");
     setShowMethodModal(false);
     void load();
@@ -444,7 +453,8 @@ export default function Affiliate() {
                     <p className="truncate text-xs font-semibold text-text-1">
                       {m.account_name}
                     </p>
-                    <p className="text-[11px] text-text-3">
+                    <p className="truncate text-[11px] text-text-3">
+                      {m.bank_name ? `${m.bank_name} · ` : ""}
                       {m.account_number}
                     </p>
                   </div>
@@ -654,12 +664,8 @@ export default function Affiliate() {
 
       {showMethodModal && (
         <AddMethodModal
-          form={methodForm}
-          error={error}
-          onChange={(field, value) =>
-            setMethodForm((f) => ({ ...f, [field]: value }))
-          }
-          onSubmit={addPayoutMethod}
+          submitting={addingMethod}
+          onSubmit={(resolved) => void addPayoutMethod(resolved)}
           onClose={() => {
             setShowMethodModal(false);
             setError(null);
@@ -827,7 +833,8 @@ function WithdrawModal({
               <option value="">Select payout method</option>
               {methods.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.account_name} · {m.account_number}
+                  {m.account_name} · {m.bank_name ? `${m.bank_name} ` : ""}
+                  {m.account_number}
                 </option>
               ))}
             </select>
@@ -854,31 +861,105 @@ function WithdrawModal({
 }
 
 function AddMethodModal({
-  form,
-  error,
-  onChange,
+  submitting,
   onSubmit,
   onClose,
 }: {
-  form: { bankCode: string; accountNumber: string; accountName: string };
-  error: string | null;
-  onChange: (
-    field: "bankCode" | "accountNumber" | "accountName",
-    value: string,
-  ) => void;
-  onSubmit: (e: FormEvent) => void;
+  submitting: boolean;
+  onSubmit: (resolved: {
+    bankCode: string;
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+  }) => void;
   onClose: () => void;
 }) {
-  const firstFieldRef = useRef<HTMLInputElement>(null);
+  const bankSelectRef = useRef<HTMLSelectElement>(null);
+
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banksLoading, setBanksLoading] = useState(true);
+  const [banksError, setBanksError] = useState<string | null>(null);
+
+  const [bankCode, setBankCode] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [resolvedName, setResolvedName] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+
+  const bankName = banks.find((b) => b.code === bankCode)?.name ?? "";
 
   useEffect(() => {
-    firstFieldRef.current?.focus();
+    bankSelectRef.current?.focus();
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBanks() {
+      setBanksLoading(true);
+      setBanksError(null);
+      const { data, error } = await supabase.functions.invoke("list-banks");
+      if (cancelled) return;
+      if (error || !data?.success) {
+        setBanksError(
+          await functionErrorMessage(data, error, "Couldn't load the bank list."),
+        );
+      } else {
+        setBanks(data.banks ?? []);
+      }
+      setBanksLoading(false);
+    }
+    void loadBanks();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Auto-resolves the account name the moment both a bank and a full 10-digit account number
+  // are in — no separate "verify" button to remember to press, and nothing to type for the
+  // name itself since it's read back from the institution.
+  useEffect(() => {
+    setResolvedName(null);
+    setResolveError(null);
+    if (!bankCode || accountNumber.length !== 10) return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setResolving(true);
+      const { data, error } = await supabase.functions.invoke(
+        "resolve-bank-account",
+        { body: { account_number: accountNumber, bank_code: bankCode } },
+      );
+      if (cancelled) return;
+      if (error || !data?.success) {
+        setResolveError(
+          await functionErrorMessage(
+            data,
+            error,
+            "Could not resolve this account.",
+          ),
+        );
+      } else {
+        setResolvedName(data.account_name);
+      }
+      setResolving(false);
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [bankCode, accountNumber]);
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!resolvedName) return;
+    onSubmit({ bankCode, bankName, accountNumber, accountName: resolvedName });
+  }
 
   return (
     <div
@@ -907,18 +988,33 @@ function AddMethodModal({
         <p className="mt-1 text-xs text-text-3">
           Bank transfer only — payouts are sent via Paystack.
         </p>
-        <form onSubmit={onSubmit} className="mt-4 space-y-3">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
-            <label htmlFor="method-bank-code" className="text-xs font-semibold text-text-2">
-              Bank code
+            <label htmlFor="method-bank" className="text-xs font-semibold text-text-2">
+              Financial institution
             </label>
-            <input
-              ref={firstFieldRef}
-              id="method-bank-code"
-              value={form.bankCode}
-              onChange={(e) => onChange("bankCode", e.target.value)}
-              className={`${inputClass} mt-1`}
-            />
+            <select
+              ref={bankSelectRef}
+              id="method-bank"
+              value={bankCode}
+              onChange={(e) => setBankCode(e.target.value)}
+              disabled={banksLoading || !!banksError}
+              className={`${inputClass} mt-1 disabled:opacity-60`}
+            >
+              <option value="">
+                {banksLoading ? "Loading banks…" : "Select your bank"}
+              </option>
+              {banks.map((b) => (
+                <option key={b.code} value={b.code}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+            {banksError && (
+              <p role="alert" className="mt-1 text-xs font-medium text-rose-600">
+                {banksError}
+              </p>
+            )}
           </div>
           <div>
             <label htmlFor="method-account-number" className="text-xs font-semibold text-text-2">
@@ -926,33 +1022,48 @@ function AddMethodModal({
             </label>
             <input
               id="method-account-number"
-              value={form.accountNumber}
-              onChange={(e) => onChange("accountNumber", e.target.value)}
+              inputMode="numeric"
+              maxLength={10}
+              value={accountNumber}
+              onChange={(e) =>
+                setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 10))
+              }
               className={`${inputClass} mt-1`}
             />
           </div>
-          <div>
-            <label htmlFor="method-account-name" className="text-xs font-semibold text-text-2">
-              Account name
-            </label>
-            <input
-              id="method-account-name"
-              value={form.accountName}
-              onChange={(e) => onChange("accountName", e.target.value)}
-              className={`${inputClass} mt-1`}
-            />
-          </div>
-          {error && (
-            <p role="alert" className="text-xs font-medium text-rose-600">
-              {error}
-            </p>
+
+          {(resolving || resolvedName || resolveError) && (
+            <div
+              className={`rounded-xl border px-3 py-2.5 text-sm ${
+                resolveError
+                  ? "border-rose-200 bg-rose-50 text-rose-700"
+                  : resolvedName
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-canvas-border bg-canvas-soft text-text-3"
+              }`}
+            >
+              {resolving && "Resolving account name…"}
+              {!resolving && resolvedName && (
+                <>
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                    Account name
+                  </span>
+                  {resolvedName}
+                </>
+              )}
+              {!resolving && resolveError && (
+                <span role="alert">{resolveError}</span>
+              )}
+            </div>
           )}
+
           <button
             type="submit"
-            className="btn-primary flex w-full items-center justify-center gap-2"
+            disabled={!resolvedName || submitting}
+            className="btn-primary flex w-full items-center justify-center gap-2 disabled:opacity-50"
           >
             <Landmark size={15} />
-            Add payout method
+            {submitting ? "Adding…" : "Add payout method"}
           </button>
         </form>
       </div>
@@ -1012,7 +1123,8 @@ function DeletePayoutMethodModal({
         <p className="mt-3 text-sm text-text-3">
           <span className="font-semibold text-text-1">{method.account_name}</span>
           <br />
-          {method.account_number} · {method.currency}
+          {method.bank_name ? `${method.bank_name} · ` : ""}
+          {method.account_number}
         </p>
         <p className="mt-2 text-sm text-text-3">
           You won't be able to use it for future withdrawals. This can't be undone.

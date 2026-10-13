@@ -128,6 +128,75 @@ export async function verifyPaystackTransfer(
   return res.json();
 }
 
+export interface PaystackBank {
+  name: string;
+  code: string;
+  slug: string;
+}
+
+interface PaystackBankListResult {
+  status: boolean;
+  message: string;
+  data: PaystackBank[];
+}
+
+// The full list of Nigerian banks Paystack's Transfer API can pay out to — used to populate a
+// dropdown when adding a payout method, instead of a free-text "bank name" field a student could
+// get subtly wrong (typos, an outdated/unsupported bank) with no way to catch it until a real
+// payout attempt fails later.
+export async function listBanks(): Promise<PaystackBankListResult> {
+  if (!PAYSTACK_SECRET_KEY) {
+    throw new Error(
+      "PAYSTACK_SECRET_KEY is not configured — set it with `supabase secrets set PAYSTACK_SECRET_KEY=sk_...`",
+    );
+  }
+
+  const res = await fetch(
+    "https://api.paystack.co/bank?country=nigeria&currency=NGN&type=nuban",
+    { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` } },
+  );
+  if (!res.ok) {
+    throw new Error(`Paystack bank list request failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+interface PaystackResolveResult {
+  status: boolean;
+  message: string;
+  data: { account_number: string; account_name: string; bank_id: number };
+}
+
+// Resolves the real account name straight from the bank, given an account number + bank code —
+// so a student never types their own account name (a frequent source of mismatched-name transfer
+// failures); it's read back from the institution itself, the same verification every Nigerian
+// fintech app does before accepting a bank account.
+export async function resolveAccountNumber(
+  accountNumber: string,
+  bankCode: string,
+): Promise<PaystackResolveResult> {
+  if (!PAYSTACK_SECRET_KEY) {
+    throw new Error(
+      "PAYSTACK_SECRET_KEY is not configured — set it with `supabase secrets set PAYSTACK_SECRET_KEY=sk_...`",
+    );
+  }
+
+  const res = await fetch(
+    `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`,
+    { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` } },
+  );
+  // Paystack answers an unresolvable account number with a 4xx status, but still a real JSON
+  // body ({status: false, message: "Could not resolve account name"}) — that's an expected,
+  // user-facing outcome (a typo'd account number), not a system failure, so it's parsed and
+  // returned like any other response rather than thrown as an error. Only a body Paystack itself
+  // didn't return as JSON is treated as a real failure.
+  try {
+    return await res.json();
+  } catch {
+    throw new Error(`Paystack account resolve request failed with status ${res.status}`);
+  }
+}
+
 // Verifies the raw webhook body against Paystack's HMAC-SHA512 signature header.
 // Never trust a webhook payload without this check — anyone could POST a fake "success" event.
 export async function verifyPaystackSignature(

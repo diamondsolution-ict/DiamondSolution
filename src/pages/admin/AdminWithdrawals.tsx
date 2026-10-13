@@ -18,6 +18,7 @@ import { functionErrorMessage } from "@/lib/functionError";
 interface PayoutMethod {
   method: string;
   bank_code: string | null;
+  bank_name: string | null;
   account_number: string | null;
   account_name: string | null;
 }
@@ -55,7 +56,7 @@ export default function AdminWithdrawals() {
       supabase
         .from("withdrawals")
         .select(
-          "id, user_id, amount, currency, status, provider_reference, provider_response, requested_at, processed_at, payout_methods(method, bank_code, account_number, account_name)",
+          "id, user_id, amount, currency, status, provider_reference, provider_response, requested_at, processed_at, payout_methods(method, bank_code, bank_name, account_number, account_name)",
         )
         .order("requested_at", { ascending: false })
         .limit(200),
@@ -345,6 +346,9 @@ export default function AdminWithdrawals() {
                 <div className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-canvas-border pt-3 text-xs text-text-3 sm:grid-cols-2">
                   <p>
                     Account: {w.payout_methods?.account_name ?? "—"} ·{" "}
+                    {w.payout_methods?.bank_name
+                      ? `${w.payout_methods.bank_name} `
+                      : ""}
                     {w.payout_methods?.account_number ?? "no account on file"}
                   </p>
                   <p>
