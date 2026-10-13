@@ -388,12 +388,13 @@ export default function AdminSettings() {
         <div>
           <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
             <ShieldCheck size={17} className="text-royal" />
-            Admin security code
+            Your admin security code
           </h2>
           <p className="mt-1 text-sm text-text-3">
-            Entered in the "Security Clearance Required" prompt before destructive admin
-            actions (suspending/deleting users, changing roles). Default is{" "}
-            <span className="font-mono font-semibold">12345</span> — change it here.
+            Personal to your account — nobody else's code changes when you change yours. You
+            enter it once per browser session to open the admin area, and again in the
+            "Security Clearance Required" prompt before destructive actions (suspending/
+            deleting users, changing roles).
           </p>
         </div>
 
