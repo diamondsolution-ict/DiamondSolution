@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   ChevronLeft,
@@ -17,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { NotificationBell } from "@/components/NotificationBell";
 import { DiamondLogo } from "@/components/DiamondLogo";
+import { logPageVisit } from "@/lib/visitTracking";
 
 interface LayoutProps {
   title: string;
@@ -45,10 +47,15 @@ const DESKTOP_EXTRA_NAV = [
 ];
 
 export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
-  const { isAdmin, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
   const contentMaxWidth = wide ? "max-w-none" : "max-w-3xl";
+
+  useEffect(() => {
+    if (user) logPageVisit(user.id, location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, user?.id]);
 
   return (
     <div className="diamond-mesh min-h-screen pb-24 md:flex md:pb-0">

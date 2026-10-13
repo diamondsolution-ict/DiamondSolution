@@ -6,6 +6,7 @@ import {
   DollarSign,
   RefreshCcw,
   ShieldAlert,
+  TrendingUp,
   Trophy,
   Users,
   type LucideIcon,
@@ -45,29 +46,62 @@ interface Scholar {
   correct: number;
   study_seconds: number;
 }
+interface VisitOverview {
+  total_visits: number;
+  unique_visitors: number;
+  avg_visits_per_visitor: number;
+}
+interface DailyVisits {
+  visit_date: string;
+  visits: number;
+}
+interface PeakHour {
+  hour_of_day: number;
+  visits: number;
+}
 
 export default function AdminAnalytics() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
   const [revenue, setRevenue] = useState<RevenueMonth[]>([]);
+  const [payouts, setPayouts] = useState<RevenueMonth[]>([]);
   const [scholars, setScholars] = useState<Scholar[]>([]);
+  const [visitOverview, setVisitOverview] = useState<VisitOverview | null>(null);
+  const [dailyVisits, setDailyVisits] = useState<DailyVisits[]>([]);
+  const [peakHours, setPeakHours] = useState<PeakHour[]>([]);
   const [period, setPeriod] = useState(30);
   const [loading, setLoading] = useState(true);
   const [refreshedAt, setRefreshedAt] = useState(new Date());
 
   async function load(days: number) {
     setLoading(true);
-    const [{ data: ov }, { data: ds }, { data: rev }, { data: sch }] =
-      await Promise.all([
-        supabase.rpc("admin_analytics_overview"),
-        supabase.rpc("admin_dashboard_stats"),
-        supabase.rpc("admin_revenue_history_monthly"),
-        supabase.rpc("admin_most_active_scholars", { p_days: days }),
-      ]);
+    const [
+      { data: ov },
+      { data: ds },
+      { data: rev },
+      { data: payoutRows },
+      { data: sch },
+      { data: visitOv },
+      { data: daily },
+      { data: peak },
+    ] = await Promise.all([
+      supabase.rpc("admin_analytics_overview"),
+      supabase.rpc("admin_dashboard_stats"),
+      supabase.rpc("admin_revenue_history_monthly"),
+      supabase.rpc("admin_affiliate_payouts_monthly"),
+      supabase.rpc("admin_most_active_scholars", { p_days: days }),
+      supabase.rpc("admin_visit_overview", { p_days: days }),
+      supabase.rpc("admin_visits_daily", { p_days: days }),
+      supabase.rpc("admin_visit_peak_hours", { p_days: days }),
+    ]);
     setOverview((ov ?? [])[0] ?? null);
     setDashStats((ds ?? [])[0] ?? null);
     setRevenue(rev ?? []);
+    setPayouts(payoutRows ?? []);
     setScholars(sch ?? []);
+    setVisitOverview((visitOv ?? [])[0] ?? null);
+    setDailyVisits(daily ?? []);
+    setPeakHours(peak ?? []);
     setRefreshedAt(new Date());
     setLoading(false);
   }
@@ -78,6 +112,9 @@ export default function AdminAnalytics() {
   }, [period]);
 
   const maxRevenue = Math.max(1, ...revenue.map((r) => r.amount));
+  const maxPayout = Math.max(1, ...payouts.map((r) => r.amount));
+  const maxDailyVisits = Math.max(1, ...dailyVisits.map((d) => d.visits));
+  const maxPeakHour = Math.max(1, ...peakHours.map((h) => h.visits));
 
   return (
     <AdminLayout>
@@ -147,14 +184,32 @@ export default function AdminAnalytics() {
             </div>
 
             <div className="card-luxury p-5">
-              <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-text-1">
-                <Clock3 size={15} className="text-royal" />
-                Visit Frequency / Peak Hours
+              <h2 className="flex items-center gap-2 font-heading text-sm font-bold text-rose-600">
+                <Users size={15} />
+                Affiliate Payouts (Annual)
               </h2>
-              <p className="mt-4 text-sm text-text-3">
-                Not available yet — this needs the device/session tracking
-                tables from Phase 5, which haven't been built.
-              </p>
+              <div
+                className="mt-4 flex items-end gap-1.5"
+                style={{ height: 100 }}
+              >
+                {payouts.map((p) => (
+                  <div
+                    key={p.month}
+                    className="flex flex-1 flex-col items-center gap-1"
+                  >
+                    <div
+                      className="w-full rounded-t bg-rose-500"
+                      style={{
+                        height: `${Math.max(2, (p.amount / maxPayout) * 84)}px`,
+                      }}
+                      title={`₦${p.amount.toLocaleString()}`}
+                    />
+                    <span className="text-[9px] text-text-3">
+                      {MONTH_LABELS[p.month - 1]}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -167,7 +222,7 @@ export default function AdminAnalytics() {
                 </h2>
                 <p className="text-xs text-text-3">
                   Snapshot as of {refreshedAt.toLocaleTimeString()} — not
-                  live.
+                  live, click Refresh for the latest.
                 </p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-canvas-border bg-white p-1">
@@ -194,7 +249,99 @@ export default function AdminAnalytics() {
               </div>
             </div>
 
-            <h3 className="mt-5 text-xs font-bold uppercase tracking-wide text-text-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-canvas-border bg-canvas-soft p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-text-3">
+                  Total Visits
+                </p>
+                <p className="mt-1 font-heading text-xl font-bold text-royal">
+                  {visitOverview?.total_visits.toLocaleString() ?? 0}
+                </p>
+                <p className="text-[11px] text-text-3">
+                  Last {period} days
+                </p>
+              </div>
+              <div className="rounded-xl border border-canvas-border bg-canvas-soft p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-text-3">
+                  Unique Visitors
+                </p>
+                <p className="mt-1 font-heading text-xl font-bold text-royal">
+                  {visitOverview?.unique_visitors.toLocaleString() ?? 0}
+                </p>
+                <p className="text-[11px] text-text-3">
+                  Last {period} days
+                </p>
+              </div>
+              <div className="rounded-xl border border-canvas-border bg-canvas-soft p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-text-3">
+                  Avg Visits / Visitor
+                </p>
+                <p className="mt-1 font-heading text-xl font-bold text-royal">
+                  {visitOverview?.avg_visits_per_visitor ?? 0}
+                </p>
+                <p className="text-[11px] text-text-3">Return frequency</p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div>
+                <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-text-3">
+                  <TrendingUp size={13} className="text-royal" />
+                  Page Visits Over Time
+                </h3>
+                {dailyVisits.every((d) => d.visits === 0) ? (
+                  <p className="mt-3 text-xs text-text-3">
+                    No visits recorded yet in this period.
+                  </p>
+                ) : (
+                  <div
+                    className="mt-3 flex items-end gap-0.5"
+                    style={{ height: 80 }}
+                  >
+                    {dailyVisits.map((d) => (
+                      <div
+                        key={d.visit_date}
+                        className="flex-1 rounded-t bg-royal/70"
+                        style={{
+                          height: `${Math.max(2, (d.visits / maxDailyVisits) * 72)}px`,
+                        }}
+                        title={`${d.visit_date}: ${d.visits} visit${d.visits === 1 ? "" : "s"}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-text-3">
+                  <Clock3 size={13} className="text-royal" />
+                  Peak Visit Hours (Local Time)
+                </h3>
+                {!peakHours.some((h) => h.visits > 0) ? (
+                  <p className="mt-3 text-xs text-text-3">
+                    No visits recorded yet in this period.
+                  </p>
+                ) : (
+                  <div
+                    className="mt-3 flex items-end gap-0.5"
+                    style={{ height: 80 }}
+                  >
+                    {peakHours.map((h) => (
+                      <div
+                        key={h.hour_of_day}
+                        className="flex-1 rounded-t bg-emerald-500/70"
+                        style={{
+                          height: `${Math.max(2, (h.visits / maxPeakHour) * 72)}px`,
+                        }}
+                        title={`${h.hour_of_day}:00 — ${h.visits} visit${h.visits === 1 ? "" : "s"}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <h3 className="mt-6 text-xs font-bold uppercase tracking-wide text-text-3">
               Most Active Scholars
             </h3>
             {scholars.length === 0 ? (
