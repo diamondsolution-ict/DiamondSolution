@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Building2,
+  CheckCircle2,
   GraduationCap,
   Lock,
   Mail,
@@ -39,8 +40,13 @@ export default function Register() {
       searchParams.get("ref") ?? sessionStorage.getItem("referralCode") ?? "",
   });
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Set once signUp() succeeds without an active session (email confirmation required) — the
+  // registered account's own email, held separately from the form so it survives even if the
+  // form were ever reset, and so the confirmation popup can't show a blank address.
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
 
   useEffect(() => {
     supabase
@@ -58,7 +64,6 @@ export default function Register() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setInfo(null);
 
     if (form.password !== form.confirmPassword) {
       setError(t("register.passwordMismatch"));
@@ -100,8 +105,24 @@ export default function Register() {
     if (data.session) {
       navigate("/dashboard");
     } else {
-      setInfo(t("register.checkEmail"));
+      setAwaitingConfirmation(form.email);
     }
+  }
+
+  async function handleResend() {
+    if (!awaitingConfirmation || resending) return;
+    setResending(true);
+    setResent(false);
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: awaitingConfirmation,
+    });
+    setResending(false);
+    if (resendError) {
+      setError(resendError.message);
+      return;
+    }
+    setResent(true);
   }
 
   return (
@@ -118,11 +139,6 @@ export default function Register() {
             {error && (
               <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
                 {error}
-              </p>
-            )}
-            {info && (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                {info}
               </p>
             )}
 
@@ -224,6 +240,70 @@ export default function Register() {
           {t("register.disclaimer")}
         </p>
       </div>
+
+      {loading && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-navy/60 backdrop-blur-sm"
+        >
+          <span className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-white" />
+          <p className="font-heading text-sm font-semibold text-white">
+            {t("register.creating")}
+          </p>
+        </div>
+      )}
+
+      {awaitingConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="register-confirm-heading"
+            className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl"
+          >
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+              <CheckCircle2 size={24} className="text-emerald-600" />
+            </div>
+            <h2
+              id="register-confirm-heading"
+              className="mt-4 font-heading text-lg font-bold text-text-1"
+            >
+              {t("register.accountCreatedTitle")}
+            </h2>
+            <p className="mt-2 text-sm text-text-3">
+              {t("register.checkEmailBody").replace("{email}", awaitingConfirmation)}
+            </p>
+
+            {resent && (
+              <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                {t("register.resendEmailSent")}
+              </p>
+            )}
+            {error && (
+              <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+                {error}
+              </p>
+            )}
+
+            <div className="mt-5 space-y-2">
+              <button
+                onClick={() => navigate("/login")}
+                className="btn-primary w-full"
+              >
+                {t("register.goToSignIn")}
+              </button>
+              <button
+                onClick={() => void handleResend()}
+                disabled={resending}
+                className="btn-outline w-full disabled:opacity-50"
+              >
+                {resending ? t("register.resendEmailSending") : t("register.resendEmail")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

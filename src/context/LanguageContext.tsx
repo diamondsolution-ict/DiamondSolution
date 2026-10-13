@@ -57,6 +57,13 @@ const translations: Record<Language, Record<string, string>> = {
     "register.passwordMismatch": "Passwords do not match.",
     "register.checkEmail":
       "Check your email to confirm your account, then sign in.",
+    "register.accountCreatedTitle": "Account created",
+    "register.checkEmailBody":
+      "We've sent a confirmation link to {email}. Click it to activate your account, then sign in. Don't see it? Check your spam or junk folder.",
+    "register.resendEmail": "Resend confirmation email",
+    "register.resendEmailSending": "Sending…",
+    "register.resendEmailSent": "Sent — check your inbox (and spam folder).",
+    "register.goToSignIn": "Go to sign in",
 
     "authtabs.signin": "Sign in",
     "authtabs.register": "Register",
@@ -112,6 +119,13 @@ const translations: Record<Language, Record<string, string>> = {
     "register.passwordMismatch": "Les mots de passe ne correspondent pas.",
     "register.checkEmail":
       "Consultez votre e-mail pour confirmer votre compte, puis connectez-vous.",
+    "register.accountCreatedTitle": "Compte créé",
+    "register.checkEmailBody":
+      "Nous avons envoyé un lien de confirmation à {email}. Cliquez dessus pour activer votre compte, puis connectez-vous. Vous ne le voyez pas ? Vérifiez vos courriers indésirables.",
+    "register.resendEmail": "Renvoyer l'e-mail de confirmation",
+    "register.resendEmailSending": "Envoi…",
+    "register.resendEmailSent": "Envoyé — vérifiez votre boîte de réception (et vos indésirables).",
+    "register.goToSignIn": "Aller à la connexion",
 
     "authtabs.signin": "Se connecter",
     "authtabs.register": "S'inscrire",
