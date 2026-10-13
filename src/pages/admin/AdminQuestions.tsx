@@ -152,7 +152,18 @@ export default function AdminQuestions() {
   const [options, setOptions] = useState(["", "", "", ""]);
   const [correctIndex, setCorrectIndex] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const questionPromptRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!showQuestionForm) return;
+    questionPromptRef.current?.focus();
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") resetForm();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showQuestionForm]);
 
   const [outline, setOutline] = useState<OutlineSection[]>([]);
   const [outlineError, setOutlineError] = useState<string | null>(null);
@@ -300,9 +311,6 @@ export default function AdminQuestions() {
       setCorrectIndex(0);
     }
     setShowQuestionForm(true);
-    requestAnimationFrame(() =>
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    );
   }
 
   async function handleSubmitForm(e: FormEvent) {
@@ -820,13 +828,8 @@ export default function AdminQuestions() {
 
       <button
         onClick={() => {
-          if (!showQuestionForm) resetForm();
-          setShowQuestionForm((v) => !v);
-          if (!showQuestionForm) {
-            requestAnimationFrame(() =>
-              formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-            );
-          }
+          resetForm();
+          setShowQuestionForm(true);
         }}
         className="btn-primary mt-6 flex w-full items-center justify-center gap-2 sm:w-auto"
       >
@@ -867,13 +870,23 @@ export default function AdminQuestions() {
       </div>
 
       {showQuestionForm && (
-        <form
-          ref={formRef}
-          onSubmit={handleSubmitForm}
-          className="card-luxury mt-4 space-y-4 p-6"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 p-4"
+          onClick={resetForm}
         >
+          <form
+            onSubmit={handleSubmitForm}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="question-form-heading"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+          >
           <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+            <h2
+              id="question-form-heading"
+              className="flex items-center gap-2 font-heading text-base font-bold text-text-1"
+            >
               {editingId ? (
                 <Pencil size={17} className="text-royal" />
               ) : (
@@ -884,22 +897,27 @@ export default function AdminQuestions() {
             <button
               type="button"
               onClick={resetForm}
-              className="flex items-center gap-1 text-xs font-semibold text-text-3 hover:text-text-1"
+              aria-label={editingId ? "Cancel edit" : "Close"}
+              className="flex items-center gap-1 text-xs font-semibold text-text-3 hover:text-text-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal"
             >
-              <X size={13} />
+              <X size={13} aria-hidden="true" />
               {editingId ? "Cancel edit" : "Close"}
             </button>
           </div>
 
           {error && (
-            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <p
+              role="alert"
+              className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+            >
               {error}
             </p>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-text-2">Type</label>
+          <div className="mt-4">
+            <label htmlFor="question-type" className="block text-sm font-medium text-text-2">Type</label>
             <select
+              id="question-type"
               value={type}
               onChange={(e) =>
                 setType(e.target.value as "objective" | "application")
@@ -911,11 +929,13 @@ export default function AdminQuestions() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-2">
+          <div className="mt-4">
+            <label htmlFor="question-prompt" className="block text-sm font-medium text-text-2">
               Question
             </label>
             <textarea
+              id="question-prompt"
+              ref={questionPromptRef}
               required
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -925,23 +945,28 @@ export default function AdminQuestions() {
           </div>
 
           {type === "objective" ? (
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-text-2">
+            <fieldset className="mt-4 space-y-2">
+              <legend className="block text-sm font-medium text-text-2">
                 Options (select the correct one)
-              </label>
+              </legend>
               {options.map((opt, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input
+                    id={`question-option-correct-${i}`}
                     type="radio"
                     name="correct"
                     checked={correctIndex === i}
                     onChange={() => setCorrectIndex(i)}
                     className="h-4 w-4 accent-[#1B3FA0]"
                   />
-                  <span className="w-5 text-sm font-semibold text-text-3">
+                  <label
+                    htmlFor={`question-option-${i}`}
+                    className="w-5 text-sm font-semibold text-text-3"
+                  >
                     {OPTION_LABELS[i]}
-                  </span>
+                  </label>
                   <input
+                    id={`question-option-${i}`}
                     value={opt}
                     onChange={(e) => {
                       const next = [...options];
@@ -952,13 +977,14 @@ export default function AdminQuestions() {
                   />
                 </div>
               ))}
-            </div>
+            </fieldset>
           ) : (
-            <div>
-              <label className="block text-sm font-medium text-text-2">
+            <div className="mt-4">
+              <label htmlFor="question-expected-answer" className="block text-sm font-medium text-text-2">
                 Expected answer
               </label>
               <textarea
+                id="question-expected-answer"
                 value={expectedAnswer}
                 onChange={(e) => setExpectedAnswer(e.target.value)}
                 className={inputClass}
@@ -967,11 +993,12 @@ export default function AdminQuestions() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-text-2">
+          <div className="mt-4">
+            <label htmlFor="question-explanation" className="block text-sm font-medium text-text-2">
               Explanation (optional)
             </label>
             <textarea
+              id="question-explanation"
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
               className={inputClass}
@@ -982,7 +1009,7 @@ export default function AdminQuestions() {
           <button
             type="submit"
             disabled={saving}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary mt-6 flex items-center gap-2"
           >
             {editingId ? <Pencil size={15} /> : <FilePlus size={15} />}
             {saving
@@ -993,7 +1020,8 @@ export default function AdminQuestions() {
                 ? "Save changes"
                 : "Add question"}
           </button>
-        </form>
+          </form>
+        </div>
       )}
 
       <div className="mt-6 space-y-3">

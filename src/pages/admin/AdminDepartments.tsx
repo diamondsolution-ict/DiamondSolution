@@ -63,6 +63,15 @@ export default function AdminDepartments() {
   );
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!modal) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setModal(null);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [modal]);
+
   const [name, setName] = useState("");
   const [priceNgn, setPriceNgn] = useState("10000");
   const [priceUsd, setPriceUsd] = useState("");
@@ -75,6 +84,10 @@ export default function AdminDepartments() {
 
   const [newLevelLabel, setNewLevelLabel] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingLevelId, setEditingLevelId] = useState<string | null>(null);
+  const [editLevelLabel, setEditLevelLabel] = useState("");
+  const [levelError, setLevelError] = useState<string | null>(null);
+  const [levelBusyId, setLevelBusyId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -144,6 +157,8 @@ export default function AdminDepartments() {
   function openLevels(d: Department) {
     setActiveId(d.id);
     setNewLevelLabel("");
+    setEditingLevelId(null);
+    setLevelError(null);
     setModal("levels");
   }
 
@@ -249,6 +264,7 @@ export default function AdminDepartments() {
     if (!activeId) return;
     const label = newLevelLabel.trim();
     if (!label) return;
+    setLevelError(null);
     const nextOrder =
       Math.max(
         -1,
@@ -256,10 +272,65 @@ export default function AdminDepartments() {
           .filter((l) => l.department_id === activeId)
           .map((l) => l.sort_order ?? 0),
       ) + 1;
-    await supabase
+    const { error } = await supabase
       .from("department_levels")
       .insert({ department_id: activeId, label, sort_order: nextOrder });
+    if (error) {
+      setLevelError(error.message);
+      return;
+    }
     setNewLevelLabel("");
+    await load();
+  }
+
+  function startEditLevel(l: LevelRow) {
+    setLevelError(null);
+    setEditingLevelId(l.id);
+    setEditLevelLabel(l.label);
+  }
+
+  async function saveLevelLabel() {
+    if (!editingLevelId) return;
+    const label = editLevelLabel.trim();
+    if (!label) return;
+    setLevelBusyId(editingLevelId);
+    setLevelError(null);
+    const { error } = await supabase
+      .from("department_levels")
+      .update({ label })
+      .eq("id", editingLevelId);
+    setLevelBusyId(null);
+    if (error) {
+      setLevelError(error.message);
+      return;
+    }
+    setEditingLevelId(null);
+    await load();
+  }
+
+  async function deleteLevel(l: LevelRow) {
+    if (
+      !window.confirm(
+        `Delete level "${l.label}"? Courses using this level block deletion — remove or move them first.`,
+      )
+    ) {
+      return;
+    }
+    setLevelBusyId(l.id);
+    setLevelError(null);
+    const { error } = await supabase
+      .from("department_levels")
+      .delete()
+      .eq("id", l.id);
+    setLevelBusyId(null);
+    if (error) {
+      setLevelError(
+        error.code === "23503"
+          ? `Can't delete "${l.label}" — one or more courses still use this level. Move or delete those courses first.`
+          : error.message,
+      );
+      return;
+    }
     await load();
   }
 
@@ -441,20 +512,34 @@ export default function AdminDepartments() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 py-8">
           <form
             onSubmit={handleCreate}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-department-heading"
             className="card-luxury w-full max-w-md space-y-4 p-6"
           >
             <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+              <h2
+                id="create-department-heading"
+                className="flex items-center gap-2 font-heading text-base font-bold text-text-1"
+              >
                 <FolderPlus size={17} className="text-royal" />
                 Manifest new department
               </h2>
-              <button type="button" onClick={closeModal} className="text-text-3 hover:text-text-1">
-                <X size={18} />
+              <button
+                type="button"
+                onClick={closeModal}
+                aria-label="Close"
+                className="text-text-3 hover:text-text-1"
+              >
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
 
             {formError && (
-              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <p
+                role="alert"
+                className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              >
                 {formError}
               </p>
             )}
@@ -525,20 +610,34 @@ export default function AdminDepartments() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 py-8">
           <form
             onSubmit={handleEditSave}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-department-heading"
             className="card-luxury flex max-h-full w-full max-w-md flex-col overflow-y-auto space-y-4 p-6"
           >
             <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+              <h2
+                id="edit-department-heading"
+                className="flex items-center gap-2 font-heading text-base font-bold text-text-1"
+              >
                 <Pencil size={17} className="text-royal" />
                 Edit details
               </h2>
-              <button type="button" onClick={closeModal} className="text-text-3 hover:text-text-1">
-                <X size={18} />
+              <button
+                type="button"
+                onClick={closeModal}
+                aria-label="Close"
+                className="text-text-3 hover:text-text-1"
+              >
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
 
             {formError && (
-              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <p
+                role="alert"
+                className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              >
                 {formError}
               </p>
             )}
@@ -625,29 +724,103 @@ export default function AdminDepartments() {
 
       {modal === "levels" && activeDept() && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 py-8">
-          <div className="card-luxury w-full max-w-md p-6">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="levels-modal-heading"
+            className="card-luxury w-full max-w-md p-6"
+          >
             <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+              <h2
+                id="levels-modal-heading"
+                className="flex items-center gap-2 font-heading text-base font-bold text-text-1"
+              >
                 <Layers size={17} className="text-royal" />
                 Levels — {activeDept()!.name}
               </h2>
-              <button onClick={closeModal} className="text-text-3 hover:text-text-1">
-                <X size={18} />
+              <button
+                onClick={closeModal}
+                aria-label="Close"
+                className="text-text-3 hover:text-text-1"
+              >
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
+
+            {levelError && (
+              <p
+                role="alert"
+                className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              >
+                {levelError}
+              </p>
+            )}
 
             <div className="mt-4 space-y-1.5">
               {levelsFor(activeId!).length === 0 ? (
                 <p className="text-sm text-text-3">No levels yet.</p>
               ) : (
-                levelsFor(activeId!).map((l) => (
-                  <div
-                    key={l.id}
-                    className="flex items-center justify-between rounded-lg border border-canvas-border px-3 py-2 text-sm"
-                  >
-                    <span className="font-semibold text-text-1">{l.label}</span>
-                  </div>
-                ))
+                levelsFor(activeId!).map((l) =>
+                  editingLevelId === l.id ? (
+                    <div
+                      key={l.id}
+                      className="flex items-center gap-2 rounded-lg border border-royal/40 px-3 py-2"
+                    >
+                      <input
+                        autoFocus
+                        value={editLevelLabel}
+                        onChange={(e) => setEditLevelLabel(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void saveLevelLabel();
+                          }
+                          if (e.key === "Escape") setEditingLevelId(null);
+                        }}
+                        className={`${inputClass} mt-0 flex-1`}
+                      />
+                      <button
+                        onClick={() => void saveLevelLabel()}
+                        disabled={levelBusyId === l.id}
+                        className="shrink-0 text-xs font-bold uppercase text-emerald-600 hover:underline disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingLevelId(null)}
+                        className="shrink-0 text-xs font-bold uppercase text-text-3 hover:underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      key={l.id}
+                      className="flex items-center justify-between rounded-lg border border-canvas-border px-3 py-2 text-sm"
+                    >
+                      <span className="font-semibold text-text-1">{l.label}</span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          onClick={() => startEditLevel(l)}
+                          aria-label={`Rename ${l.label}`}
+                          title="Rename"
+                          className="rounded-lg p-1 text-royal transition-colors hover:bg-royal-soft"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => void deleteLevel(l)}
+                          disabled={levelBusyId === l.id}
+                          aria-label={`Delete ${l.label}`}
+                          title="Delete"
+                          className="rounded-lg p-1 text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ),
+                )
               )}
             </div>
 
@@ -655,6 +828,12 @@ export default function AdminDepartments() {
               <input
                 value={newLevelLabel}
                 onChange={(e) => setNewLevelLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void addLevel();
+                  }
+                }}
                 placeholder="e.g. 600L"
                 className={`${inputClass} mt-0`}
               />

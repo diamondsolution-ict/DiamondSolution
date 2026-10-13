@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
+  ArrowLeft,
   LayoutGrid,
   Layers,
   Users,
@@ -77,6 +78,7 @@ function activeLabel(pathname: string): string {
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -174,6 +176,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               className="rounded-lg p-1.5 text-text-2 hover:bg-canvas-soft md:hidden"
             >
               <Menu size={20} />
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              aria-label="Go back"
+              title="Go back"
+              className="hidden items-center justify-center rounded-lg p-1.5 text-text-2 transition-colors hover:bg-canvas-soft hover:text-royal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal md:flex"
+            >
+              <ArrowLeft size={18} />
             </button>
             <h1 className="font-heading text-lg font-bold text-text-1">
               {activeLabel(location.pathname)}
