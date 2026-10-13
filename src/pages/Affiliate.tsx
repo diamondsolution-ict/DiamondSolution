@@ -410,8 +410,7 @@ export default function Affiliate() {
               Withdrawable endowment
             </p>
             <p className="mt-1 truncate font-heading text-3xl font-bold text-text-1 sm:text-4xl">
-              <span className="text-gold">₦</span>
-              {ngnBalance.toLocaleString()}
+              ₦{ngnBalance.toLocaleString()}
             </p>
           </div>
           <button
