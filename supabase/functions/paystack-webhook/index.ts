@@ -2,6 +2,7 @@ import { jsonResponse } from "../_shared/cors.ts";
 import { verifyPaystackSignature, verifyPaystackTransaction } from "../_shared/paystack.ts";
 import { processDepartmentAccessPayment } from "../_shared/processPayment.ts";
 import { processReactivationPayment } from "../_shared/processReactivation.ts";
+import { processDeviceUnlockPayment } from "../_shared/processDeviceUnlock.ts";
 
 // Paystack calls this directly — no user JWT, no CORS preflight expected (server-to-server).
 // Authenticity comes entirely from the x-paystack-signature header, verified below.
@@ -48,6 +49,8 @@ Deno.serve(async (req) => {
     const paystack = await verifyPaystackTransaction(reference);
     if (purpose === "suspension_reactivation") {
       await processReactivationPayment({ reference, userId, paystack });
+    } else if (purpose === "device_unlock") {
+      await processDeviceUnlockPayment({ reference, userId, paystack });
     } else {
       await processDepartmentAccessPayment({ reference, userId, departmentId, paystack });
     }

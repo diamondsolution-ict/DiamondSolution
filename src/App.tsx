@@ -20,6 +20,7 @@ import Profile from "@/pages/Profile";
 import AccountSettings from "@/pages/AccountSettings";
 import PaymentHistory from "@/pages/PaymentHistory";
 import Reactivation from "@/pages/Reactivation";
+import DeviceLocked from "@/pages/DeviceLocked";
 import Chat from "@/pages/Chat";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/reactivation" element={<Reactivation />} />
+          <Route path="/device-locked" element={<DeviceLocked />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />

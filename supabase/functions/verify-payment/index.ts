@@ -3,6 +3,7 @@ import { verifyUser, HttpError } from "../_shared/supabaseClients.ts";
 import { verifyPaystackTransaction } from "../_shared/paystack.ts";
 import { processDepartmentAccessPayment } from "../_shared/processPayment.ts";
 import { processReactivationPayment } from "../_shared/processReactivation.ts";
+import { processDeviceUnlockPayment } from "../_shared/processDeviceUnlock.ts";
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req);
@@ -24,6 +25,12 @@ Deno.serve(async (req) => {
     let result;
     if (purpose === "suspension_reactivation") {
       result = await processReactivationPayment({
+        reference,
+        userId: user.id,
+        paystack,
+      });
+    } else if (purpose === "device_unlock") {
+      result = await processDeviceUnlockPayment({
         reference,
         userId: user.id,
         paystack,

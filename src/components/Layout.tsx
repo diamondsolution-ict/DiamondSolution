@@ -13,6 +13,8 @@ import {
   ListChecks,
   Gift,
   Receipt,
+  SmartphoneNfc,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -47,7 +49,8 @@ const DESKTOP_EXTRA_NAV = [
 ];
 
 export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, signOut, deviceKickedNotice, dismissDeviceKickedNotice } =
+    useAuth();
   const { t } = useLanguage();
   const location = useLocation();
   const contentMaxWidth = wide ? "max-w-none" : "max-w-3xl";
@@ -157,6 +160,24 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
             </div>
           </div>
         </header>
+
+        {deviceKickedNotice && (
+          <div className="flex items-center gap-2.5 bg-gold/15 px-4 py-2.5 text-sm text-text-1 md:px-8">
+            <SmartphoneNfc size={16} className="shrink-0 text-gold" />
+            <p className="flex-1">
+              You signed in on a new device, so your other session was signed
+              out. Only one device can be signed in at a time — a 3rd device
+              will lock your account for 24 hours.
+            </p>
+            <button
+              onClick={dismissDeviceKickedNotice}
+              className="shrink-0 rounded-full p-1 hover:bg-black/5"
+              aria-label="Dismiss"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         <main className={`mx-auto px-4 py-6 md:px-8 ${contentMaxWidth}`}>
           {children}

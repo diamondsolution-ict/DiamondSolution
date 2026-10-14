@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Unlock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -13,6 +13,7 @@ interface ThreadRow {
 interface ThreadWithProfile extends ThreadRow {
   display_name: string | null;
   email: string | null;
+  device_block_started_at: string | null;
 }
 interface ChatMessage {
   id: string;
@@ -41,16 +42,20 @@ export default function AdminSupport() {
     const userIds = rows.map((t) => t.user_id);
     let names: Record<string, string | null> = {};
     let emails: Record<string, string> = {};
+    let deviceBlocks: Record<string, string | null> = {};
     if (userIds.length > 0) {
       const [{ data: profileRows }, { data: emailRows }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("user_id, display_name")
+          .select("user_id, display_name, device_block_started_at")
           .in("user_id", userIds),
         supabase.rpc("admin_list_emails", { p_user_ids: userIds }),
       ]);
       names = Object.fromEntries(
         (profileRows ?? []).map((p) => [p.user_id, p.display_name]),
+      );
+      deviceBlocks = Object.fromEntries(
+        (profileRows ?? []).map((p) => [p.user_id, p.device_block_started_at]),
       );
       emails = Object.fromEntries(
         (emailRows ?? []).map((e: { user_id: string; email: string }) => [
@@ -65,9 +70,28 @@ export default function AdminSupport() {
         ...t,
         display_name: names[t.user_id] ?? null,
         email: emails[t.user_id] ?? null,
+        device_block_started_at: deviceBlocks[t.user_id] ?? null,
       })),
     );
     setLoading(false);
+  }
+
+  const [unlocking, setUnlocking] = useState(false);
+  async function handleUnlockDevice(userId: string) {
+    setUnlocking(true);
+    const { error } = await supabase.rpc("admin_unlock_device", {
+      p_user_id: userId,
+    });
+    setUnlocking(false);
+    if (error) {
+      window.alert(`Unlock failed: ${error.message}`);
+      return;
+    }
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.user_id === userId ? { ...t, device_block_started_at: null } : t,
+      ),
+    );
   }
 
   async function openThread(id: string) {
@@ -195,11 +219,21 @@ export default function AdminSupport() {
                   <p className="truncate text-sm font-semibold text-text-1">
                     {t.display_name || t.email || "Scholar"}
                   </p>
-                  {t.admin_unread_count > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-royal px-1 text-[10px] font-bold text-white">
-                      {t.admin_unread_count}
-                    </span>
-                  )}
+                  <div className="flex shrink-0 items-center gap-1">
+                    {t.device_block_started_at && (
+                      <span
+                        title="Device-locked"
+                        className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-rose-600"
+                      >
+                        <Unlock size={11} />
+                      </span>
+                    )}
+                    {t.admin_unread_count > 0 && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-royal px-1 text-[10px] font-bold text-white">
+                        {t.admin_unread_count}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="truncate text-xs text-text-3">{t.email}</p>
                 <p className="mt-0.5 text-[10px] text-text-3">
@@ -231,12 +265,23 @@ export default function AdminSupport() {
                 >
                   <ArrowLeft size={18} />
                 </button>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-text-1">
                     {activeThread.display_name || "Scholar"}
                   </p>
                   <p className="text-xs text-text-3">{activeThread.email}</p>
                 </div>
+                {activeThread.device_block_started_at && (
+                  <button
+                    onClick={() => void handleUnlockDevice(activeThread.user_id)}
+                    disabled={unlocking}
+                    title="This account is device-locked (signed in from a 3rd device) — unlock it without requiring the ₦1,000 payment."
+                    className="flex shrink-0 items-center gap-1.5 rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 disabled:opacity-50"
+                  >
+                    <Unlock size={13} />
+                    {unlocking ? "Unlocking…" : "Device-locked — Unlock"}
+                  </button>
+                )}
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-3">

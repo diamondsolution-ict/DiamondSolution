@@ -4,7 +4,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { AdminKeyGate } from "@/components/AdminKeyGate";
 
 export function ProtectedRoute() {
-  const { user, isSuspended, loading } = useAuth();
+  const { user, isSuspended, isDeviceBlocked, loading } = useAuth();
 
   if (loading) {
     return <LoadingScreen full />;
@@ -19,6 +19,12 @@ export function ProtectedRoute() {
   // again, matching the old app's "only path back in" behavior for FUNCTIONAL_SPEC.md §9.
   if (isSuspended) {
     return <Navigate to="/reactivation" replace />;
+  }
+
+  // Same idea for a 3rd-device lock (20261013210000_device_login_limits.sql) — DeviceLocked.tsx
+  // lives outside this guard too.
+  if (isDeviceBlocked) {
+    return <Navigate to="/device-locked" replace />;
   }
 
   return <Outlet />;
