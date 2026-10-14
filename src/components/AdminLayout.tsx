@@ -29,6 +29,12 @@ interface NavItem {
   to: string;
   label: string;
   icon: typeof LayoutGrid;
+  // Unset = every staff member (admin or moderator) sees it. A moderator's whole surface is
+  // Dashboard, Analytics, WhatsApp Numbers, Affiliates, Payments, Notifications, Quotes, and
+  // Support — everything else here is marked adminOnly and both hidden from a moderator's
+  // sidebar and blocked at the route level (AdminOnlyRoute in ProtectedRoute.tsx) and the
+  // backend (20261013200000_moderator_scope_limits.sql), so this isn't just cosmetic.
+  adminOnly?: boolean;
 }
 
 const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
@@ -37,10 +43,10 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
     items: [
       { to: "/admin/dashboard", label: "Dashboard", icon: LayoutGrid },
       { to: "/dashboard", label: "User Dashboard", icon: Layers },
-      { to: "/admin/users", label: "Users", icon: Users },
+      { to: "/admin/users", label: "Users", icon: Users, adminOnly: true },
       { to: "/admin/whatsapp-numbers", label: "WhatsApp Numbers", icon: MessageCircle },
       { to: "/admin/affiliates", label: "Affiliates", icon: Link2 },
-      { to: "/admin/withdrawals", label: "Withdrawals", icon: Wallet },
+      { to: "/admin/withdrawals", label: "Withdrawals", icon: Wallet, adminOnly: true },
     ],
   },
   {
@@ -53,14 +59,14 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
   {
     heading: "Content",
     items: [
-      { to: "/admin/departments", label: "Departments", icon: Building2 },
-      { to: "/admin/questions", label: "Questions", icon: FileText },
-      { to: "/admin/media", label: "Pictures & Media", icon: Image },
+      { to: "/admin/departments", label: "Departments", icon: Building2, adminOnly: true },
+      { to: "/admin/questions", label: "Questions", icon: FileText, adminOnly: true },
+      { to: "/admin/media", label: "Pictures & Media", icon: Image, adminOnly: true },
       { to: "/admin/notifications", label: "Notifications", icon: Bell },
       { to: "/admin/quotes", label: "Quotes", icon: Quote },
       { to: "/admin/support", label: "Support", icon: MessageSquare },
-      { to: "/admin/audit-log", label: "System Logs", icon: ScrollText },
-      { to: "/admin/settings", label: "Settings", icon: Shield },
+      { to: "/admin/audit-log", label: "System Logs", icon: ScrollText, adminOnly: true },
+      { to: "/admin/settings", label: "Settings", icon: Shield, adminOnly: true },
     ],
   },
 ];
@@ -79,8 +85,13 @@ function activeLabel(pathname: string): string {
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => isAdmin || !item.adminOnly),
+  })).filter((group) => group.items.length > 0);
 
   const sidebar = (
     <div className="flex h-full flex-col bg-white">
@@ -95,7 +106,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-4">
-        {NAV_GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.heading} className="mb-5">
             <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-text-3">
               {group.heading}
@@ -136,7 +147,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <p className="truncate text-xs font-semibold text-text-1">
             {user?.email ?? "Admin"}
           </p>
-          <p className="text-[10px] text-text-3">Super Admin</p>
+          <p className="text-[10px] text-text-3">
+            {isAdmin ? "Admin" : "Moderator"}
+          </p>
         </div>
         <button
           onClick={() => void signOut()}

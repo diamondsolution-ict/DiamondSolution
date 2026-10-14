@@ -54,3 +54,23 @@ export function AdminRoute() {
 
   return <Outlet />;
 }
+
+// Nested inside AdminRoute, for the subset of /admin/* pages a moderator shouldn't reach at
+// all — Users, Departments, Courses/Questions management, Withdrawals, Media, System Logs,
+// Settings. A moderator's own scope (Dashboard, Analytics, WhatsApp Numbers, Affiliates,
+// Payments, Notifications, Quotes, Support) never routes through here. Backend RLS/Edge
+// Functions enforce the same boundary independently (see
+// 20261013200000_moderator_scope_limits.sql) — this is the UI-level redirect so a moderator
+// following a stale link or typing the URL lands somewhere useful instead of a page full of
+// controls that would all fail.
+export function AdminOnlyRoute() {
+  const { isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen full />;
+  }
+  if (!isAdmin) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  return <Outlet />;
+}

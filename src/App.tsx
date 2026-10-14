@@ -1,7 +1,11 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
-import { ProtectedRoute, AdminRoute } from "@/components/ProtectedRoute";
+import {
+  ProtectedRoute,
+  AdminRoute,
+  AdminOnlyRoute,
+} from "@/components/ProtectedRoute";
 import Splash from "@/pages/Splash";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -66,38 +70,46 @@ export default function App() {
               path="/admin"
               element={<Navigate to="/admin/dashboard" replace />}
             />
+            {/* Moderator's own scope — reachable by both admin and moderator. */}
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/affiliates" element={<AdminAffiliates />} />
-            <Route path="/admin/departments" element={<AdminDepartments />} />
-            <Route path="/admin/courses" element={<AdminCourses />} />
-            <Route
-              path="/admin/courses/:courseId/questions"
-              element={<AdminQuestions />}
-            />
             <Route path="/admin/payments" element={<AdminPayments />} />
-            <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
-            <Route path="/admin/quotes" element={<AdminQuotes />} />
-            <Route path="/admin/audit-log" element={<AdminAuditLog />} />
-            <Route path="/admin/settings" element={<AdminSettings />} />
-
             <Route
               path="/admin/whatsapp-numbers"
               element={<AdminWhatsAppNumbers />}
             />
-
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
-            <Route
-              path="/admin/questions"
-              element={<AdminQuestionsBrowser />}
-            />
-            <Route path="/admin/media" element={<AdminMedia />} />
-
             <Route
               path="/admin/notifications"
               element={<AdminNotifications />}
             />
+            <Route path="/admin/quotes" element={<AdminQuotes />} />
             <Route path="/admin/support" element={<AdminSupport />} />
+
+            {/* Admin-only — a moderator hitting any of these is redirected to the dashboard. */}
+            <Route element={<AdminOnlyRoute />}>
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route
+                path="/admin/departments"
+                element={<AdminDepartments />}
+              />
+              <Route path="/admin/courses" element={<AdminCourses />} />
+              <Route
+                path="/admin/courses/:courseId/questions"
+                element={<AdminQuestions />}
+              />
+              <Route
+                path="/admin/withdrawals"
+                element={<AdminWithdrawals />}
+              />
+              <Route path="/admin/audit-log" element={<AdminAuditLog />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route
+                path="/admin/questions"
+                element={<AdminQuestionsBrowser />}
+              />
+              <Route path="/admin/media" element={<AdminMedia />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

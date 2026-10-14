@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { LogIn, Lock, Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DiamondLogo } from "@/components/DiamondLogo";
@@ -93,16 +93,6 @@ export default function Login() {
         </div>
 
         <p className="mt-6 text-center text-xs text-text-3">
-          {t("login.staffPrompt")}{" "}
-          <Link
-            to="/admin/login"
-            className="font-semibold text-royal hover:underline"
-          >
-            {t("login.adminSignIn")}
-          </Link>
-        </p>
-
-        <p className="mt-3 text-center text-xs text-text-3">
           {t("login.disclaimer")}
         </p>
       </div>

@@ -164,17 +164,17 @@ export default function ActivityLog() {
                         </p>
                       </div>
                     ) : (
-                      <ul className="space-y-1 text-sm">
+                      <ul className="space-y-2 text-sm">
                         {q.question_options.map((o) => (
                           <li
                             key={o.id}
-                            className={
+                            className={`rounded-xl px-3 py-2 ${
                               o.is_correct
-                                ? "font-semibold text-emerald-700"
+                                ? "bg-emerald-50 font-semibold text-emerald-700"
                                 : o.id === a.selected_option_id
-                                  ? "font-semibold text-rose-700"
+                                  ? "bg-rose-50 font-semibold text-rose-700"
                                   : "text-text-3"
-                            }
+                            }`}
                           >
                             {o.label}. {o.body}
                             {o.is_correct && " — Correct"}

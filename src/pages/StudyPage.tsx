@@ -603,7 +603,7 @@ export default function StudyPage() {
           ) : (
             <div className="mt-4">
               {submitted && (
-                <div className="diamond-gradient rounded-xl p-4 text-sm text-white">
+                <div className="rounded-xl bg-navy p-4 text-sm text-white">
                   <p className="flex items-center gap-2 font-semibold">
                     <CheckCircle2 size={15} />
                     Expected response

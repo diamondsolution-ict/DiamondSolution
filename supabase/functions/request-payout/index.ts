@@ -54,11 +54,10 @@ Deno.serve(async (req) => {
     const admin = await verifyUser(req);
 
     const authHeader = req.headers.get("Authorization")!;
-    const { data: isStaff } = await anonClient(authHeader).rpc(
-      "is_moderator_or_admin",
-    );
-    if (!isStaff)
-      throw new HttpError(403, "Admin or moderator access required.");
+    // Withdrawals is admin-only now (see 20261013200000_moderator_scope_limits.sql) — a
+    // moderator never had a "Withdrawals" entry on their restricted nav in the first place.
+    const { data: isAdmin } = await anonClient(authHeader).rpc("is_admin");
+    if (!isAdmin) throw new HttpError(403, "Admin access required.");
 
     const { withdrawal_id, action, reason } = await req.json();
     if (!withdrawal_id || !["approve", "reject", "recheck"].includes(action)) {
