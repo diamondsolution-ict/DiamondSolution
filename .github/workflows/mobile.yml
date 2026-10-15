@@ -1,0 +1,40 @@
+name: Mobile (Flutter)
+
+on:
+  pull_request:
+    paths: ["mobile/**", ".github/workflows/mobile.yml"]
+  push:
+    branches: [main]
+    paths: ["mobile/**"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      # Repo secrets (Settings → Secrets → Actions): SUPABASE_URL, SUPABASE_ANON_KEY,
+      # and optionally WEB_BASE_URL. The anon key is public by design.
+      - name: Build APK
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            --dart-define=WEB_BASE_URL=${{ secrets.WEB_BASE_URL }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diamond-solution-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
