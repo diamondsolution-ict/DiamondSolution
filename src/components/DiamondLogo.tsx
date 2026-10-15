@@ -10,7 +10,7 @@ const VARIANT_COLOR: Record<
   NonNullable<DiamondLogoProps["variant"]>,
   string
 > = {
-  navy: "#000000",
+  navy: "#0B1E3D",
   white: "#FFFFFF",
   gold: "#D4AF37",
 };
@@ -64,7 +64,7 @@ export function DiamondLogo({
       ? "#D4AF37"
       : variant === "white"
         ? "#FFFFFF"
-        : "#000000";
+        : "#0B1E3D";
   const taglineColor = variant === "white" ? "#CBD5E1" : "#475569";
 
   if (layout === "icon") {
