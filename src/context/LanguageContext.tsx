@@ -36,8 +36,32 @@ const translations: Record<Language, Record<string, string>> = {
     "login.signIn": "Sign in",
     "login.staffPrompt": "Staff?",
     "login.adminSignIn": "Admin sign in",
+    "login.forgotPassword": "Forgot password?",
     "login.disclaimer":
       "Diamond Solution is an independent study platform and is not affiliated with, endorsed by, or sponsored by any professional licensing or certification board.",
+
+    "forgotPassword.title": "Forgot your password?",
+    "forgotPassword.subtitle":
+      "Enter your email and we'll send you a link to reset it.",
+    "forgotPassword.email": "Email",
+    "forgotPassword.send": "Send reset link",
+    "forgotPassword.sending": "Sending…",
+    "forgotPassword.sentTitle": "Check your email",
+    "forgotPassword.sentBody":
+      "If an account exists for that email, a reset link is on its way.",
+    "forgotPassword.backToLogin": "Back to sign in",
+
+    "resetPassword.title": "Reset your password",
+    "resetPassword.subtitle": "Choose a new password for your account.",
+    "resetPassword.newPassword": "New password",
+    "resetPassword.confirmPassword": "Confirm new password",
+    "resetPassword.submit": "Update password",
+    "resetPassword.updating": "Updating…",
+    "resetPassword.success": "Password updated. Redirecting to sign in…",
+    "resetPassword.invalidTitle": "This link is invalid or expired",
+    "resetPassword.invalidBody": "Request a new password reset link.",
+    "resetPassword.requestNew": "Request new link",
+    "resetPassword.verifying": "Verifying link…",
 
     "register.fullName": "Full name",
     "register.username": "Username",
@@ -99,8 +123,34 @@ const translations: Record<Language, Record<string, string>> = {
     "login.signIn": "Se connecter",
     "login.staffPrompt": "Personnel ?",
     "login.adminSignIn": "Connexion administrateur",
+    "login.forgotPassword": "Mot de passe oublié ?",
     "login.disclaimer":
       "Diamond Solution est une plateforme d'études indépendante qui n'est affiliée, approuvée ou parrainée par aucun ordre professionnel ou organisme de certification.",
+
+    "forgotPassword.title": "Mot de passe oublié ?",
+    "forgotPassword.subtitle":
+      "Entrez votre e-mail et nous vous enverrons un lien de réinitialisation.",
+    "forgotPassword.email": "E-mail",
+    "forgotPassword.send": "Envoyer le lien",
+    "forgotPassword.sending": "Envoi…",
+    "forgotPassword.sentTitle": "Vérifiez votre e-mail",
+    "forgotPassword.sentBody":
+      "Si un compte existe pour cet e-mail, un lien de réinitialisation est en route.",
+    "forgotPassword.backToLogin": "Retour à la connexion",
+
+    "resetPassword.title": "Réinitialiser le mot de passe",
+    "resetPassword.subtitle":
+      "Choisissez un nouveau mot de passe pour votre compte.",
+    "resetPassword.newPassword": "Nouveau mot de passe",
+    "resetPassword.confirmPassword": "Confirmer le nouveau mot de passe",
+    "resetPassword.submit": "Mettre à jour le mot de passe",
+    "resetPassword.updating": "Mise à jour…",
+    "resetPassword.success": "Mot de passe mis à jour. Redirection…",
+    "resetPassword.invalidTitle": "Ce lien est invalide ou expiré",
+    "resetPassword.invalidBody":
+      "Demandez un nouveau lien de réinitialisation.",
+    "resetPassword.requestNew": "Demander un nouveau lien",
+    "resetPassword.verifying": "Vérification du lien…",
 
     "register.fullName": "Nom complet",
     "register.username": "Nom d'utilisateur",

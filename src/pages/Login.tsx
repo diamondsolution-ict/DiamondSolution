@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LogIn, Lock, Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DiamondLogo } from "@/components/DiamondLogo";
@@ -8,11 +8,15 @@ import { useLanguage } from "@/context/LanguageContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Set by ResetPassword.tsx after a successful password change, so the sign-in screen can
+  // confirm it worked instead of silently landing the user back here.
+  const info = (location.state as { message?: string } | null)?.message ?? null;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -43,6 +47,11 @@ export default function Login() {
           <AuthTabs active="signin" />
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {info && (
+              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                {info}
+              </p>
+            )}
             {error && (
               <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
                 {error}
@@ -80,6 +89,15 @@ export default function Login() {
                 />
               </div>
             </Field>
+
+            <div className="flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-xs font-semibold text-royal hover:underline"
+              >
+                {t("login.forgotPassword")}
+              </Link>
+            </div>
 
             <button
               type="submit"

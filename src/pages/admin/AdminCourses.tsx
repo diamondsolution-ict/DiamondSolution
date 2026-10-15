@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
+  AlertTriangle,
   ArrowRight,
   BookOpen,
   BookPlus,
@@ -11,6 +12,13 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
+
+// Must match supabase/seed/03-placeholder-questions.sql's v_marker and
+// scripts/migrate-questions-from-firebase.mjs's PLACEHOLDER_MARKER exactly — see either file's
+// header comment for why a literal string, not a dedicated column, is how "placeholder" is
+// tracked here.
+const PLACEHOLDER_MARKER =
+  "[PLACEHOLDER — auto-generated, safe to delete once real questions are added]";
 
 interface Department {
   id: string;
@@ -31,6 +39,9 @@ interface Course {
   default_question_type: "objective" | "application";
   description: string | null;
 }
+// "none" = zero active questions at all; "placeholder" = only the auto-generated stand-in from
+// 03-placeholder-questions.sql; "real" = at least one genuine question.
+type ContentState = "none" | "placeholder" | "real";
 
 const STATUSES = ["draft", "published", "archived"] as const;
 
@@ -49,6 +60,9 @@ export default function AdminCourses() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [contentState, setContentState] = useState<
+    Record<string, ContentState>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -101,9 +115,41 @@ export default function AdminCourses() {
       ]);
       setLevels(levelRows ?? []);
       setCourses(courseRows ?? []);
+
+      const courseIds = (courseRows ?? []).map((c) => c.id);
+      if (courseIds.length > 0) {
+        const { data: questionRows } = await supabase
+          .from("questions")
+          .select("course_id, explanation")
+          .in("course_id", courseIds)
+          .eq("status", "active")
+          .is("deleted_at", null);
+
+        const byCourse = new Map<string, string[]>();
+        for (const q of questionRows ?? []) {
+          const list = byCourse.get(q.course_id) ?? [];
+          list.push(q.explanation ?? "");
+          byCourse.set(q.course_id, list);
+        }
+        const next: Record<string, ContentState> = {};
+        for (const id of courseIds) {
+          const explanations = byCourse.get(id);
+          if (!explanations || explanations.length === 0) {
+            next[id] = "none";
+          } else if (explanations.every((e) => e === PLACEHOLDER_MARKER)) {
+            next[id] = "placeholder";
+          } else {
+            next[id] = "real";
+          }
+        }
+        setContentState(next);
+      } else {
+        setContentState({});
+      }
     } else {
       setLevels([]);
       setCourses([]);
+      setContentState({});
     }
     setLoading(false);
   }
@@ -409,6 +455,7 @@ export default function AdminCourses() {
                           {c.status}
                         </p>
                       </div>
+                      <ContentBadge state={contentState[c.id]} />
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-canvas-border pt-3">
                       <button
@@ -439,3 +486,30 @@ export default function AdminCourses() {
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15";
+
+// Pre-launch content-completeness signal — see 03-placeholder-questions.sql's header for why
+// this exists: that seed script quietly fills an empty course with an obviously-fake stand-in
+// question so the catalog isn't empty, but nothing previously surfaced which courses were still
+// running on that stand-in rather than real content. A state of "none" (not just "placeholder")
+// is also flagged, since a course can have zero questions before the seed script has even run.
+function ContentBadge({ state }: { state: ContentState | undefined }) {
+  if (state === "real") {
+    return null;
+  }
+  if (state === "placeholder") {
+    return (
+      <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+        <AlertTriangle size={12} />
+        Placeholder only
+      </span>
+    );
+  }
+  // "none" (no real content yet) or state not loaded yet (loading, same visual either way —
+  // the real state fills in a moment later).
+  return (
+    <span className="flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+      <AlertTriangle size={12} />
+      No questions
+    </span>
+  );
+}
