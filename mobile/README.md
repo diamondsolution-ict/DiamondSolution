@@ -19,8 +19,14 @@ Not included: admin back office (stays on the website) and French language.
 Same rules as the website (`register_device_login`): a 2nd device signs in and ends the account's
 other session; a 3rd distinct device locks the account. The lock screen counts down 24 hours, and
 only after that can the ₦1000 unlock be paid (the server enforces the 24 hours and the amount).
-Admins and moderators are exempt. A "device" here is a per-install id, so uninstalling/clearing
-app data counts as a new device — the same practical limit the website has with browser storage.
+Admins and moderators are exempt.
+
+**How a device is identified:** the app sends Android's `ANDROID_ID` (prefixed `android:`), which
+belongs to the phone itself, so uninstalling, reinstalling or clearing app data does **not** make
+it look like a new device. It changes only on a factory reset, or when the app is signed with a
+different key — so a debug/test build and the Play Store build count as different devices (test the
+lock with builds signed the same way). If Android ever refuses to give an id, the app falls back to
+a random per-install id. The website still uses a per-browser id; the server treats both the same.
 
 ## Payments need one backend deploy
 
