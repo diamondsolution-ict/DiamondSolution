@@ -28,3 +28,17 @@ Future<String> getDeviceId() async {
   await prefs.setString('diamond_device_id', fresh);
   return fresh;
 }
+
+// Used only to build the shareable referral link; optional.
+const webBaseUrl = String.fromEnvironment('WEB_BASE_URL');
+
+// Edge Functions answer errors as {success:false, error:"..."} with a non-2xx status, which
+// supabase_flutter surfaces as a FunctionException whose details hold that body.
+String functionErrorMessage(Object e, [String fallback = 'Something went wrong.']) {
+  if (e is FunctionException) {
+    final d = e.details;
+    if (d is Map && d['error'] is String) return d['error'] as String;
+    if (d is String && d.isNotEmpty) return d;
+  }
+  return fallback;
+}

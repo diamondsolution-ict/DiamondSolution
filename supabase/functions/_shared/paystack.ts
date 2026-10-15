@@ -223,3 +223,43 @@ export async function verifyPaystackSignature(
 
   return computed === signatureHeader;
 }
+
+interface PaystackInitializeResult {
+  status: boolean;
+  message: string;
+  data: { authorization_url: string; access_code: string; reference: string };
+}
+
+// Server-side transaction initialization — used by the mobile app, which can't use Paystack's
+// browser popup (the web app's react-paystack). The app opens `authorization_url` in a WebView
+// and then calls verify-payment with the reference, same as the web flow.
+export async function initializePaystackTransaction(args: {
+  email: string;
+  amountKobo: number;
+  reference: string;
+  callbackUrl: string;
+  metadata: Record<string, unknown>;
+}): Promise<PaystackInitializeResult> {
+  if (!PAYSTACK_SECRET_KEY) {
+    throw new Error(
+      "PAYSTACK_SECRET_KEY is not configured — set it with `supabase secrets set PAYSTACK_SECRET_KEY=sk_...`",
+    );
+  }
+
+  const res = await fetch("https://api.paystack.co/transaction/initialize", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: args.email,
+      amount: args.amountKobo,
+      currency: "NGN",
+      reference: args.reference,
+      callback_url: args.callbackUrl,
+      metadata: args.metadata,
+    }),
+  });
+  return res.json();
+}

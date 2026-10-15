@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../main.dart';
+import 'activity_log_screen.dart';
+import 'affiliate_screen.dart';
+import 'chat_screen.dart';
+import 'payment_history_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -43,6 +47,15 @@ class ProfileScreen extends StatelessWidget {
         ]),
       ),
       const SizedBox(height: 12),
+      Card(
+        child: Column(children: [
+          _link(context, Icons.fact_check_outlined, 'Revision center', const ActivityLogScreen()),
+          _link(context, Icons.card_giftcard, 'Affiliate', const AffiliateScreen()),
+          _link(context, Icons.receipt_long_outlined, 'Payment history', const PaymentHistoryScreen()),
+          _link(context, Icons.support_agent, 'Chat with support', const ChatScreen()),
+        ]),
+      ),
+      const SizedBox(height: 12),
       OutlinedButton.icon(
         onPressed: auth.signOut,
         icon: const Icon(Icons.logout),
@@ -50,4 +63,11 @@ class ProfileScreen extends StatelessWidget {
       ),
     ]);
   }
+
+  Widget _link(BuildContext context, IconData icon, String label, Widget page) => ListTile(
+        leading: Icon(icon, color: AppColors.royal),
+        title: Text(label),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
+      );
 }
