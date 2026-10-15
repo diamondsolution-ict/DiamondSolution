@@ -49,8 +49,14 @@ const DESKTOP_EXTRA_NAV = [
 ];
 
 export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
-  const { user, isAdmin, signOut, deviceKickedNotice, dismissDeviceKickedNotice } =
-    useAuth();
+  const {
+    user,
+    isAdmin,
+    isModerator,
+    signOut,
+    deviceKickedNotice,
+    dismissDeviceKickedNotice,
+  } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
   const contentMaxWidth = wide ? "max-w-none" : "max-w-3xl";
@@ -108,7 +114,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
             );
           })}
 
-          {isAdmin && (
+          {(isAdmin || isModerator) && (
             <Link
               to="/admin/dashboard"
               className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
@@ -118,7 +124,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
               }`}
             >
               <Shield size={17} />
-              {t("nav.admin")}
+              {t(isAdmin ? "nav.admin" : "nav.moderator")}
             </Link>
           )}
         </nav>
@@ -202,7 +208,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
             </Link>
           );
         })}
-        {isAdmin && (
+        {(isAdmin || isModerator) && (
           <Link
             to="/admin/dashboard"
             className={`flex flex-col items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
@@ -212,7 +218,7 @@ export function Layout({ title, onBack, children, wide = false }: LayoutProps) {
             }`}
           >
             <Shield size={17} />
-            {t("nav.admin")}
+            {t(isAdmin ? "nav.admin" : "nav.moderator")}
           </Link>
         )}
       </nav>
