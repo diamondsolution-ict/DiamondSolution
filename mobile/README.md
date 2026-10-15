@@ -10,9 +10,17 @@ detail (outline, jump-to-question), timed study sessions (`record_question_attem
 results), leaderboard (weekly / all-time), notifications, revision center (activity log),
 **Paystack payments**, payment history (with re-check), **affiliate program** (referral code,
 balances, payout methods, withdrawals, commissions), live support chat, profile, single-device
-login limit, suspended-account screen.
+login limit with the 24-hour lock and ₦1000 unlock payment, and suspended-account reactivation.
 
 Not included: admin back office (stays on the website) and French language.
+
+## One device at a time
+
+Same rules as the website (`register_device_login`): a 2nd device signs in and ends the account's
+other session; a 3rd distinct device locks the account. The lock screen counts down 24 hours, and
+only after that can the ₦1000 unlock be paid (the server enforces the 24 hours and the amount).
+Admins and moderators are exempt. A "device" here is a per-install id, so uninstalling/clearing
+app data counts as a new device — the same practical limit the website has with browser storage.
 
 ## Payments need one backend deploy
 

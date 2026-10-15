@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 import 'dashboard_screen.dart';
 import 'courses_screen.dart';
 import 'leaderboard_screen.dart';
@@ -14,6 +15,22 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int index = 0;
   static const _titles = ['Dashboard', 'Courses', 'Leaderboard', 'Profile'];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This device just became the active one and ended the account's other session.
+    final auth = AuthScope.of(context);
+    if (auth.deviceKickedNotice) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        auth.dismissDeviceKickedNotice();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Signed in here — your account was signed out on its other device.')));
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

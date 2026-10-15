@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OtpType;
 import '../core/supabase.dart';
 import '../core/theme.dart';
-import '../main.dart';
 
 String? validatePassword(String p) {
   if (p.length < 8) return 'Password must be at least 8 characters.';
@@ -13,8 +12,8 @@ String? validatePassword(String p) {
   return null;
 }
 
-class _AuthFrame extends StatelessWidget {
-  const _AuthFrame({required this.children});
+class AuthFrame extends StatelessWidget {
+  const AuthFrame({super.key, required this.children});
   final List<Widget> children;
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -72,14 +71,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = AuthScope.of(context);
-    return _AuthFrame(children: [
-      if (auth.deviceKickedNotice)
-        const Padding(
-          padding: EdgeInsets.only(bottom: 12),
-          child: Text('You were signed out because your account was used on another device.'),
-        ),
-      if (error != null) _ErrorBox(error!),
+    return AuthFrame(children: [
+      if (error != null) ErrorBox(error!),
       TextField(
         controller: email,
         keyboardType: TextInputType.emailAddress,
@@ -188,7 +181,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     if (awaitingConfirmation != null) {
-      return _AuthFrame(children: [
+      return AuthFrame(children: [
         const Icon(Icons.mark_email_read_outlined, size: 48, color: AppColors.royal),
         const SizedBox(height: 12),
         Text('We sent a confirmation link to $awaitingConfirmation. Confirm your email, then sign in.',
@@ -216,8 +209,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             decoration: InputDecoration(labelText: label, prefixText: prefix),
           ),
         );
-    return _AuthFrame(children: [
-      if (error != null) _ErrorBox(error!),
+    return AuthFrame(children: [
+      if (error != null) ErrorBox(error!),
       field('Full name', name),
       field('Username', username),
       field('Institution', university),
@@ -249,31 +242,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-class BlockedScreen extends StatelessWidget {
-  const BlockedScreen.suspended({super.key})
-      : title = 'Account suspended',
-        body = 'Your account has been suspended. Please contact support.';
-  const BlockedScreen.device({super.key})
-      : title = 'Device limit reached',
-        body = 'This account is signed in on another device. Try again later or contact support.';
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) => _AuthFrame(children: [
-        const Icon(Icons.lock_outline, size: 40, color: AppColors.danger),
-        const SizedBox(height: 12),
-        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Text(body, textAlign: TextAlign.center),
-        const SizedBox(height: 16),
-        OutlinedButton(
-            onPressed: AuthScope.of(context).signOut, child: const Text('Sign out')),
-      ]);
-}
-
-class _ErrorBox extends StatelessWidget {
-  const _ErrorBox(this.message);
+class ErrorBox extends StatelessWidget {
+  const ErrorBox(this.message, {super.key});
   final String message;
   @override
   Widget build(BuildContext context) => Container(

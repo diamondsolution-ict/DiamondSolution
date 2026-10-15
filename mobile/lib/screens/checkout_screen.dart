@@ -3,10 +3,17 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../core/supabase.dart';
 
 /// Result of a checkout: true = verified and access granted, false = failed,
-/// null = closed without finishing.
-Future<bool?> startDepartmentCheckout(BuildContext context, String departmentId) async {
+/// null = closed without finishing or never started.
+Future<bool?> startDepartmentCheckout(BuildContext context, String departmentId) =>
+    startCheckout(context, purpose: 'department_access', departmentId: departmentId);
+
+/// [purpose]: department_access | device_unlock | suspension_reactivation. The amount is always
+/// decided server-side (init-payment); nothing here can change what is charged.
+Future<bool?> startCheckout(BuildContext context,
+    {required String purpose, String? departmentId}) async {
   try {
-    final res = await db.functions.invoke('init-payment', body: {'department_id': departmentId});
+    final res = await db.functions.invoke('init-payment',
+        body: {'purpose': purpose, if (departmentId != null) 'department_id': departmentId});
     final data = res.data as Map;
     if (data['success'] != true) throw data['error'] ?? 'Could not start checkout.';
     if (!context.mounted) return null;
@@ -15,7 +22,10 @@ Future<bool?> startDepartmentCheckout(BuildContext context, String departmentId)
         url: data['authorization_url'] as String,
         callbackUrl: data['callback_url'] as String,
         reference: data['reference'] as String,
-        departmentId: departmentId,
+        verifyBody: {
+          'purpose': purpose,
+          if (departmentId != null) 'department_id': departmentId,
+        },
       ),
     ));
   } catch (e) {
@@ -33,9 +43,10 @@ class CheckoutScreen extends StatefulWidget {
     required this.url,
     required this.callbackUrl,
     required this.reference,
-    required this.departmentId,
+    required this.verifyBody,
   });
-  final String url, callbackUrl, reference, departmentId;
+  final String url, callbackUrl, reference;
+  final Map<String, dynamic> verifyBody;
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
 }
@@ -74,7 +85,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
     try {
       final res = await db.functions.invoke('verify-payment',
-          body: {'reference': widget.reference, 'department_id': widget.departmentId});
+          body: {'reference': widget.reference, ...widget.verifyBody});
       final data = res.data as Map;
       if (data['success'] != true) throw data['error'] ?? 'Payment could not be verified.';
       if (mounted) Navigator.of(context).pop(true);

@@ -4,6 +4,7 @@ import 'core/supabase.dart';
 import 'core/theme.dart';
 import 'screens/auth_screens.dart';
 import 'screens/home_shell.dart';
+import 'screens/lock_screens.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,8 +48,8 @@ class _DiamondAppState extends State<DiamondApp> {
                   body: Center(child: CircularProgressIndicator()));
             }
             if (auth.session == null) return const LoginScreen();
-            if (auth.isSuspended) return const BlockedScreen.suspended();
-            if (auth.isDeviceBlocked) return const BlockedScreen.device();
+            if (auth.isSuspended) return const ReactivationScreen();
+            if (auth.isDeviceBlocked) return const DeviceLockedScreen();
             return const HomeShell();
           },
         ),
