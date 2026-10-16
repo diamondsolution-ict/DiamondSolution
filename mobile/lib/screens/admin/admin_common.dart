@@ -116,3 +116,22 @@ Future<bool> confirmDialog(BuildContext context, String message) async {
   );
   return r ?? false;
 }
+
+/// `window.prompt` equivalent. Returns null when dismissed.
+Future<String?> promptDialog(BuildContext context, String message, {String initial = ''}) {
+  final ctl = TextEditingController(text: initial);
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(message, style: body(14)),
+        const SizedBox(height: 12),
+        TextField(controller: ctl, autofocus: true),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(ctx, ctl.text), child: const Text('OK')),
+      ],
+    ),
+  );
+}

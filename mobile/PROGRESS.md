@@ -42,7 +42,8 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Staff entry: Admin/Moderator tab in the bottom bar (staff only), white drawer like the web sidebar |
 | ✅ | Moderator tools (all 8): Dashboard, Analytics, WhatsApp Numbers, Affiliates, Payments (live Paystack recheck), Notifications, Quotes, Support (live chat + device unlock) |
 | ⬜ | Not in app yet: CSV export buttons (Payments, Affiliates, WhatsApp) — web only |
-| ⬜ | Admin-only tools: Users, Withdrawals, Departments/Courses, Media, System Logs, Settings, Questions editor (last) + admin key / step-up |
+| ✅ | Admin-only tools done: admin key gate + step-up code dialog, Users (suspend/delete/role/add/approve partner), Withdrawals (pay, reject, manual, recheck) |
+| ⬜ | Admin-only tools still to build: Departments/Courses, Media, System Logs, Settings, Questions editor (last) |
 
 ## Release
 | | Item |

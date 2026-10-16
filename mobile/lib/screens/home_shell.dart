@@ -3,6 +3,7 @@ import '../core/theme.dart';
 import '../core/ui.dart';
 import '../main.dart';
 import 'chat_screen.dart';
+import 'admin/admin_gate.dart';
 import 'admin/admin_shell.dart';
 import 'courses_screen.dart';
 import 'dashboard_screen.dart';
@@ -139,7 +140,7 @@ class _HomeShellState extends State<HomeShell> {
                     ),
                   if (auth.isStaff)
                     GestureDetector(
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminShell())),
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminKeyGate(child: AdminShell()))),
                       behavior: HitTestBehavior.opaque,
                       child: Container(
                         margin: const EdgeInsets.symmetric(horizontal: 1),

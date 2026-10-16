@@ -10,6 +10,8 @@ import 'admin_notifications_screen.dart';
 import 'admin_payments_screen.dart';
 import 'admin_quotes_screen.dart';
 import 'admin_support_screen.dart';
+import 'admin_users_screen.dart';
+import 'admin_withdrawals_screen.dart';
 import 'admin_whatsapp_screen.dart';
 
 class _Section {
@@ -35,8 +37,10 @@ class _AdminShellState extends State<AdminShell> {
   late final _groups = <(String, List<_Section>)>[
     ('Main', [
       _Section('Dashboard', Icons.grid_view_rounded, () => AdminDashboardScreen(onOpenPayments: () => _goTo('Payments'))),
+      _Section('Users', Icons.people_outline, () => const AdminUsersScreen(), adminOnly: true),
       _Section('WhatsApp Numbers', Icons.chat_bubble_outline, () => const AdminWhatsAppScreen()),
       _Section('Affiliates', Icons.link, () => const AdminAffiliatesScreen()),
+      _Section('Withdrawals', Icons.account_balance_wallet_outlined, () => const AdminWithdrawalsScreen(), adminOnly: true),
     ]),
     ('Finance', [
       _Section('Payments', Icons.credit_card, () => const AdminPaymentsScreen()),
