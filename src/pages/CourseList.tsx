@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { functionErrorMessage } from "@/lib/functionError";
+import { describeAccessPolicy, describeAccessStatus } from "@/lib/accessDuration";
 
 interface Department {
   id: string;
@@ -18,6 +19,7 @@ interface PriceRow {
   department_id: string;
   amount: number;
   currency: string;
+  access_duration_days: number | null;
 }
 interface Course {
   id: string;
@@ -38,9 +40,11 @@ export default function CourseList() {
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [prices, setPrices] = useState<PriceRow[]>([]);
-  const [grantedDepartmentIds, setGrantedDepartmentIds] = useState<Set<string>>(
-    new Set(),
-  );
+  // department_id -> expires_at (null = lifetime) for this student's own grants, so the
+  // "access active" badge reflects what THEY actually bought, not today's pricing policy.
+  const [grantedDepartmentIds, setGrantedDepartmentIds] = useState<
+    Map<string, string | null>
+  >(new Map());
   const [courses, setCourses] = useState<Course[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [selectedLevelId, setSelectedLevelId] = useState("");
@@ -65,20 +69,22 @@ export default function CourseList() {
           // oldest), so the paywall kept showing a price after an admin changed it.
           supabase
             .from("department_pricing")
-            .select("department_id, amount, currency")
+            .select("department_id, amount, currency, access_duration_days")
             .lte("effective_from", new Date().toISOString())
             .order("effective_from", { ascending: false }),
           user
             ? supabase
                 .from("access_grants")
-                .select("department_id")
+                .select("department_id, expires_at")
                 .eq("user_id", user.id)
-            : Promise.resolve({ data: [] as { department_id: string }[] }),
+            : Promise.resolve({
+                data: [] as { department_id: string; expires_at: string | null }[],
+              }),
         ]);
       setDepartments(depts ?? []);
       setPrices(priceRows ?? []);
       setGrantedDepartmentIds(
-        new Set((grants ?? []).map((g) => g.department_id)),
+        new Map((grants ?? []).map((g) => [g.department_id, g.expires_at])),
       );
     }
     void loadOverview();
@@ -164,7 +170,16 @@ export default function CourseList() {
           );
           return;
         }
-        setGrantedDepartmentIds((prev) => new Set(prev).add(departmentId));
+        // Mirrors processDepartmentAccessPayment's own expires_at computation so the badge
+        // that appears right after paying matches what the server actually just granted.
+        const newExpiresAt = price?.access_duration_days
+          ? new Date(
+              Date.now() + price.access_duration_days * 86_400_000,
+            ).toISOString()
+          : null;
+        setGrantedDepartmentIds((prev) =>
+          new Map(prev).set(departmentId, newExpiresAt),
+        );
       },
       onClose: () => {},
     });
@@ -249,7 +264,8 @@ export default function CourseList() {
             Restricted
           </h2>
           <p className="mt-2 text-sm text-text-3">
-            Pay once for lifetime access to every course in {activeDept?.name}.
+            Pay once for {describeAccessPolicy(price?.access_duration_days ?? null)} to
+            every course in {activeDept?.name}.
           </p>
           <button
             onClick={() => void handlePay()}
@@ -280,7 +296,11 @@ export default function CourseList() {
           {hasAccess && (
             <div className="badge-gold inline-flex items-center gap-1.5">
               <Sparkles size={12} />
-              Lifetime access active
+              {isAdmin
+                ? "Lifetime access active"
+                : describeAccessStatus(
+                    grantedDepartmentIds.get(departmentId) ?? null,
+                  )}
             </div>
           )}
 

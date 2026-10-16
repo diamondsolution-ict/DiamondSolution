@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import { functionErrorMessage } from "@/lib/functionError";
+import { describeAccessStatus } from "@/lib/accessDuration";
 
 interface PaymentRow {
   id: string;
@@ -36,9 +37,7 @@ function accessSummary(p: PaymentRow): string | null {
   if (p.status !== "success") return null;
   const grant = p.access_grants?.[0];
   if (!grant) return null;
-  return grant.expires_at
-    ? `Access until ${format(new Date(grant.expires_at), "MMM d, yyyy")}`
-    : "Lifetime access";
+  return describeAccessStatus(grant.expires_at);
 }
 
 type StatusFilter = "all" | "success" | "pending" | "failed";

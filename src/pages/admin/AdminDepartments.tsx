@@ -28,6 +28,7 @@ interface PriceRow {
   department_id: string;
   currency: string;
   amount: number;
+  access_duration_days: number | null;
   effective_from: string;
 }
 
@@ -36,6 +37,12 @@ interface LevelRow {
   department_id: string;
   label: string;
   sort_order: number;
+}
+
+function durationLabel(days: number | null): string {
+  if (days === null) return "Lifetime";
+  if (days === 365) return "1 year";
+  return `${days} days`;
 }
 
 function slugify(name: string) {
@@ -75,6 +82,8 @@ export default function AdminDepartments() {
   const [name, setName] = useState("");
   const [priceNgn, setPriceNgn] = useState("10000");
   const [priceUsd, setPriceUsd] = useState("");
+  // Default policy: 1 year, not lifetime — blank means lifetime (access_duration_days null).
+  const [accessDurationDays, setAccessDurationDays] = useState("365");
   const [levelInput, setLevelInput] = useState("100L, 200L, 300L, 400L");
   const [editStatus, setEditStatus] =
     useState<(typeof DEPT_STATUSES)[number]>("active");
@@ -99,7 +108,9 @@ export default function AdminDepartments() {
           .order("name"),
         supabase
           .from("department_pricing")
-          .select("department_id, currency, amount, effective_from")
+          .select(
+            "department_id, currency, amount, access_duration_days, effective_from",
+          )
           .lte("effective_from", new Date().toISOString())
           .order("effective_from", { ascending: false }),
         supabase
@@ -124,6 +135,15 @@ export default function AdminDepartments() {
     );
   }
 
+  // One duration policy per department, not per currency — NGN's current row stands in for
+  // "the" department duration, since both currencies are always set together from this form.
+  function priceDurationFor(deptId: string): number | null {
+    return (
+      prices.find((p) => p.department_id === deptId && p.currency === "NGN")
+        ?.access_duration_days ?? null
+    );
+  }
+
   function levelsFor(deptId: string) {
     return levels
       .filter((l) => l.department_id === deptId)
@@ -138,6 +158,7 @@ export default function AdminDepartments() {
     setName("");
     setPriceNgn("10000");
     setPriceUsd("");
+    setAccessDurationDays("365");
     setLevelInput("100L, 200L, 300L, 400L");
     setFormError(null);
     setModal("create");
@@ -148,6 +169,8 @@ export default function AdminDepartments() {
     setName(d.name);
     setPriceNgn(String(priceAmountFor(d.id, "NGN") || ""));
     setPriceUsd(String(priceAmountFor(d.id, "USD") || ""));
+    const duration = priceDurationFor(d.id);
+    setAccessDurationDays(duration === null ? "" : String(duration));
     setEditStatus(d.status as (typeof DEPT_STATUSES)[number]);
     setEditImagePath(d.image_path);
     setFormError(null);
@@ -171,14 +194,24 @@ export default function AdminDepartments() {
     departmentId: string,
     currency: "NGN" | "USD",
     raw: string,
+    durationRaw: string,
   ) {
     const amount = raw.trim() === "" ? 0 : Number(raw);
-    if (!Number.isFinite(amount) || amount === priceAmountFor(departmentId, currency)) {
+    if (!Number.isFinite(amount)) return;
+    const accessDurationDays =
+      durationRaw.trim() === "" ? null : Number(durationRaw);
+    if (
+      amount === priceAmountFor(departmentId, currency) &&
+      accessDurationDays === priceDurationFor(departmentId)
+    ) {
       return;
     }
-    await supabase
-      .from("department_pricing")
-      .insert({ department_id: departmentId, currency, amount });
+    await supabase.from("department_pricing").insert({
+      department_id: departmentId,
+      currency,
+      amount,
+      access_duration_days: accessDurationDays,
+    });
   }
 
   async function handleCreate(e: FormEvent) {
@@ -199,17 +232,26 @@ export default function AdminDepartments() {
       return;
     }
 
+    const accessDuration =
+      accessDurationDays.trim() === "" ? null : Number(accessDurationDays);
+
     const ngn = Number(priceNgn);
     if (ngn > 0) {
-      await supabase
-        .from("department_pricing")
-        .insert({ department_id: dept.id, currency: "NGN", amount: ngn });
+      await supabase.from("department_pricing").insert({
+        department_id: dept.id,
+        currency: "NGN",
+        amount: ngn,
+        access_duration_days: accessDuration,
+      });
     }
     const usd = Number(priceUsd);
     if (usd > 0) {
-      await supabase
-        .from("department_pricing")
-        .insert({ department_id: dept.id, currency: "USD", amount: usd });
+      await supabase.from("department_pricing").insert({
+        department_id: dept.id,
+        currency: "USD",
+        amount: usd,
+        access_duration_days: accessDuration,
+      });
     }
 
     const levelLabels = levelInput
@@ -251,8 +293,8 @@ export default function AdminDepartments() {
     // effective_from) — a changed amount becomes a new row, not an in-place update, so every
     // price that was ever actually charged stays on record.
     await Promise.all([
-      upsertPrice(activeId, "NGN", priceNgn),
-      upsertPrice(activeId, "USD", priceUsd),
+      upsertPrice(activeId, "NGN", priceNgn, accessDurationDays),
+      upsertPrice(activeId, "USD", priceUsd, accessDurationDays),
     ]);
 
     setSaving(false);
@@ -403,6 +445,7 @@ export default function AdminDepartments() {
               const imageUrl = publicImageUrl(d.image_path);
               const ngn = priceAmountFor(d.id, "NGN");
               const usd = priceAmountFor(d.id, "USD");
+              const duration = priceDurationFor(d.id);
               const isActive = d.status === "active";
               return (
                 <div key={d.id} className="card-luxury p-4">
@@ -446,6 +489,9 @@ export default function AdminDepartments() {
                               ${usd.toLocaleString()}
                             </p>
                           )}
+                          <p className="text-xs text-text-3">
+                            {durationLabel(duration)} access
+                          </p>
                         </>
                       ) : (
                         <p className="text-xs text-text-3">No price set</p>
@@ -508,6 +554,7 @@ export default function AdminDepartments() {
                   const imageUrl = publicImageUrl(d.image_path);
                   const ngn = priceAmountFor(d.id, "NGN");
                   const usd = priceAmountFor(d.id, "USD");
+                  const duration = priceDurationFor(d.id);
                   const isActive = d.status === "active";
                   return (
                     <tr
@@ -551,6 +598,9 @@ export default function AdminDepartments() {
                                 ${usd.toLocaleString()}
                               </p>
                             )}
+                            <p className="text-xs text-text-3">
+                              {durationLabel(duration)} access
+                            </p>
                           </>
                         ) : (
                           <p className="text-xs text-text-3">No price set</p>
@@ -679,6 +729,22 @@ export default function AdminDepartments() {
             </div>
             <div>
               <label className="block text-sm font-medium text-text-2">
+                Access duration (days)
+              </label>
+              <input
+                type="number"
+                min={0}
+                placeholder="365"
+                value={accessDurationDays}
+                onChange={(e) => setAccessDurationDays(e.target.value)}
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-text-3">
+                365 = 1 year from purchase. Leave blank for lifetime access.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-2">
                 Levels (comma-separated)
               </label>
               <input
@@ -783,6 +849,24 @@ export default function AdminDepartments() {
                   className={inputClass}
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-2">
+                Access duration (days)
+              </label>
+              <input
+                type="number"
+                min={0}
+                placeholder="365"
+                value={accessDurationDays}
+                onChange={(e) => setAccessDurationDays(e.target.value)}
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-text-3">
+                365 = 1 year from purchase. Leave blank for lifetime access.
+                Changing this only affects future purchases — students who
+                already paid keep the terms they bought under.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-text-2">Status</label>
