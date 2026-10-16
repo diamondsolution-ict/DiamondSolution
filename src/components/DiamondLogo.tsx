@@ -1,4 +1,5 @@
-import logoMarkImage from "@/assets/diamond-logo-mark.png";
+import logoMarkNavy from "@/assets/diamond-logo-mark.png";
+import logoMarkWhite from "@/assets/diamond-logo-mark-white.png";
 
 interface DiamondLogoProps {
   size?: number;
@@ -6,10 +7,11 @@ interface DiamondLogoProps {
   variant?: "navy" | "white" | "gold";
   showTagline?: boolean;
   className?: string;
-  // Uses the real company logo artwork (src/assets/diamond-logo-mark.png) instead of the
-  // hand-drawn SVG reconstruction below. Only meaningful with variant="navy" (the only color
-  // this asset was processed in) — on white/gold it's silently ignored and falls back to the
-  // SVG mark, since there's no recolored asset for those.
+  // Uses the real company logo artwork (src/assets/diamond-logo-mark*.png — a navy and a white
+  // cutout of the same source image, black background removed) instead of the hand-drawn SVG
+  // reconstruction below. True by default now that the real asset exists for every variant
+  // actually used in the app; only "gold" (currently unused anywhere) has no real asset and
+  // silently falls back to the SVG mark.
   useRealMark?: boolean;
 }
 
@@ -58,10 +60,10 @@ function Mark({ size, color }: { size: number; color: string }) {
   );
 }
 
-function RealMark({ size }: { size: number }) {
+function RealMark({ size, src }: { size: number; src: string }) {
   return (
     <img
-      src={logoMarkImage}
+      src={src}
       alt="Diamond Solution"
       width={size}
       className="shrink-0"
@@ -70,18 +72,25 @@ function RealMark({ size }: { size: number }) {
   );
 }
 
+const REAL_MARK_SRC: Partial<Record<NonNullable<DiamondLogoProps["variant"]>, string>> =
+  {
+    navy: logoMarkNavy,
+    white: logoMarkWhite,
+  };
+
 export function DiamondLogo({
   size = 56,
   layout = "vertical",
   variant = "navy",
   showTagline = false,
   className = "",
-  useRealMark = false,
+  useRealMark = true,
 }: DiamondLogoProps) {
   const color = VARIANT_COLOR[variant];
+  const realMarkSrc = REAL_MARK_SRC[variant];
   const renderMark = (markSize: number) =>
-    useRealMark && variant === "navy" ? (
-      <RealMark size={markSize} />
+    useRealMark && realMarkSrc ? (
+      <RealMark size={markSize} src={realMarkSrc} />
     ) : (
       <Mark size={markSize} color={color} />
     );
