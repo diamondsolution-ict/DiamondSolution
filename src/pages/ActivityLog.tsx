@@ -126,7 +126,7 @@ export default function ActivityLog() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {filtered.map((a) => {
             const q = a.questions;
             const isOpen = expanded === a.id;
@@ -155,20 +155,27 @@ export default function ActivityLog() {
                 </button>
 
                 {isOpen && q && (
-                  <div className="mt-3 border-t border-canvas-border pt-3">
+                  <div className="mt-4 space-y-4 border-t border-canvas-border pt-4">
+                    {/* The header above only shows a 2-line-clamped preview — this is the full,
+                        untruncated question text, which previously never appeared anywhere
+                        once a question's prompt ran longer than that preview. */}
+                    <p className="whitespace-pre-wrap text-sm font-medium text-text-1">
+                      {q.prompt}
+                    </p>
+
                     {q.type === "application" ? (
-                      <div className="rounded-xl bg-navy p-3 text-sm text-white">
+                      <div className="rounded-xl bg-navy p-4 text-sm text-white">
                         <p className="font-semibold">Expected answer</p>
-                        <p className="mt-1 text-white/90">
+                        <p className="mt-2 leading-relaxed text-white/90">
                           {q.expected_answer || "No expected answer recorded."}
                         </p>
                       </div>
                     ) : (
-                      <ul className="space-y-2 text-sm">
+                      <ul className="space-y-2.5 text-sm">
                         {q.question_options.map((o) => (
                           <li
                             key={o.id}
-                            className={`rounded-xl px-3 py-2 ${
+                            className={`rounded-xl px-3.5 py-2.5 leading-relaxed ${
                               o.is_correct
                                 ? "bg-emerald-50 font-semibold text-emerald-700"
                                 : o.id === a.selected_option_id
@@ -186,7 +193,7 @@ export default function ActivityLog() {
                       </ul>
                     )}
                     {q.explanation && (
-                      <div className="mt-3 flex items-start gap-2 rounded-xl bg-canvas-soft p-3 text-sm text-text-2">
+                      <div className="flex items-start gap-2 rounded-xl bg-canvas-soft p-4 text-sm leading-relaxed text-text-2">
                         <Lightbulb
                           size={15}
                           className="mt-0.5 shrink-0 text-gold"

@@ -114,9 +114,11 @@ export default function CourseList() {
       ]);
       setCourses(courseRows ?? []);
       setLevels(levelRows ?? []);
+      // No "All levels" option anymore — a department's courses are always viewed one level
+      // at a time, so default to the first one instead of an unfiltered mixed list.
+      setSelectedLevelId(levelRows?.[0]?.id ?? "");
       setLoading(false);
     }
-    setSelectedLevelId("");
     void loadCourses();
   }, [departmentId]);
 
@@ -306,16 +308,6 @@ export default function CourseList() {
 
           {levels.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedLevelId("")}
-                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
-                  selectedLevelId === ""
-                    ? "bg-royal text-white"
-                    : "bg-canvas-soft text-text-2 hover:bg-royal-soft"
-                }`}
-              >
-                All levels
-              </button>
               {levels.map((l) => (
                 <button
                   key={l.id}
