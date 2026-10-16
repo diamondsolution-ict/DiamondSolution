@@ -3,9 +3,11 @@ import '../../core/logo.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../main.dart';
+import 'admin_affiliates_screen.dart';
 import 'admin_analytics_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_notifications_screen.dart';
+import 'admin_payments_screen.dart';
 import 'admin_quotes_screen.dart';
 import 'admin_support_screen.dart';
 import 'admin_whatsapp_screen.dart';
@@ -30,12 +32,14 @@ class AdminShell extends StatefulWidget {
 class _AdminShellState extends State<AdminShell> {
   int index = 0;
 
-  static final _groups = <(String, List<_Section>)>[
+  late final _groups = <(String, List<_Section>)>[
     ('Main', [
-      _Section('Dashboard', Icons.grid_view_rounded, () => const AdminDashboardScreen()),
+      _Section('Dashboard', Icons.grid_view_rounded, () => AdminDashboardScreen(onOpenPayments: () => _goTo('Payments'))),
       _Section('WhatsApp Numbers', Icons.chat_bubble_outline, () => const AdminWhatsAppScreen()),
+      _Section('Affiliates', Icons.link, () => const AdminAffiliatesScreen()),
     ]),
     ('Finance', [
+      _Section('Payments', Icons.credit_card, () => const AdminPaymentsScreen()),
       _Section('Analytics', Icons.bar_chart_rounded, () => const AdminAnalyticsScreen()),
     ]),
     ('Content', [
@@ -44,6 +48,12 @@ class _AdminShellState extends State<AdminShell> {
       _Section('Support', Icons.chat_outlined, () => const AdminSupportScreen()),
     ]),
   ];
+
+  void _goTo(String label) {
+    final sections = _visible(AuthScope.of(context).isAdmin);
+    final i = sections.indexWhere((s) => s.label == label);
+    if (i >= 0) setState(() => index = i);
+  }
 
   List<_Section> _visible(bool isAdmin) => [for (final g in _groups) for (final s in g.$2) if (isAdmin || !s.adminOnly) s];
 

@@ -40,8 +40,8 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Fixed: lists were sorted backwards (Dart `order()` defaults to descending) |
 | ⬜ | Real-device test of everything above (payments, device lock, study, leaderboard) |
 | ✅ | Staff entry: Admin/Moderator tab in the bottom bar (staff only), white drawer like the web sidebar |
-| ✅ | Moderator tools: Dashboard, Analytics, WhatsApp Numbers, Notifications, Quotes, Support (live chat + device unlock) |
-| ⬜ | Moderator tools still to build: Payments, Affiliates |
+| ✅ | Moderator tools (all 8): Dashboard, Analytics, WhatsApp Numbers, Affiliates, Payments (live Paystack recheck), Notifications, Quotes, Support (live chat + device unlock) |
+| ⬜ | Not in app yet: CSV export buttons (Payments, Affiliates, WhatsApp) — web only |
 | ⬜ | Admin-only tools: Users, Withdrawals, Departments/Courses, Media, System Logs, Settings, Questions editor (last) + admin key / step-up |
 
 ## Release
