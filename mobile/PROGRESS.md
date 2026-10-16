@@ -23,10 +23,10 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Profile (User tab) | Checked |
 | ✅ | Affiliate | Balance card, payout methods (bank lookup), referral link, stats, commission / redistribution / network lists, withdraw + add + remove dialogs. Checked |
 | ✅ | Payment history | Status filters, search, detail dialog with live Paystack recheck. Checked |
-| 🟡 | Chats tab | Works, old look |
-| 🟡 | Notifications | A page, not the website's dropdown |
+| ✅ | Chats tab | Bubbles, SUPPORT label, 'x minutes ago', live replies, retry state. Checked (live delivery needs a real backend) |
+| ✅ | Notifications | Bell with gold unread badge + dropdown panel, mark one / all read. Checked |
 | ✅ | Account settings | Identity, language, payout link, password change with emailed code. Layout checked; password/code flow needs a real-device test |
-| ⬜ | Onboarding tour | Website shows it on first dashboard visit |
+| ✅ | Onboarding tour | Five auto-advancing cards; shown once per account on this phone (website: once per browser session). Checked |
 
 ## Behaviour
 | | Item |
@@ -50,7 +50,5 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ⬜ | Optional: Play Integrity (stronger device checks) — only once the app is on Google Play |
 
 ## Suggested order
-1. Chats tab, Notifications
-2. Onboarding tour
-3. Real-device test round + fixes
-4. Release (signing key, Play Store listing)
+1. Real-device test round + fixes (everything now has the website's look)
+2. Release (signing key, Play Store listing)
