@@ -3,7 +3,6 @@ import '../core/theme.dart';
 import '../main.dart';
 import 'activity_log_screen.dart';
 import 'affiliate_screen.dart';
-import 'chat_screen.dart';
 import 'payment_history_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -52,7 +51,6 @@ class ProfileScreen extends StatelessWidget {
           _link(context, Icons.fact_check_outlined, 'Revision center', const ActivityLogScreen()),
           _link(context, Icons.card_giftcard, 'Affiliate', const AffiliateScreen()),
           _link(context, Icons.receipt_long_outlined, 'Payment history', const PaymentHistoryScreen()),
-          _link(context, Icons.support_agent, 'Chat with support', const ChatScreen()),
         ]),
       ),
       const SizedBox(height: 12),

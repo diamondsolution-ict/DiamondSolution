@@ -15,6 +15,8 @@ dependencies:
   android_id: ^0.4.0
   intl: ^0.19.0
   webview_flutter: ^4.10.0
+  google_fonts: ^6.2.1
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -24,10 +26,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/logo.png
+    - google_fonts/
 
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: assets/icon.png
-  adaptive_icon_background: "#0B1E3D"
+  adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: assets/icon_foreground.png

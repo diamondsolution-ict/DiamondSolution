@@ -18,7 +18,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   Future<(List<Map<String, dynamic>>, Set<String>, Map<String, num>)> _load() async {
     final uid = db.auth.currentUser!.id;
     final r = await Future.wait<dynamic>([
-      db.from('departments').select('id, name').eq('status', 'active').order('name'),
+      db.from('departments').select('id, name').eq('status', 'active').order('name', ascending: true),
       db.from('access_grants').select('department_id').eq('user_id', uid),
       // Price history table: newest row not in the future wins (same rule as the website).
       db
@@ -109,8 +109,8 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
           .eq('department_id', widget.departmentId)
           .eq('status', 'published')
           .filter('deleted_at', 'is', null)
-          .order('title'),
-      db.from('department_levels').select('id, label, sort_order').eq('department_id', widget.departmentId).order('sort_order'),
+          .order('title', ascending: true),
+      db.from('department_levels').select('id, label, sort_order').eq('department_id', widget.departmentId).order('sort_order', ascending: true),
     ]);
     return (List<Map<String, dynamic>>.from(r[0]), List<Map<String, dynamic>>.from(r[1]));
   }

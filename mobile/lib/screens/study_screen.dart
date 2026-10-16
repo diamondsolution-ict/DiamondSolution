@@ -88,7 +88,7 @@ class _StudyScreenState extends State<StudyScreen> {
             .eq('course_id', widget.courseId)
             .eq('status', 'active');
         if (after != null) query = query.gt('id', after);
-        final page = List<Map<String, dynamic>>.from(await query.order('id').limit(1000));
+        final page = List<Map<String, dynamic>>.from(await query.order('id', ascending: true).limit(1000));
         rows.addAll(page);
         if (page.length < 1000) break;
         after = page.last['id'] as String;

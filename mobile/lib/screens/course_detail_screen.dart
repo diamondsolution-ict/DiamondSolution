@@ -25,12 +25,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         .maybeSingle();
     if (course == null) throw 'Course not found.';
     final r = await Future.wait<dynamic>([
-      db.from('questions').select('id').eq('course_id', widget.courseId).eq('status', 'active').count(),
+      db.from('questions').select('id').eq('course_id', widget.courseId).eq('status', 'active').limit(1).count(),
       db
           .from('course_outline_sections')
           .select('title, start_question_order, end_question_order')
           .eq('course_id', widget.courseId)
-          .order('sort_order'),
+          .order('sort_order', ascending: true),
       db
           .from('study_progress')
           .select('current_order, completed')
