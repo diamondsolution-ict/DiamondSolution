@@ -39,7 +39,10 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Fixed: affiliate commission % was shown as 0.25% instead of 25% |
 | ✅ | Fixed: lists were sorted backwards (Dart `order()` defaults to descending) |
 | ⬜ | Real-device test of everything above (payments, device lock, study, leaderboard) |
-| ⬜ | Admin / moderator back office (stays on the website) |
+| ✅ | Staff entry: Admin/Moderator tab in the bottom bar (staff only), white drawer like the web sidebar |
+| ✅ | Moderator tools: Dashboard, Analytics, WhatsApp Numbers, Notifications, Quotes, Support (live chat + device unlock) |
+| ⬜ | Moderator tools still to build: Payments, Affiliates |
+| ⬜ | Admin-only tools: Users, Withdrawals, Departments/Courses, Media, System Logs, Settings, Questions editor (last) + admin key / step-up |
 
 ## Release
 | | Item |

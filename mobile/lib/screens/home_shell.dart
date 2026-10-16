@@ -3,6 +3,7 @@ import '../core/theme.dart';
 import '../core/ui.dart';
 import '../main.dart';
 import 'chat_screen.dart';
+import 'admin/admin_shell.dart';
 import 'courses_screen.dart';
 import 'dashboard_screen.dart';
 import 'notifications.dart';
@@ -133,6 +134,20 @@ class _HomeShellState extends State<HomeShell> {
                                   color: index == i
                                       ? Colors.white
                                       : AppColors.slate400)),
+                        ]),
+                      ),
+                    ),
+                  if (auth.isStaff)
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminShell())),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.shield_outlined, size: 17, color: AppColors.slate400),
+                          const SizedBox(height: 2),
+                          Text(lang.t(auth.isAdmin ? 'nav.admin' : 'nav.moderator'), style: body(11, weight: FontWeight.w600, color: AppColors.slate400)),
                         ]),
                       ),
                     ),
