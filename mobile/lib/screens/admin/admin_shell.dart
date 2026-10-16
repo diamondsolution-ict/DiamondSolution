@@ -5,10 +5,13 @@ import '../../core/ui.dart';
 import '../../main.dart';
 import 'admin_affiliates_screen.dart';
 import 'admin_analytics_screen.dart';
+import 'admin_audit_screen.dart';
 import 'admin_dashboard_screen.dart';
+import 'admin_media_screen.dart';
 import 'admin_notifications_screen.dart';
 import 'admin_payments_screen.dart';
 import 'admin_quotes_screen.dart';
+import 'admin_settings_screen.dart';
 import 'admin_support_screen.dart';
 import 'admin_users_screen.dart';
 import 'admin_withdrawals_screen.dart';
@@ -47,9 +50,12 @@ class _AdminShellState extends State<AdminShell> {
       _Section('Analytics', Icons.bar_chart_rounded, () => const AdminAnalyticsScreen()),
     ]),
     ('Content', [
+      _Section('Pictures & Media', Icons.image_outlined, () => const AdminMediaScreen(), adminOnly: true),
       _Section('Notifications', Icons.notifications_none, () => const AdminNotificationsScreen()),
       _Section('Quotes', Icons.format_quote_rounded, () => const AdminQuotesScreen()),
       _Section('Support', Icons.chat_outlined, () => const AdminSupportScreen()),
+      _Section('System Logs', Icons.receipt_long_outlined, () => const AdminAuditScreen(), adminOnly: true),
+      _Section('Settings', Icons.shield_outlined, () => const AdminSettingsScreen(), adminOnly: true),
     ]),
   ];
 
