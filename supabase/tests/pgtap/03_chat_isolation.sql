@@ -4,9 +4,13 @@
 begin;
 select plan(5);
 
+-- Triggers are skipped while seeding auth.users: handle_new_user() now demands a referral code
+-- (20261016010000_require_referral_code_at_signup.sql), which is irrelevant to what this test checks.
+set local session_replication_role = replica;
 insert into auth.users (id, email) values
   ('66666666-6666-6666-6666-666666666666', 'pgtap-chat-a@test.local'),
   ('77777777-7777-7777-7777-777777777777', 'pgtap-chat-b@test.local');
+set local session_replication_role = origin;
 
 -- Student A starts a conversation via the real RPC, as themselves.
 set local role authenticated;

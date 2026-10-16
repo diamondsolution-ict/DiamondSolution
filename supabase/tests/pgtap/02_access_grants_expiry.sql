@@ -8,9 +8,13 @@ select plan(4);
 
 -- Both test users seeded up front, before any role-switching below — auth.users isn't
 -- writable as the 'authenticated' role, only as the superuser this file runs as by default.
+-- Triggers are skipped while seeding auth.users: handle_new_user() now demands a referral code
+-- (20261016010000_require_referral_code_at_signup.sql), which is irrelevant to what this test checks.
+set local session_replication_role = replica;
 insert into auth.users (id, email) values
   ('44444444-4444-4444-4444-444444444444', 'pgtap-expiry@test.local'),
   ('55555555-5555-5555-5555-555555555555', 'pgtap-nogrant@test.local');
+set local session_replication_role = origin;
 
 insert into departments (name, slug) values ('pgTAP Expiry Dept', 'pgtap-expiry-dept');
 
