@@ -33,7 +33,7 @@ interface Level {
 }
 
 export default function CourseList() {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin, isModerator } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const departmentId = searchParams.get("department") ?? "";
@@ -123,10 +123,11 @@ export default function CourseList() {
   }, [departmentId]);
 
   const activeDept = departments.find((d) => d.id === departmentId);
-  // Admins read everything for free, matching has_department_access()'s own is_admin() OR —
-  // the backend already allowed this; the paywall UI just didn't know to skip itself for them.
+  // Staff read everything for free, matching has_department_access()'s own
+  // is_moderator_or_admin() OR — the backend already allowed this; the paywall UI just didn't
+  // know to skip itself for them.
   const hasAccess = departmentId
-    ? isAdmin || grantedDepartmentIds.has(departmentId)
+    ? isAdmin || isModerator || grantedDepartmentIds.has(departmentId)
     : false;
   const price = prices.find(
     (p) => p.department_id === departmentId && p.currency === "NGN",
@@ -298,7 +299,7 @@ export default function CourseList() {
           {hasAccess && (
             <div className="badge-gold inline-flex items-center gap-1.5">
               <Sparkles size={12} />
-              {isAdmin
+              {isAdmin || isModerator
                 ? "Lifetime access active"
                 : describeAccessStatus(
                     grantedDepartmentIds.get(departmentId) ?? null,
