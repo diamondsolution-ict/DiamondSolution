@@ -1,7 +1,7 @@
 name: diamond_solution
 description: Diamond Solution mobile app (Android) — study/exam-prep, on the same Supabase backend as the website.
 publish_to: none
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -17,6 +17,9 @@ dependencies:
   webview_flutter: ^4.10.0
   google_fonts: ^6.2.1
   url_launcher: ^6.3.0
+  image_picker: ^1.2.4
+  share_plus: ^13.3.1
+  file_picker: ^13.1.0
 
 dev_dependencies:
   flutter_test:

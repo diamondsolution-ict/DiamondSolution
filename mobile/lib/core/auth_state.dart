@@ -14,6 +14,8 @@ class AppAuth extends ChangeNotifier {
 
   User? get user => session?.user;
   bool get isAdmin => roles.contains('admin');
+  bool get isModerator => roles.contains('moderator');
+  bool get isStaff => isAdmin || isModerator;
   bool get isSuspended => profile?['status'] == 'suspended';
   bool get isDeviceBlocked => profile?['device_block_started_at'] != null;
   String get displayName => (profile?['display_name'] as String?) ?? 'Scholar';

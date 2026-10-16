@@ -21,7 +21,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   Future<Map<String, dynamic>?> _load() async {
     final uid = db.auth.currentUser!.id;
-    final isAdmin = AuthScope.of(context).isAdmin;
+    final isAdmin = AuthScope.of(context).isStaff;
     final course = await db
         .from('courses')
         .select('id, title, description, department_id, level_id, image_path')
@@ -43,7 +43,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       'level': (r[1] as Map)['label'],
       'count': (r[2] as dynamic).count as int,
       'outline': List<Map<String, dynamic>>.from(r[3]),
-      // Admins read everything for free, same as has_department_access() server-side.
+      // Staff (admins and moderators) read everything for free, same as has_department_access() server-side.
       'access': isAdmin || isGrantActive(r[4] as Map<String, dynamic>?),
       'expires': (r[4] as Map?)?['expires_at'],
       'isAdmin': isAdmin,
@@ -136,7 +136,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               if (!access) _noAccess(d) else _launchCard(total, progress, resumable, course),
               if (access && total > 0) ...[
                 const SizedBox(height: 8),
-                Text('${((d['isAdmin'] as bool) ? 'Lifetime access' : describeAccessStatus(d['expires'] as String?)).toUpperCase()} · ONE-TIME PAYMENT · SECURED TRANSACTION', textAlign: TextAlign.center, style: body(10, weight: FontWeight.w700, color: AppColors.text3, letterSpacing: 1.2)),
+                Text('${describeAccessStatus(d['expires'] as String?, isAdmin: d['isAdmin'] as bool).toUpperCase()} · ${describePaymentTerm(d['expires'] as String?, d['isAdmin'] as bool).toUpperCase()} · SECURED TRANSACTION', textAlign: TextAlign.center, style: body(10, weight: FontWeight.w700, color: AppColors.text3, letterSpacing: 1.2)),
               ],
               const SizedBox(height: 32),
               Row(children: [

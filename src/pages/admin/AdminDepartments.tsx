@@ -40,7 +40,7 @@ interface LevelRow {
 }
 
 function durationLabel(days: number | null): string {
-  if (days === null) return "Lifetime";
+  if (days === null) return "No expiry";
   if (days === 365) return "1 year";
   return `${days} days`;
 }
@@ -82,7 +82,7 @@ export default function AdminDepartments() {
   const [name, setName] = useState("");
   const [priceNgn, setPriceNgn] = useState("10000");
   const [priceUsd, setPriceUsd] = useState("");
-  // Default policy: 1 year, not lifetime — blank means lifetime (access_duration_days null).
+  // Default policy: 1 year — blank means no expiry (access_duration_days null), which students never see as "lifetime".
   const [accessDurationDays, setAccessDurationDays] = useState("365");
   const [levelInput, setLevelInput] = useState("100L, 200L, 300L, 400L");
   const [editStatus, setEditStatus] =
@@ -740,7 +740,7 @@ export default function AdminDepartments() {
                 className={inputClass}
               />
               <p className="mt-1 text-xs text-text-3">
-                365 = 1 year from purchase. Leave blank for lifetime access.
+                365 = 1 year from purchase (the standard yearly fee). Leave blank only for access that never expires.
               </p>
             </div>
             <div>
@@ -863,7 +863,7 @@ export default function AdminDepartments() {
                 className={inputClass}
               />
               <p className="mt-1 text-xs text-text-3">
-                365 = 1 year from purchase. Leave blank for lifetime access.
+                365 = 1 year from purchase (the standard yearly fee). Leave blank only for access that never expires.
                 Changing this only affects future purchases — students who
                 already paid keep the terms they bought under.
               </p>
