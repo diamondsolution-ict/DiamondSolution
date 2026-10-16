@@ -225,7 +225,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _push(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
-  Widget _pageWithBar(String title, Widget body) => Scaffold(appBar: AppBar(title: Text(title)), body: DiamondMesh(child: body));
 
   @override
   Widget build(BuildContext context) {
@@ -627,7 +626,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       const SizedBox(height: 8),
       _pairs([
           tile(Icons.description_outlined, AppColors.royalSoft, AppColors.royal, 'Start Quiz', 'Pick a topic and go', () => widget.onOpenDepartments?.call()),
-          tile(Icons.emoji_events_outlined, AppColors.goldPale, AppColors.goldDark, 'Leaderboard', 'See department rank', () => _push(_pageWithBar('Leaderboard', const LeaderboardScreen()))),
+          tile(Icons.emoji_events_outlined, AppColors.goldPale, AppColors.goldDark, 'Leaderboard', 'See department rank', () => _push(const LeaderboardScreen())),
           tile(Icons.group_outlined, AppColors.emerald50, AppColors.emerald600, 'Refer & Earn', '25% commission', () => _push(const AffiliateScreen())),
           tile(Icons.public, AppColors.violet50, AppColors.violet600, 'Channels', 'Social updates', () => _showChannels(d.channels)),
         ]),
@@ -674,7 +673,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ]),
           ),
           GestureDetector(
-            onTap: () => _push(_pageWithBar('Leaderboard', const LeaderboardScreen())),
+            onTap: () => _push(const LeaderboardScreen()),
             child: Text('See full rankings →', style: body(12, weight: FontWeight.w600, color: AppColors.royal)),
           ),
         ]),

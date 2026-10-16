@@ -18,14 +18,14 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Course detail | Checked |
 | ✅ | Questions / study screen | Timer, score, MCQ + application, explanation, section-complete, results, re-sync. Checked |
 | ✅ | Device-lock + reactivation screens | Styled like the website; flow needs a real-device test |
-| 🟡 | Leaderboard | Works, old look |
-| 🟡 | Revision center (activity log) | Works, old look |
-| 🟡 | Profile (User tab) | Works, old look |
+| ✅ | Leaderboard | Podium, department chips, formula line. Checked |
+| ✅ | Revision center (activity log) | Filters, expandable attempts, load more. Checked |
+| ✅ | Profile (User tab) | Checked |
 | 🟡 | Affiliate | Works, old look |
 | 🟡 | Payment history | Works, old look |
 | 🟡 | Chats tab | Works, old look |
 | 🟡 | Notifications | A page, not the website's dropdown |
-| ⬜ | Account settings (change password etc.) | Website has `/account`; not in the app yet |
+| ✅ | Account settings | Identity, language, payout link, password change with emailed code. Layout checked; password/code flow needs a real-device test |
 | ⬜ | Onboarding tour | Website shows it on first dashboard visit |
 
 ## Behaviour
@@ -44,12 +44,12 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | | Item |
 |---|---|
 | ✅ | GitHub Actions builds a test APK (`Mobile (Flutter)` workflow) |
-| ⬜ | Merge to `main` (open a pull request) |
+| ✅ | Batches 1 and 2 merged to `main` (PR #1, PR #2) |
 | ⬜ | Release signing key + Play Store listing + final icon artwork |
 | ⬜ | Optional: Play Integrity (stronger device checks) — only once the app is on Google Play |
 
 ## Suggested order
-1. Leaderboard, Revision center, Profile + Account settings
-2. Affiliate, Payment history, Chats, Notifications
+1. Affiliate, Payment history, Chats, Notifications
+2. Onboarding tour
 3. Real-device test round + fixes
-4. Pull request / release
+4. Release (signing key, Play Store listing)

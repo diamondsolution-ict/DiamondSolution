@@ -46,7 +46,7 @@ class _HomeShellState extends State<HomeShell> {
       DashboardScreen(onOpenDepartments: () => setState(() => index = 1)),
       const CoursesScreen(),
       const ChatScreen(embedded: true),
-      const ProfileScreen(),
+      ProfileScreen(onOpenChats: () => setState(() => index = 2)),
     ];
     return Scaffold(
       backgroundColor: AppColors.canvas,
