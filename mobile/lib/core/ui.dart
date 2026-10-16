@@ -144,3 +144,66 @@ class Banner2 extends StatelessWidget {
         child: Text(message, style: body(14, color: success ? AppColors.emerald700 : AppColors.rose700)),
       );
 }
+
+/// `.btn-gold`
+class BtnGold extends StatelessWidget {
+  const BtnGold({super.key, required this.label, this.icon, this.onPressed});
+  final String label;
+  final IconData? icon;
+  final VoidCallback? onPressed;
+  @override
+  Widget build(BuildContext context) => Opacity(
+        opacity: onPressed == null ? 0.5 : 1,
+        child: Material(
+          color: AppColors.gold,
+          borderRadius: BorderRadius.circular(12),
+          elevation: 2,
+          shadowColor: AppColors.gold.withValues(alpha: 0.25),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              height: 46,
+              alignment: Alignment.center,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (icon != null) ...[Icon(icon, size: 16, color: AppColors.navy), const SizedBox(width: 8)],
+                Text(label, style: body(14, weight: FontWeight.w700, color: AppColors.navy)),
+              ]),
+            ),
+          ),
+        ),
+      );
+}
+
+/// A pushed page with the website's white header + back chevron over the mesh background.
+class PageShell extends StatelessWidget {
+  const PageShell({super.key, required this.title, required this.child});
+  final String title;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: AppColors.canvas,
+        appBar: AppBar(
+          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          backgroundColor: Colors.white.withValues(alpha: 0.9),
+          leading: IconButton(icon: const Icon(Icons.chevron_left, size: 24, color: AppColors.text2), onPressed: () => Navigator.of(context).maybePop()),
+        ),
+        body: DiamondMesh(child: child),
+      );
+}
+
+/// Centred empty / info card (`card-luxury flex flex-col items-center gap-2 p-10 text-center`).
+class EmptyCard extends StatelessWidget {
+  const EmptyCard({super.key, required this.icon, required this.message});
+  final IconData icon;
+  final String message;
+  @override
+  Widget build(BuildContext context) => CardLuxury(
+        padding: const EdgeInsets.all(40),
+        child: Column(children: [
+          Icon(icon, size: 28, color: AppColors.text3),
+          const SizedBox(height: 8),
+          Text(message, textAlign: TextAlign.center, style: body(14, color: AppColors.text3)),
+        ]),
+      );
+}

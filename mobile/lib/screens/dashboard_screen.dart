@@ -578,7 +578,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final url = path == null ? null : db.storage.from('media').getPublicUrl(path);
     return CardLuxury(
       padding: EdgeInsets.zero,
-      onTap: () => _push(DepartmentScreen(departmentId: dep['id'] as String, name: dep['name'] as String, unlocked: granted || AuthScope.of(context).isAdmin)),
+      onTap: () => _push(DepartmentScreen(departmentId: dep['id'] as String, name: dep['name'] as String)),
       child: IntrinsicHeight(
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(
