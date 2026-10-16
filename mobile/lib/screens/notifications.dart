@@ -29,7 +29,7 @@ class _NotificationsButtonState extends State<NotificationsButton> {
         icon: Badge(
           isLabelVisible: unread > 0,
           label: Text('$unread'),
-          child: const Icon(Icons.notifications_outlined),
+          child: const Icon(Icons.notifications_outlined, color: AppColors.text3),
         ),
         onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));

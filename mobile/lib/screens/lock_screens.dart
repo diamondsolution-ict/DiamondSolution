@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../main.dart';
+import '../core/ui.dart';
 import 'auth_screens.dart';
 import 'checkout_screen.dart';
 
@@ -62,10 +63,10 @@ class _DeviceLockedScreenState extends State<DeviceLockedScreen> {
     final eligibleAt = since?.add(const Duration(hours: _lockoutHours));
     final remaining = eligibleAt == null ? Duration.zero : eligibleAt.difference(DateTime.now());
     final eligible = remaining <= Duration.zero;
-    return AuthFrame(children: [
-      const Icon(Icons.smartphone, size: 40, color: AppColors.danger),
+    return _LockFrame(children: [
+      Center(child: Container(width: 56, height: 56, decoration: const BoxDecoration(color: AppColors.rose50, shape: BoxShape.circle), child: const Icon(Icons.smartphone, size: 26, color: AppColors.rose500))),
       const SizedBox(height: 12),
-      const Text('Account locked', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+      Text('Account Locked', textAlign: TextAlign.center, style: heading(20)),
       const SizedBox(height: 8),
       const Text(
         'This account was signed in from a 3rd device. For security, only one device at a '
@@ -90,7 +91,7 @@ class _DeviceLockedScreenState extends State<DeviceLockedScreen> {
             ),
         ]),
       ),
-      if (error != null) ...[const SizedBox(height: 12), ErrorBox(error!)],
+      if (error != null) ...[const SizedBox(height: 12), Banner2(error!)],
       const SizedBox(height: 16),
       FilledButton.icon(
         onPressed: paying || !eligible ? null : _pay,
@@ -137,10 +138,10 @@ class _ReactivationScreenState extends State<ReactivationScreen> {
     final auth = AuthScope.of(context);
     final reason = auth.profile?['suspension_reason'] as String?;
     final usd = auth.profile?['currency'] == 'USD';
-    return AuthFrame(children: [
-      const Icon(Icons.shield_outlined, size: 40, color: AppColors.danger),
+    return _LockFrame(children: [
+      Center(child: Container(width: 56, height: 56, decoration: const BoxDecoration(color: AppColors.rose50, shape: BoxShape.circle), child: const Icon(Icons.shield_outlined, size: 26, color: AppColors.rose500))),
       const SizedBox(height: 12),
-      const Text('Access suspended', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+      Text('Access Suspended', textAlign: TextAlign.center, style: heading(20)),
       const SizedBox(height: 8),
       Text(
         'Institutional access has been revoked due to an inactivity protocol violation.'
@@ -158,7 +159,7 @@ class _ReactivationScreenState extends State<ReactivationScreen> {
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.royal)),
         ]),
       ),
-      if (error != null) ...[const SizedBox(height: 12), ErrorBox(error!)],
+      if (error != null) ...[const SizedBox(height: 12), Banner2(error!)],
       const SizedBox(height: 16),
       FilledButton.icon(
         onPressed: paying ? null : _pay,
@@ -168,4 +169,15 @@ class _ReactivationScreenState extends State<ReactivationScreen> {
       TextButton(onPressed: auth.signOut, child: const Text('Sign out instead')),
     ]);
   }
+}
+
+/// Centred card (website DeviceLocked / Reactivation): no logo, rounded-full icon, centred text.
+class _LockFrame extends StatelessWidget {
+  const _LockFrame({required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => AuthPageFrame(
+        maxWidth: 448,
+        child: CardLuxury(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children)),
+      );
 }

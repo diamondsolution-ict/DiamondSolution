@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/supabase.dart';
 import '../core/theme.dart';
+import '../core/ui.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  const ChatScreen({super.key, this.embedded = false});
+  /// True when shown as a tab inside HomeShell (which already has the header).
+  final bool embedded;
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
@@ -108,9 +111,13 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Chat with support')),
-        body: Column(children: [
+  Widget build(BuildContext context) {
+    final content = _content();
+    if (widget.embedded) return content;
+    return Scaffold(appBar: AppBar(title: const Text('Chat with Support')), body: DiamondMesh(child: content));
+  }
+
+  Widget _content() => Column(children: [
           Expanded(
             child: loading
                 ? const Center(child: CircularProgressIndicator())
@@ -155,6 +162,5 @@ class _ChatScreenState extends State<ChatScreen> {
               ]),
             ),
           ),
-        ]),
-      );
+        ]);
 }
