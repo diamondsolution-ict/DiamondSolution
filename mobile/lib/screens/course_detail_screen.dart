@@ -136,7 +136,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               if (!access) _noAccess(d) else _launchCard(total, progress, resumable, course),
               if (access && total > 0) ...[
                 const SizedBox(height: 8),
-                Text('${((d['isAdmin'] as bool) ? 'Lifetime access' : describeAccessStatus(d['expires'] as String?)).toUpperCase()} · ONE-TIME PAYMENT · SECURED TRANSACTION', textAlign: TextAlign.center, style: body(10, weight: FontWeight.w700, color: AppColors.text3, letterSpacing: 1.2)),
+                Text('${((d['isAdmin'] as bool) ? 'Lifetime access' : describeAccessStatus(d['expires'] as String?)).toUpperCase()} · ${describePaymentTerm(d['expires'] as String?, d['isAdmin'] as bool).toUpperCase()} · SECURED TRANSACTION', textAlign: TextAlign.center, style: body(10, weight: FontWeight.w700, color: AppColors.text3, letterSpacing: 1.2)),
               ],
               const SizedBox(height: 32),
               Row(children: [

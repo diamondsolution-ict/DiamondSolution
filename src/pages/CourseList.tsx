@@ -7,7 +7,11 @@ import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { functionErrorMessage } from "@/lib/functionError";
-import { describeAccessPolicy, describeAccessStatus } from "@/lib/accessDuration";
+import {
+  describeAccessStatus,
+  describePaywall,
+  describePriceTerm,
+} from "@/lib/accessDuration";
 
 interface Department {
   id: string;
@@ -266,8 +270,10 @@ export default function CourseList() {
             Restricted
           </h2>
           <p className="mt-2 text-sm text-text-3">
-            Pay once for {describeAccessPolicy(price?.access_duration_days ?? null)} to
-            every course in {activeDept?.name}.
+            {describePaywall(
+              price?.access_duration_days ?? null,
+              activeDept?.name ?? "this department",
+            )}
           </p>
           <button
             onClick={() => void handlePay()}
@@ -276,7 +282,7 @@ export default function CourseList() {
           >
             {paying
               ? "Confirming…"
-              : `Authorize payment — ₦${price?.amount.toLocaleString() ?? "—"}`}
+              : `Authorize payment — ₦${price?.amount.toLocaleString() ?? "—"}${describePriceTerm(price?.access_duration_days ?? null)}`}
           </button>
           {profile?.currency === "USD" && (
             <p className="mt-2 text-xs text-text-3">

@@ -247,10 +247,10 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
             const SizedBox(height: 16),
             Text('Restricted', style: heading(18)),
             const SizedBox(height: 8),
-            Text('Pay once for ${describeAccessPolicy(priceDays)} to every course in ${widget.name}.', textAlign: TextAlign.center, style: body(14, color: AppColors.text3)),
+            Text(describePaywall(priceDays, widget.name), textAlign: TextAlign.center, style: body(14, color: AppColors.text3)),
             const SizedBox(height: 24),
             BtnPrimary(
-              label: paying ? 'Confirming…' : 'Authorize payment — ${price == null ? '—' : '₦${_commas(price!)}'}',
+              label: paying ? 'Confirming…' : 'Authorize payment — ${price == null ? '—' : '₦${_commas(price!)}'}${describePriceTerm(priceDays)}',
               onPressed: paying || price == null ? null : _pay,
             ),
             if (AuthScope.of(context).profile?['currency'] == 'USD') ...[const SizedBox(height: 8), Text('Charged in NGN via Paystack.', style: body(12, color: AppColors.text3))],

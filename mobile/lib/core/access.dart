@@ -19,3 +19,22 @@ String describeAccessPolicy(int? accessDurationDays) {
 /// After purchase: what THIS student's own grant is (an old lifetime grant stays lifetime).
 String describeAccessStatus(String? expiresAt) =>
     expiresAt == null ? 'Lifetime access' : 'Access until ${DateFormat('MMM d, yyyy').format(DateTime.parse(expiresAt).toLocal())}';
+
+/// Paywall sentence — a yearly fee is never presented as a one-time payment.
+String describePaywall(int? days, String departmentName) {
+  if (days == null || days == 0) return 'Pay once for lifetime access to every course in $departmentName.';
+  if (days == 365) return 'Pay yearly for access to every course in $departmentName. Your access lasts 1 year from payment — renew it when it ends.';
+  return 'Pay for $days days of access to every course in $departmentName.';
+}
+
+/// Suffix for the price button ("₦5,000 / year").
+String describePriceTerm(int? days) {
+  if (days == null || days == 0) return '';
+  return days == 365 ? ' / year' : ' / $days days';
+}
+
+/// Footer line on a course page: how this student's own access was bought.
+String describePaymentTerm(String? expiresAt, bool isAdmin) {
+  if (isAdmin) return 'Admin access';
+  return expiresAt != null ? 'Yearly fee' : 'One-time payment';
+}

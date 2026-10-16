@@ -21,3 +21,31 @@ export function describeAccessStatus(expiresAt: string | null): string {
     ? `Access until ${format(new Date(expiresAt), "MMM d, yyyy")}`
     : "Lifetime access";
 }
+
+// Wording for the paywall — what paying actually buys, so a yearly fee is never presented as a
+// one-time payment (a lifetime price is the only case that is genuinely "pay once").
+export function describePaywall(
+  accessDurationDays: number | null,
+  departmentName: string,
+): string {
+  if (!accessDurationDays) {
+    return `Pay once for lifetime access to every course in ${departmentName}.`;
+  }
+  if (accessDurationDays === 365) {
+    return `Pay yearly for access to every course in ${departmentName}. Your access lasts 1 year from payment — renew it when it ends.`;
+  }
+  return `Pay for ${accessDurationDays} days of access to every course in ${departmentName}.`;
+}
+
+// Suffix for the price button ("₦5,000 / year").
+export function describePriceTerm(accessDurationDays: number | null): string {
+  if (!accessDurationDays) return "";
+  if (accessDurationDays === 365) return " / year";
+  return ` / ${accessDurationDays} days`;
+}
+
+// Footer line on a course page: how this student's own access was bought.
+export function describePaymentTerm(expiresAt: string | null, isAdmin: boolean): string {
+  if (isAdmin) return "Admin access";
+  return expiresAt ? "Yearly fee" : "One-time payment";
+}
