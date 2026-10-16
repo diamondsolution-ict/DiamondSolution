@@ -128,61 +128,57 @@ paying — the client-triggered `verify-payment` call and this webhook both land
 idempotent `processDepartmentAccessPayment`, so whichever arrives first wins and the second is
 a safe no-op.
 
-## 7. Connect Cloudflare Pages to the repo
+## 7. Connect Netlify to the repo
 
-This project moved off Netlify a second time after its account ran out of operational credits
-again — this time for good, since Cloudflare Pages' free tier has no bandwidth/request cap for
-a static site like this one, so the same problem shouldn't recur. Cloudflare dashboard →
-**Workers & Pages** → **Create application** → **Pages** → **Connect to Git** → pick
-`diamondsolution-ict/DiamondSolution`, branch `main`:
+This project tried Cloudflare Pages/Workers for a while (DNS/custom-domain setup there got
+complicated enough to not be worth it) and has moved back to Netlify, which is where it
+started. Earlier Netlify runs hit the free tier's operational-credit cap — if that recurs,
+that's a plan/usage problem to solve on Netlify's side (checking Site → Usage, or upgrading),
+not a reason to bounce between hosts again. Netlify dashboard → **Add new site** → **Import an
+existing project** → connect GitHub → pick `diamondsolution-ict/DiamondSolution`, branch
+`main`:
 
-- **Framework preset**: Vite (or "None" if Vite isn't offered — the settings below are the same
-  either way)
 - **Build command**: `npm run build`
-- **Build output directory**: `dist`
-- **Root directory**: leave as the repo root (`/`)
+- **Publish directory**: `dist`
 
-Cloudflare now deploys this kind of project as "Workers with static assets" rather than
-classic Pages — its build step runs `npx wrangler deploy` after `npm run build`, which is why a
-connected project's first build auto-generates a `wrangler.jsonc`. That file is already
-committed in this repo instead of being left to that auto-generation, with
-`assets.not_found_handling: "single-page-application"` — the SPA fallback that makes a direct
-load of `/dashboard`, `/admin/login`, etc. serve `index.html` and let the app's own router take
-over, instead of 404ing. (An earlier `public/_redirects` tried to do the same job the
-Netlify way — `/* -> /index.html` — and Cloudflare's redirect validator rejects that as an
-infinite loop once `not_found_handling` is already set, so it's been removed; don't re-add
-it.) `.node-version` (pinned to `22`, matching CI) is also already in the repo so Cloudflare
+All of this is already captured in the `netlify.toml` committed at the repo root, so Netlify
+should auto-detect it — you shouldn't need to type these in by hand. That file also carries the
+SPA fallback (`/* -> /index.html`, status 200) so a direct load of `/dashboard`,
+`/admin/login`, etc. serves `index.html` and lets the app's own router take over, instead of
+404ing. `.node-version` (pinned to `22`, matching CI) is also already in the repo so Netlify
 builds with the same Node version everything else does.
 
-`netlify.toml` is still in the repo (harmless — Cloudflare ignores it) in case this project ever
-needs to point back at Netlify; delete it whenever you're confident that won't happen.
+`wrangler.jsonc` is still in the repo (harmless — Netlify ignores it) in case this project ever
+needs to point back at Cloudflare; delete it whenever you're confident that won't happen.
 
 ## 8. Configure Auth URLs
 
 Supabase dashboard → **Authentication** → **URL Configuration**:
 
-- **Site URL**: your Cloudflare Pages domain, e.g. `https://diamondsolution.pages.dev` (or your
-  custom domain once one's attached under the Pages project's **Custom domains** tab)
-- **Redirect URLs**: add the same domain (and Cloudflare's per-deploy-preview URL pattern,
-  `https://*.diamondsolution.pages.dev`, if you want preview deploys to work too)
+- **Site URL**: your Netlify domain, e.g. `https://diamondsolution.netlify.app` (or your custom
+  domain once one's attached under **Site configuration → Domain management**)
+- **Redirect URLs**: add the same domain (and Netlify's per-deploy-preview URL pattern,
+  `https://deploy-preview-*--diamondsolution.netlify.app`, if you want preview deploys to work
+  too)
 
 Without this, the email-confirmation link a new user receives redirects to `localhost` instead
 of your real site.
 
-## 9. Set Cloudflare Pages environment variables and redeploy
+## 9. Set Netlify environment variables and redeploy
 
-Cloudflare Pages project → **Settings** → **Environment variables**, set for both
-**Production** and **Preview**:
+Netlify site → **Site configuration** → **Environment variables**, add:
 
 - `VITE_SUPABASE_URL` — from Supabase dashboard → Project Settings → API
 - `VITE_SUPABASE_ANON_KEY` — same page
-- `VITE_PAYSTACK_PUBLIC_KEY` — Paystack dashboard, the `pk_test_...` key to match the secret
-  key from step 4
+- `VITE_PAYSTACK_PUBLIC_KEY` — Paystack dashboard, the live `pk_live_...` key to match the live
+  secret key the Edge Functions use
+- `VITE_SENTRY_DSN` — optional, Sentry project → Settings → Client Keys (DSN); leave unset to
+  skip error tracking entirely
 
 These are baked in at **build time**, not read at runtime — after setting them, trigger a new
-deploy (**Deployments** tab → **Retry deployment** on the latest one, or just push a commit), a
-page refresh alone won't pick them up. This is also the actual fix for the blank-page issue on
-the old credit-limited Netlify setup — that was these variables being unset (or the account not
+deploy (**Deploys** tab → **Trigger deploy** → **Deploy site**, or just push a commit), a page
+refresh alone won't pick them up. This is also the actual fix for the blank-page issue on the
+old credit-limited Netlify run — that was these variables being unset (or the account not
 building at all), and `src/main.tsx` now shows a clear "Configuration missing" message instead
 of a blank screen if they're ever missing again.
 
@@ -247,7 +243,7 @@ Once the test-mode run above is clean:
 supabase secrets set PAYSTACK_SECRET_KEY=sk_live_xxxxxxxxxxxx
 ```
 
-Update `VITE_PAYSTACK_PUBLIC_KEY` in Cloudflare Pages to the matching `pk_live_...` key,
+Update `VITE_PAYSTACK_PUBLIC_KEY` in Netlify's environment variables to the matching `pk_live_...` key,
 redeploy, and update the Paystack webhook URL registration if Paystack treats test/live as
 separate webhook configs (check the Paystack dashboard — it usually doesn't, but worth a
 glance). Do one real, low-value transaction yourself post-deploy to confirm the live keys work
@@ -256,7 +252,7 @@ end-to-end before telling anyone else the platform is open.
 ## 14. Turn on error tracking (optional, recommended)
 
 - [sentry.io](https://sentry.io) → new project → React → copy the DSN from Client Keys.
-- Add `VITE_SENTRY_DSN=https://...` to Cloudflare Pages' environment variables and redeploy — the app
+- Add `VITE_SENTRY_DSN=https://...` to Netlify's environment variables and redeploy — the app
   only initializes Sentry when this is set, so skipping this step is safe (no behavior change,
   just no error reports).
 - Trigger a real error once deployed (e.g. temporarily throw inside a component) and confirm
