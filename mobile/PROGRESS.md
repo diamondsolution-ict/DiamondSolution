@@ -21,8 +21,8 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Leaderboard | Podium, department chips, formula line. Checked |
 | ✅ | Revision center (activity log) | Filters, expandable attempts, load more. Checked |
 | ✅ | Profile (User tab) | Checked |
-| 🟡 | Affiliate | Works, old look |
-| 🟡 | Payment history | Works, old look |
+| ✅ | Affiliate | Balance card, payout methods (bank lookup), referral link, stats, commission / redistribution / network lists, withdraw + add + remove dialogs. Checked |
+| ✅ | Payment history | Status filters, search, detail dialog with live Paystack recheck. Checked |
 | 🟡 | Chats tab | Works, old look |
 | 🟡 | Notifications | A page, not the website's dropdown |
 | ✅ | Account settings | Identity, language, payout link, password change with emailed code. Layout checked; password/code flow needs a real-device test |
@@ -36,6 +36,7 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Paystack checkout (departments, device unlock, reactivation) via `init-payment` |
 | ✅ | Yearly department access: expiry shown, expired grants no longer count as access (follows main's `accessDuration.ts`) |
 | ✅ | Study sessions record attempts, resume, jump-to-question, outline sections |
+| ✅ | Fixed: affiliate commission % was shown as 0.25% instead of 25% |
 | ✅ | Fixed: lists were sorted backwards (Dart `order()` defaults to descending) |
 | ⬜ | Real-device test of everything above (payments, device lock, study, leaderboard) |
 | ⬜ | Admin / moderator back office (stays on the website) |
@@ -49,7 +50,7 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ⬜ | Optional: Play Integrity (stronger device checks) — only once the app is on Google Play |
 
 ## Suggested order
-1. Affiliate, Payment history, Chats, Notifications
+1. Chats tab, Notifications
 2. Onboarding tour
 3. Real-device test round + fixes
 4. Release (signing key, Play Store listing)
