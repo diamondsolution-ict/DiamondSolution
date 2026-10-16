@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { describeAccessStatus } from "@/lib/accessDuration";
 
 interface Course {
   id: string;
@@ -49,6 +50,7 @@ export default function CourseDetail() {
   const [meta, setMeta] = useState<Counts | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
+  const [grantExpiresAt, setGrantExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [jumpToQn, setJumpToQn] = useState("");
@@ -103,7 +105,7 @@ export default function CourseDetail() {
           .order("sort_order"),
         supabase
           .from("access_grants")
-          .select("department_id")
+          .select("department_id, expires_at")
           .eq("user_id", user.id)
           .eq("department_id", courseRow.department_id)
           .maybeSingle(),
@@ -125,6 +127,7 @@ export default function CourseDetail() {
       // Admins read everything for free, matching has_department_access()'s own is_admin() OR
       // — the backend already allowed this; the paywall UI just didn't know to skip itself.
       setHasAccess(isAdmin || !!grant);
+      setGrantExpiresAt(grant?.expires_at ?? null);
       setLoading(false);
     }
     void load();
@@ -311,7 +314,8 @@ export default function CourseDetail() {
       )}
       {hasAccess && !!meta?.questionCount && (
         <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-text-3">
-          Lifetime access · One-time payment · Secured transaction
+          {isAdmin ? "Lifetime access" : describeAccessStatus(grantExpiresAt)} ·
+          One-time payment · Secured transaction
         </p>
       )}
 

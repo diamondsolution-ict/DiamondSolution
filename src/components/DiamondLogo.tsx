@@ -1,9 +1,18 @@
+import logoMarkNavy from "@/assets/diamond-logo-mark.png";
+import logoMarkWhite from "@/assets/diamond-logo-mark-white.png";
+
 interface DiamondLogoProps {
   size?: number;
   layout?: "vertical" | "horizontal" | "icon";
   variant?: "navy" | "white" | "gold";
   showTagline?: boolean;
   className?: string;
+  // Uses the real company logo artwork (src/assets/diamond-logo-mark*.png — a navy and a white
+  // cutout of the same source image, black background removed) instead of the hand-drawn SVG
+  // reconstruction below. True by default now that the real asset exists for every variant
+  // actually used in the app; only "gold" (currently unused anywhere) has no real asset and
+  // silently falls back to the SVG mark.
+  useRealMark?: boolean;
 }
 
 const VARIANT_COLOR: Record<
@@ -51,14 +60,40 @@ function Mark({ size, color }: { size: number; color: string }) {
   );
 }
 
+function RealMark({ size, src }: { size: number; src: string }) {
+  return (
+    <img
+      src={src}
+      alt="Diamond Solution"
+      width={size}
+      className="shrink-0"
+      style={{ width: size, height: "auto" }}
+    />
+  );
+}
+
+const REAL_MARK_SRC: Partial<Record<NonNullable<DiamondLogoProps["variant"]>, string>> =
+  {
+    navy: logoMarkNavy,
+    white: logoMarkWhite,
+  };
+
 export function DiamondLogo({
   size = 56,
   layout = "vertical",
   variant = "navy",
   showTagline = false,
   className = "",
+  useRealMark = true,
 }: DiamondLogoProps) {
   const color = VARIANT_COLOR[variant];
+  const realMarkSrc = REAL_MARK_SRC[variant];
+  const renderMark = (markSize: number) =>
+    useRealMark && realMarkSrc ? (
+      <RealMark size={markSize} src={realMarkSrc} />
+    ) : (
+      <Mark size={markSize} color={color} />
+    );
   const wordmarkColor =
     variant === "gold"
       ? "#D4AF37"
@@ -70,7 +105,7 @@ export function DiamondLogo({
   if (layout === "icon") {
     return (
       <div className={`inline-flex items-center justify-center ${className}`}>
-        <Mark size={size} color={color} />
+        {renderMark(size)}
       </div>
     );
   }
@@ -97,7 +132,7 @@ export function DiamondLogo({
   if (layout === "horizontal") {
     return (
       <div className={`inline-flex items-center gap-3 ${className}`}>
-        <Mark size={size} color={color} />
+        {renderMark(size)}
         <div className="flex flex-col justify-center">{text}</div>
       </div>
     );
@@ -107,7 +142,7 @@ export function DiamondLogo({
     <div
       className={`inline-flex flex-col items-center text-center ${className}`}
     >
-      <Mark size={size} color={color} />
+      {renderMark(size)}
       <div className="mt-3 flex flex-col items-center">{text}</div>
     </div>
   );
