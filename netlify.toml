@@ -2,6 +2,15 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  # This site's env vars carry a leftover NODE_ENV=production from the old Express/Firebase
+  # app it used to host. With that set, `npm install` skips devDependencies by default — and
+  # `typescript` (which provides the `tsc` our build script runs first) is one, so the build
+  # failed with "tsc: not found" before this was added. Forcing devDependencies to install
+  # regardless of NODE_ENV makes the build robust even if that stale var is never cleaned up
+  # from the dashboard.
+  NPM_FLAGS = "--include=dev"
+
 # SPA fallback — react-router-dom handles routing client-side, so every path
 # (e.g. a direct load of /dashboard, /login) must still serve index.html and
 # let the app's own router take over, or Netlify would 404 on anything but "/".
