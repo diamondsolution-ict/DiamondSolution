@@ -124,7 +124,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
 
   Future<void> _load() async {
     final uid = db.auth.currentUser!.id;
-    final isAdmin = AuthScope.of(context).isAdmin;
+    final isAdmin = AuthScope.of(context).isStaff; // staff read everything, like has_department_access()
     final r = await Future.wait<dynamic>([
       db.from('access_grants').select('department_id, expires_at').eq('user_id', uid).eq('department_id', widget.departmentId).maybeSingle(),
       // Price history table: newest row not in the future wins (same rule as the website/server).
@@ -189,7 +189,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.auto_awesome, size: 12, color: AppColors.goldDark),
                       const SizedBox(width: 6),
-                      Text(describeAccessStatus(grantExpiresAt, isAdmin: AuthScope.of(context).isAdmin), style: body(12, weight: FontWeight.w700, color: AppColors.goldDark)),
+                      Text(describeAccessStatus(grantExpiresAt, isAdmin: AuthScope.of(context).isStaff), style: body(12, weight: FontWeight.w700, color: AppColors.goldDark)),
                     ]),
                   ),
                 ),

@@ -37,6 +37,6 @@ String describePriceTerm(int? days) {
 
 /// Footer line on a course page: how this student's own access was bought.
 String describePaymentTerm(String? expiresAt, bool isAdmin) {
-  if (isAdmin) return 'Admin access';
+  if (isAdmin) return 'Staff access';
   return expiresAt != null ? 'Yearly fee' : 'Paid access';
 }

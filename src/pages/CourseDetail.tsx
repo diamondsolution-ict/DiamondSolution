@@ -45,7 +45,7 @@ interface Progress {
 
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isModerator } = useAuth();
   const navigate = useNavigate();
 
   const [course, setCourse] = useState<Course | null>(null);
@@ -127,14 +127,15 @@ export default function CourseDetail() {
       });
       setOutline(outlineRows ?? []);
       setProgress(progressRow ?? null);
-      // Admins read everything for free, matching has_department_access()'s own is_admin() OR
-      // — the backend already allowed this; the paywall UI just didn't know to skip itself.
-      setHasAccess(isAdmin || !!grant);
+      // Staff read everything for free, matching has_department_access()'s own
+      // is_moderator_or_admin() OR — the backend already allowed this; the paywall UI just
+      // didn't know to skip itself.
+      setHasAccess(isAdmin || isModerator || !!grant);
       setGrantExpiresAt(grant?.expires_at ?? null);
       setLoading(false);
     }
     void load();
-  }, [id, user, isAdmin]);
+  }, [id, user, isAdmin, isModerator]);
 
   function handleJump() {
     const n = Number(jumpToQn);
@@ -317,8 +318,8 @@ export default function CourseDetail() {
       )}
       {hasAccess && !!meta?.questionCount && (
         <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-text-3">
-          {describeAccessStatus(grantExpiresAt, isAdmin)} ·{" "}
-          {describePaymentTerm(grantExpiresAt, isAdmin)} · Secured transaction
+          {describeAccessStatus(grantExpiresAt, isAdmin || isModerator)} ·{" "}
+          {describePaymentTerm(grantExpiresAt, isAdmin || isModerator)} · Secured transaction
         </p>
       )}
 

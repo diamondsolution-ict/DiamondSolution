@@ -46,6 +46,6 @@ export function describePriceTerm(accessDurationDays: number | null): string {
 
 // Footer line on a course page: how this student's own access was bought.
 export function describePaymentTerm(expiresAt: string | null, isAdmin: boolean): string {
-  if (isAdmin) return "Admin access";
+  if (isAdmin) return "Staff access";
   return expiresAt ? "Yearly fee" : "Paid access";
 }

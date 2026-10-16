@@ -21,7 +21,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   Future<Map<String, dynamic>?> _load() async {
     final uid = db.auth.currentUser!.id;
-    final isAdmin = AuthScope.of(context).isAdmin;
+    final isAdmin = AuthScope.of(context).isStaff;
     final course = await db
         .from('courses')
         .select('id, title, description, department_id, level_id, image_path')
@@ -43,7 +43,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       'level': (r[1] as Map)['label'],
       'count': (r[2] as dynamic).count as int,
       'outline': List<Map<String, dynamic>>.from(r[3]),
-      // Admins read everything for free, same as has_department_access() server-side.
+      // Staff (admins and moderators) read everything for free, same as has_department_access() server-side.
       'access': isAdmin || isGrantActive(r[4] as Map<String, dynamic>?),
       'expires': (r[4] as Map?)?['expires_at'],
       'isAdmin': isAdmin,
