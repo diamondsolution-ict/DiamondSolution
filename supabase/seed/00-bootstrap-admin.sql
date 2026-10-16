@@ -7,6 +7,23 @@
 --
 -- HOW TO USE:
 --   1. Sign up for an account normally through the app's own Register page.
+--      As of 20261016010000_require_referral_code_at_signup.sql, EVERY signup — this one
+--      included — needs a valid referral code, with no exception for the first admin. If no
+--      affiliate exists yet on a brand-new project, you can't get one the normal way (an
+--      affiliate_profiles row needs an existing auth.users row, which needs a referral code —
+--      chicken and egg). Break the cycle once, from the Supabase SQL Editor:
+--        begin;
+--        alter table auth.users disable trigger on_auth_user_created;
+--        -- create ONE throwaway auth user any way you like (dashboard → Authentication →
+--        -- Users → Add user is easiest) with the trigger disabled, note its UID, then:
+--        alter table auth.users enable trigger on_auth_user_created;
+--        insert into affiliate_profiles (user_id, referral_code, status, activated_at)
+--          values ('<that throwaway UID>', 'BOOTSTRAP0001', 'active', now());
+--        commit;
+--      Then register the REAL admin account normally, using ?ref=BOOTSTRAP0001 (or just typing
+--      BOOTSTRAP0001 into the Referral code field) — from here on it's a completely ordinary
+--      signup, continue at step 2 below. The throwaway account can stay (it's harmless) or be
+--      deleted later once at least one real affiliate exists to replace it.
 --   2. Find that account's user_id — Supabase dashboard → Authentication →
 --      Users → click the account → copy its "User UID".
 --   3. Replace YOUR-USER-ID-HERE below with that UID.

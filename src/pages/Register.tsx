@@ -4,11 +4,13 @@ import {
   Building2,
   CheckCircle2,
   GraduationCap,
+  Gift,
   Lock,
   Mail,
   MessageCircle,
   User,
   UserPlus,
+  XCircle,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -41,6 +43,9 @@ export default function Register() {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [codeStatus, setCodeStatus] = useState<
+    "idle" | "checking" | "valid" | "invalid"
+  >("idle");
   // Set once signUp() succeeds without an active session (email confirmation required) — the
   // registered account's own email, held separately from the form so it survives even if the
   // form were ever reset, and so the confirmation popup can't show a blank address.
@@ -57,6 +62,34 @@ export default function Register() {
       .then(({ data }) => setDepartments(data ?? []));
   }, []);
 
+  // Referral code is mandatory now — this checks it as the student types (same debounced
+  // pattern Affiliate.tsx uses for bank account resolution) so a bad code is caught before
+  // submit, not after a failed signUp() round trip. The actual enforcement that can't be
+  // bypassed lives in the handle_new_user trigger server-side; this is purely for fast
+  // feedback.
+  useEffect(() => {
+    const code = form.referralCode.trim();
+    if (!code) {
+      setCodeStatus("idle");
+      return;
+    }
+    setCodeStatus("checking");
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const { data, error: rpcError } = await supabase.rpc(
+        "is_valid_referral_code",
+        { p_code: code },
+      );
+      if (cancelled) return;
+      setCodeStatus(!rpcError && data === true ? "valid" : "invalid");
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.referralCode]);
+
   function update<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -65,6 +98,14 @@ export default function Register() {
     e.preventDefault();
     setError(null);
 
+    if (!form.referralCode.trim()) {
+      setError(t("register.referralCodeRequired"));
+      return;
+    }
+    if (codeStatus !== "valid") {
+      setError(t("register.referralCodeInvalid"));
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       setError(t("register.passwordMismatch"));
       return;
@@ -179,6 +220,33 @@ export default function Register() {
               />
             </Field>
 
+            <Field label={t("register.referralCode")} icon={Gift}>
+              <input
+                required
+                value={form.referralCode}
+                onChange={(e) => update("referralCode", e.target.value)}
+                placeholder={t("register.referralCodePlaceholder")}
+                className={inputClass}
+              />
+              {codeStatus === "checking" && (
+                <p className="mt-1 text-xs text-text-3">
+                  {t("register.referralCodeChecking")}
+                </p>
+              )}
+              {codeStatus === "valid" && (
+                <p className="mt-1 flex items-center gap-1 text-xs font-medium text-emerald-600">
+                  <CheckCircle2 size={12} />
+                  {t("register.referralCodeValid")}
+                </p>
+              )}
+              {codeStatus === "invalid" && (
+                <p className="mt-1 flex items-center gap-1 text-xs font-medium text-rose-600">
+                  <XCircle size={12} />
+                  {t("register.referralCodeInvalid")}
+                </p>
+              )}
+            </Field>
+
             <Field label={t("register.whatsapp")} icon={MessageCircle}>
               <div className="mt-1 flex gap-2">
                 <span className="flex items-center gap-1 rounded-xl border border-canvas-border bg-canvas-soft px-3 text-sm text-text-2">
@@ -227,7 +295,9 @@ export default function Register() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading || codeStatus === "checking" || codeStatus === "invalid"
+              }
               className="btn-primary flex w-full items-center justify-center gap-2"
             >
               <UserPlus size={16} />
