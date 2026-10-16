@@ -135,3 +135,41 @@ Future<String?> promptDialog(BuildContext context, String message, {String initi
     ),
   );
 }
+
+String slugify(String s) => s.toLowerCase().trim().replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'(^-|-$)'), '');
+
+/// Web-style modal shell for admin forms (white rounded card on a navy scrim, scrollable).
+Future<T?> showFormModal<T>(BuildContext context, {required String title, required Widget child}) => showDialog<T>(
+      context: context,
+      barrierColor: AppColors.navy.withValues(alpha: 0.5),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: CardLuxury(
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  Expanded(child: Text(title, style: heading(18))),
+                  GestureDetector(onTap: () => Navigator.pop(ctx), child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.close, size: 18, color: AppColors.text3))),
+                ]),
+                const SizedBox(height: 16),
+                child,
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+
+Widget labeled(String label, Widget field, {String? hint, String? optional}) => Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text.rich(TextSpan(children: [TextSpan(text: label, style: body(14, weight: FontWeight.w500, color: AppColors.text2)), if (optional != null) TextSpan(text: ' $optional', style: body(14, color: AppColors.text3))])),
+        const SizedBox(height: 4),
+        field,
+        if (hint != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(hint, style: body(12, color: AppColors.text3))),
+      ]),
+    );

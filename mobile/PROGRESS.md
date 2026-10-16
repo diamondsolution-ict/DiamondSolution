@@ -43,7 +43,8 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Moderator tools (all 8): Dashboard, Analytics, WhatsApp Numbers, Affiliates, Payments (live Paystack recheck), Notifications, Quotes, Support (live chat + device unlock) |
 | ⬜ | Not in app yet: CSV export buttons (Payments, Affiliates, WhatsApp) — web only |
 | ✅ | Admin-only tools done: admin key gate + step-up code dialog, Users (suspend/delete/role/add/approve partner), Withdrawals (pay, reject, manual, recheck) |
-| ⬜ | Admin-only tools still to build: Departments/Courses, Media, System Logs, Settings, Questions editor (last) |
+| ✅ | Departments (create/edit/prices/levels/delete), Courses per department, Pictures & Media (gallery upload), System Logs, Settings (links, affiliate programme, own security code) |
+| ⬜ | Questions browser + editor (last admin tool; "Manage questions" in Courses is hidden until it exists) |
 
 ## Release
 | | Item |
