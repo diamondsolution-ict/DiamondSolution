@@ -40,7 +40,7 @@ export default function Login() {
     <div className="diamond-mesh flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
-          <DiamondLogo size={56} showTagline />
+          <DiamondLogo size={56} showTagline useRealMark />
         </div>
 
         <div className="card-luxury p-8">
