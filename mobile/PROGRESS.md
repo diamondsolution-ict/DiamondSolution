@@ -18,14 +18,14 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Course detail | Checked |
 | ✅ | Questions / study screen | Timer, score, MCQ + application, explanation, section-complete, results, re-sync. Checked |
 | ✅ | Device-lock + reactivation screens | Styled like the website; flow needs a real-device test |
-| 🟡 | Leaderboard | Works, old look |
-| 🟡 | Revision center (activity log) | Works, old look |
-| 🟡 | Profile (User tab) | Works, old look |
-| 🟡 | Affiliate | Works, old look |
-| 🟡 | Payment history | Works, old look |
+| ✅ | Leaderboard | Podium, department chips, formula line. Checked |
+| ✅ | Revision center (activity log) | Filters, expandable attempts, load more. Checked |
+| ✅ | Profile (User tab) | Checked |
+| ✅ | Affiliate | Balance card, payout methods (bank lookup), referral link, stats, commission / redistribution / network lists, withdraw + add + remove dialogs. Checked |
+| ✅ | Payment history | Status filters, search, detail dialog with live Paystack recheck. Checked |
 | 🟡 | Chats tab | Works, old look |
 | 🟡 | Notifications | A page, not the website's dropdown |
-| ⬜ | Account settings (change password etc.) | Website has `/account`; not in the app yet |
+| ✅ | Account settings | Identity, language, payout link, password change with emailed code. Layout checked; password/code flow needs a real-device test |
 | ⬜ | Onboarding tour | Website shows it on first dashboard visit |
 
 ## Behaviour
@@ -36,6 +36,7 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Paystack checkout (departments, device unlock, reactivation) via `init-payment` |
 | ✅ | Yearly department access: expiry shown, expired grants no longer count as access (follows main's `accessDuration.ts`) |
 | ✅ | Study sessions record attempts, resume, jump-to-question, outline sections |
+| ✅ | Fixed: affiliate commission % was shown as 0.25% instead of 25% |
 | ✅ | Fixed: lists were sorted backwards (Dart `order()` defaults to descending) |
 | ⬜ | Real-device test of everything above (payments, device lock, study, leaderboard) |
 | ⬜ | Admin / moderator back office (stays on the website) |
@@ -44,12 +45,12 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | | Item |
 |---|---|
 | ✅ | GitHub Actions builds a test APK (`Mobile (Flutter)` workflow) |
-| ⬜ | Merge to `main` (open a pull request) |
+| ✅ | Batches 1 and 2 merged to `main` (PR #1, PR #2) |
 | ⬜ | Release signing key + Play Store listing + final icon artwork |
 | ⬜ | Optional: Play Integrity (stronger device checks) — only once the app is on Google Play |
 
 ## Suggested order
-1. Leaderboard, Revision center, Profile + Account settings
-2. Affiliate, Payment history, Chats, Notifications
+1. Chats tab, Notifications
+2. Onboarding tour
 3. Real-device test round + fixes
-4. Pull request / release
+4. Release (signing key, Play Store listing)

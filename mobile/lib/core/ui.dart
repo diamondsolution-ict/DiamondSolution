@@ -207,3 +207,32 @@ class EmptyCard extends StatelessWidget {
         ]),
       );
 }
+
+/// Website-style modal: white rounded-2xl card on a navy/50 scrim, title row with a close button.
+Future<T?> showSheetDialog<T>(BuildContext context, {required String title, required Widget Function(BuildContext) builder, String? subtitle}) =>
+    showDialog<T>(
+      context: context,
+      barrierColor: AppColors.navy.withValues(alpha: 0.5),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 384),
+          child: Container(
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 24, offset: const Offset(0, 12))]),
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  Expanded(child: Text(title, style: heading(18))),
+                  GestureDetector(onTap: () => Navigator.pop(ctx), child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.close, size: 18, color: AppColors.text3))),
+                ]),
+                if (subtitle != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(subtitle, style: body(12, color: AppColors.text3))),
+                const SizedBox(height: 16),
+                builder(ctx),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../core/supabase.dart';
 import '../core/theme.dart';
+import '../core/ui.dart';
 
+// Mirrors src/pages/ActivityLog.tsx ("Revision Center").
 class ActivityLogScreen extends StatefulWidget {
   const ActivityLogScreen({super.key});
   @override
@@ -57,58 +60,60 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
   @override
   Widget build(BuildContext context) {
     final shown = attempts.where(_matches).toList();
-    return Scaffold(
-      appBar: AppBar(title: const Text('Revision center')),
-      body: Column(children: [
-        SizedBox(
-          height: 56,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.all(12),
-            children: [
-              for (final f in ['all', 'correct', 'incorrect', 'skipped'])
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(f),
-                    selected: filter == f,
-                    onSelected: (_) => setState(() => filter = f),
+    return PageShell(
+      title: 'Revision Center',
+      child: ListView(padding: const EdgeInsets.fromLTRB(16, 24, 16, 32), children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            for (final f in ['all', 'correct', 'incorrect', 'skipped'])
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () => setState(() => filter = f),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(color: filter == f ? AppColors.royal : AppColors.canvasSoft, borderRadius: BorderRadius.circular(12)),
+                    child: Text(f[0].toUpperCase() + f.substring(1), style: body(14, weight: FontWeight.w600, color: filter == f ? Colors.white : AppColors.text2)),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ]),
         ),
-        if (error != null) Padding(padding: const EdgeInsets.all(16), child: Text(error!)),
-        Expanded(
-          child: shown.isEmpty && !loading
-              ? const Center(child: Text('Nothing to review yet.'))
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: shown.length + 1,
-                  itemBuilder: (context, i) {
-                    if (i == shown.length) {
-                      if (loading) return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
-                      return hasMore
-                          ? TextButton(onPressed: _loadMore, child: const Text('Load more'))
-                          : const SizedBox(height: 16);
-                    }
-                    return _AttemptCard(
-                      a: shown[i],
-                      expanded: expanded == shown[i]['id'],
-                      onTap: () => setState(() => expanded = expanded == shown[i]['id'] ? null : shown[i]['id'] as String),
-                    );
-                  },
-                ),
-        ),
+        const SizedBox(height: 16),
+        if (error != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Banner2(error!)),
+        if (loading && attempts.isEmpty)
+          const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+        else if (shown.isEmpty)
+          CardLuxury(
+            padding: const EdgeInsets.all(40),
+            child: Column(children: [
+              const Icon(Icons.checklist, size: 28, color: AppColors.text3),
+              const SizedBox(height: 8),
+              Text('No activity yet', style: heading(14)),
+              const SizedBox(height: 8),
+              Text('Start studying to see your attempts here.', textAlign: TextAlign.center, style: body(14, color: AppColors.text3)),
+            ]),
+          )
+        else
+          for (final a in shown)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _AttemptCard(a: a, open: expanded == a['id'], onTap: () => setState(() => expanded = expanded == a['id'] ? null : a['id'] as String)),
+            ),
+        if (hasMore && shown.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          BtnOutline(label: loading ? 'Loading…' : 'Load more', onPressed: loading ? null : _loadMore),
+        ],
       ]),
     );
   }
 }
 
 class _AttemptCard extends StatelessWidget {
-  const _AttemptCard({required this.a, required this.expanded, required this.onTap});
+  const _AttemptCard({required this.a, required this.open, required this.onTap});
   final Map<String, dynamic> a;
-  final bool expanded;
+  final bool open;
   final VoidCallback onTap;
 
   @override
@@ -116,52 +121,75 @@ class _AttemptCard extends StatelessWidget {
     final q = a['questions'] as Map<String, dynamic>?;
     final result = a['result'] as String;
     final ok = result == 'correct' || result == 'applied';
-    final icon = ok ? Icons.check_circle : result == 'skipped' ? Icons.skip_next : Icons.cancel;
-    final color = ok ? AppColors.success : result == 'skipped' ? AppColors.gold : AppColors.danger;
+    final color = ok ? const Color(0xFF059669) : result == 'skipped' ? const Color(0xFFD97706) : const Color(0xFFE11D48);
+    final icon = ok ? Icons.check_circle_outline : result == 'skipped' ? Icons.skip_next : Icons.cancel_outlined;
     final options = List<Map<String, dynamic>>.from((q?['question_options'] as List?) ?? []);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Card(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+    final when = DateFormat('MMM d, HH:mm').format(DateTime.parse(a['attempted_at'] as String).toLocal());
+    return CardLuxury(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Icon(icon, color: color, size: 18),
-                const SizedBox(width: 8),
-                Expanded(child: Text(((q?['courses'] as Map?)?['title'] ?? '') as String, style: const TextStyle(color: AppColors.text3, fontSize: 12))),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${((q?['courses'] as Map?)?['title'] ?? '')} · $when'.toUpperCase(), style: body(12, weight: FontWeight.w600, color: AppColors.text3, letterSpacing: 0.5)),
+                const SizedBox(height: 4),
+                Text((q?['prompt'] ?? '') as String, maxLines: 2, overflow: TextOverflow.ellipsis, style: body(14)),
               ]),
-              const SizedBox(height: 8),
-              Text((q?['prompt'] ?? '') as String, maxLines: expanded ? null : 2, overflow: expanded ? null : TextOverflow.ellipsis),
-              if (expanded) ...[
-                const SizedBox(height: 12),
-                for (final o in options)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      '${o['label']}. ${o['body']}${o['is_correct'] == true ? '  ✓' : ''}${o['id'] == a['selected_option_id'] ? '  (your answer)' : ''}',
-                      style: TextStyle(
-                        fontWeight: o['is_correct'] == true ? FontWeight.bold : FontWeight.normal,
-                        color: o['is_correct'] == true ? AppColors.success : null,
-                      ),
-                    ),
-                  ),
-                if (q?['type'] == 'application' && q?['expected_answer'] != null) Text(q!['expected_answer'] as String),
-                if ((q?['explanation'] as String?)?.isNotEmpty ?? false) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: AppColors.royalSoft, borderRadius: BorderRadius.circular(12)),
-                    child: Text(q!['explanation'] as String),
-                  ),
-                ],
-              ],
+            ),
+            const SizedBox(width: 12),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 4),
+              Text(result[0].toUpperCase() + result.substring(1), style: body(12, weight: FontWeight.w700, color: color)),
             ]),
-          ),
+          ]),
         ),
-      ),
+        if (open && q != null) ...[
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 12),
+          if (q['type'] == 'application')
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(12)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Expected answer', style: body(14, weight: FontWeight.w600, color: Colors.white)),
+                const SizedBox(height: 4),
+                Text((q['expected_answer'] as String?)?.isNotEmpty == true ? q['expected_answer'] as String : 'No expected answer recorded.', style: body(14, color: Colors.white.withValues(alpha: 0.9))),
+              ]),
+            )
+          else
+            for (final o in options)
+              Builder(builder: (_) {
+                final correct = o['is_correct'] == true;
+                final mine = o['id'] == a['selected_option_id'];
+                final bg = correct ? AppColors.emerald50 : mine ? AppColors.rose50 : null;
+                final fg = correct ? AppColors.emerald700 : mine ? AppColors.rose700 : AppColors.text3;
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+                  child: Text('${o['label']}. ${o['body']}${correct ? ' — Correct' : (mine ? ' — Your choice' : '')}', style: body(14, weight: correct || mine ? FontWeight.w600 : FontWeight.w400, color: fg)),
+                );
+              }),
+          if ((q['explanation'] as String?)?.isNotEmpty == true)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppColors.canvasSoft, borderRadius: BorderRadius.circular(12)),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.lightbulb_outline, size: 15, color: AppColors.gold)),
+                const SizedBox(width: 8),
+                Expanded(child: Text(q['explanation'] as String, style: body(14, color: AppColors.text2))),
+              ]),
+            ),
+        ],
+      ]),
     );
   }
 }
