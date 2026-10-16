@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/csv.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import 'admin_common.dart';
 
-// Mirrors src/pages/admin/AdminWhatsAppNumbers.tsx. The web's "Download CSV" has no
-// equivalent without a share plugin, so the app offers Copy All (comma-separated) instead.
+// Mirrors src/pages/admin/AdminWhatsAppNumbers.tsx. CSV goes out through the phone's share sheet.
 class AdminWhatsAppScreen extends StatefulWidget {
   const AdminWhatsAppScreen({super.key});
   @override
@@ -72,7 +72,11 @@ class _AdminWhatsAppScreenState extends State<AdminWhatsAppScreen> {
       const SizedBox(height: 16),
       TextField(onChanged: (v) => setState(() => search = v), decoration: const InputDecoration(hintText: 'Search by number, username, name, department, or university…')),
       const SizedBox(height: 8),
-      OutlinedButton.icon(onPressed: f.isEmpty ? null : () => _copyAll(f), icon: Icon(copiedAll ? Icons.check : Icons.copy, size: 16), label: Text(copiedAll ? 'Copied!' : 'Copy All')),
+      Row(children: [
+        Expanded(child: OutlinedButton.icon(onPressed: f.isEmpty ? null : () => _copyAll(f), icon: Icon(copiedAll ? Icons.check : Icons.copy, size: 16), label: Text(copiedAll ? 'Copied!' : 'Copy All'))),
+        const SizedBox(width: 8),
+        Expanded(child: BtnPrimary(label: 'Download CSV', icon: Icons.download, onPressed: f.isEmpty ? null : () => shareCsv('users_whatsapp_numbers_${DateTime.now().millisecondsSinceEpoch}.csv', [['WhatsApp Number', 'Full Name', 'Username', 'University', 'Department'], for (final r in f) [_num(r), '${r['display_name'] ?? ''}', '${r['username'] ?? ''}', '${r['university'] ?? ''}', '${(r['departments'] as Map?)?['name'] ?? ''}']]))),
+      ]),
       const SizedBox(height: 16),
       if (loading)
         Text('Loading…', style: body(14, color: AppColors.text3))

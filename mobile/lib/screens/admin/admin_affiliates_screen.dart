@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/csv.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -6,7 +7,7 @@ import 'admin_common.dart';
 
 // Mirrors src/pages/admin/AdminAffiliates.tsx (read-only Matrix + Partner Registry). The web draws a
 // strike-through on the registry money figures, which looks like a styling slip, so it is left out
-// here; the CSV export has no app equivalent.
+// here. CSV export goes through the share sheet.
 String _money(num amount, String currency) => '${const {'NGN': '₦', 'USD': '\$'}[currency] ?? ''}${groupDigits(amount)}';
 
 class AdminAffiliatesScreen extends StatefulWidget {
@@ -54,6 +55,16 @@ class _AdminAffiliatesScreenState extends State<AdminAffiliatesScreen> {
     });
   }
 
+  void _export() {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    if (!registry) {
+      shareCsv('affiliate_matrix_$ts.csv', [['Referrer', 'Amount', 'Currency', 'Status', 'Date'], for (final c in commissions) [usernames[c['referrer_user_id']] ?? '${c['referrer_user_id']}', '${c['commission_amount']}', '${c['commission_currency']}', '${c['status']}', '${c['created_at']}']]);
+    } else {
+      num sum(String uid, String k) => balances.where((x) => x['user_id'] == uid).fold<num>(0, (s, x) => s + asNum(x[k]));
+      shareCsv('affiliate_registry_$ts.csv', [['Name', 'Email', 'Referral Code', 'Total Earned', 'Total Paid', 'Balance'], for (final a in affiliates) [displayNames[a['user_id']] ?? '${a['user_id']}', emails[a['user_id']] ?? '', '${a['referral_code']}', '${sum(a['user_id'] as String, 'total_earned')}', '${sum(a['user_id'] as String, 'total_withdrawn')}', '${sum(a['user_id'] as String, 'balance')}']]);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(20), children: [
         Container(
@@ -73,6 +84,8 @@ class _AdminAffiliatesScreenState extends State<AdminAffiliatesScreen> {
               ),
           ]),
         ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(onPressed: loading ? null : _export, icon: const Icon(Icons.download, size: 13), label: Text('Export', style: body(12, weight: FontWeight.w600, color: AppColors.text2))),
         const SizedBox(height: 16),
         if (loading)
           Text('Loading…', style: body(14, color: AppColors.text3))

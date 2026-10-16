@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../core/csv.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import 'admin_common.dart';
 
 // Mirrors src/pages/admin/AdminPayments.tsx ("Transactions"): filters, search, live recheck against
-// Paystack, and a per-payment detail page. The web's CSV export has no app equivalent.
+// Paystack, a per-payment detail page, and CSV export via the share sheet.
 const _purposeLabel = {
   'department_access': 'Department access',
   'suspension_reactivation': 'Account reactivation',
@@ -117,7 +118,15 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
   Widget build(BuildContext context) {
     final f = filtered;
     return ListView(padding: const EdgeInsets.all(20), children: [
-      Text('Transactions', style: heading(24)),
+      Row(children: [
+        Expanded(child: Text('Transactions', style: heading(24))),
+        OutlinedButton.icon(
+          onPressed: f.isEmpty ? null : () => shareCsv('financial_ledger.csv', [['Reference', 'Payer', 'Email', 'Purpose', 'Department', 'Amount', 'Currency', 'Status', 'Date'], for (final p in f) ['${p['provider_reference']}', names[p['user_id']] ?? '', emails[p['user_id']] ?? '', _purposeLabel[p['purpose']] ?? '${p['purpose']}', p['department_id'] != null ? (depts[p['department_id']] ?? '') : '', '${p['amount']}', '${p['currency']}', '${p['status']}', _stamp(p['created_at'] as String)]]),
+          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12)),
+          icon: const Icon(Icons.download, size: 14),
+          label: Text('Export', style: body(14, weight: FontWeight.w600, color: AppColors.text2)),
+        ),
+      ]),
       const SizedBox(height: 16),
       CardLuxury(
         padding: const EdgeInsets.all(16),

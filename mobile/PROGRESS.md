@@ -41,11 +41,11 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ⬜ | Real-device test of everything above (payments, device lock, study, leaderboard) |
 | ✅ | Staff entry: Admin/Moderator tab in the bottom bar (staff only), white drawer like the web sidebar |
 | ✅ | Moderator tools (all 8): Dashboard, Analytics, WhatsApp Numbers, Affiliates, Payments (live Paystack recheck), Notifications, Quotes, Support (live chat + device unlock) |
-| ⬜ | Not in app yet: CSV export buttons (Payments, Affiliates, WhatsApp) — web only |
+| ✅ | CSV export (Payments, Affiliates, WhatsApp, Users) through the phone's share sheet |
 | ✅ | Admin-only tools done: admin key gate + step-up code dialog, Users (suspend/delete/role/add/approve partner), Withdrawals (pay, reject, manual, recheck) |
 | ✅ | Departments (create/edit/prices/levels/delete), Courses per department, Pictures & Media (gallery upload), System Logs, Settings (links, affiliate programme, own security code) |
 | ✅ | Questions browser + editor: add/edit/archive/restore/delete, search, active/archived, bulk archive, edit course details, course outline sections |
-| ⬜ | Not in app: question CSV import/export and template download (web only) |
+| ✅ | Question CSV template, import and export (file picker + share sheet) |
 
 ## Release
 | | Item |

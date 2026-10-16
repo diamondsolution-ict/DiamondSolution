@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/csv.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -7,7 +8,7 @@ import 'admin_common.dart';
 import 'image_upload.dart';
 
 // Mirrors src/pages/admin/AdminQuestionsBrowser.tsx and AdminQuestions.tsx. CSV import/export
-// stays on the website (it needs file access the app doesn't ask for).
+// uses the phone's file picker and share sheet.
 const _optionLabels = ['A', 'B', 'C', 'D', 'E'];
 const _placeholderMarker = '[PLACEHOLDER — auto-generated, safe to delete once real questions are added]';
 
@@ -310,6 +311,69 @@ class _CourseQuestionsState extends State<AdminCourseQuestionsScreen> {
     _load();
   }
 
+
+  // ---- CSV -------------------------------------------------------------------------------------
+  bool get _isApp => course?['default_question_type'] == 'application';
+  List<String> get _csvHeaders => _isApp ? ['Question', 'Expected Answer'] : ['Question', 'Option A', 'Option B', 'Option C', 'Option D', 'Option E', 'Correct Answer (A-E or 0-4)', 'Explanation'];
+
+  void _template() => shareCsv(_isApp ? 'application_question_template.csv' : 'question_import_template.csv', [
+        _csvHeaders,
+        _isApp ? ['Describe the key concepts of the system architecture.', 'Key concepts: microservices decoupling, event-driven processing.'] : ['Sample question?', 'Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option 5', 'A', 'Because it is A'],
+      ]);
+
+  void _export() {
+    if (course == null || active.isEmpty) return;
+    shareCsv('archive_${'${course!['title']}'.replaceAll(RegExp(r'\s+'), '_')}.csv', [
+      _csvHeaders,
+      for (final q in active)
+        if (_isApp)
+          ['${q['prompt']}', '${q['expected_answer'] ?? ''}']
+        else ...[
+          () {
+            String by(String l) => ((q['options'] as List).firstWhere((o) => o['label'] == l, orElse: () => {'body': ''})['body'] as String);
+            final correct = (q['options'] as List).firstWhere((o) => o['is_correct'] == true, orElse: () => {'label': 'A'})['label'] as String;
+            return ['${q['prompt']}', by('A'), by('B'), by('C'), by('D'), by('E'), correct, '${q['explanation'] ?? ''}'];
+          }()
+        ],
+    ]);
+  }
+
+  bool importing = false;
+
+  // Same column mapping as the website (and the old app's export): objective = question, options A-E,
+  // correct answer (letter or 0-4), explanation; application = question, expected answer.
+  Future<void> _import() async {
+    final text = await pickCsvText();
+    if (text == null || course == null) return;
+    final rows = parseCsv(text).skip(1).toList();
+    setState(() => importing = true);
+    var imported = 0;
+    var next = active.length;
+    for (final row in rows) {
+      if (row.isEmpty) continue;
+      if (!_isApp && row.length < 6) continue;
+      String c(int i) => i < row.length ? row[i].trim() : '';
+      final qText = c(0);
+      if (qText.isEmpty) continue;
+      try {
+        final ins = await db.from('questions').insert({'course_id': widget.courseId, 'type': _isApp ? 'application' : 'objective', 'prompt': qText, 'expected_answer': _isApp ? (c(1).isNotEmpty ? c(1) : c(7)) : null, 'explanation': _isApp ? null : (c(7).isEmpty ? null : c(7)), 'sort_order': next++}).select('id').single();
+        if (!_isApp) {
+          final raw = c(6).toUpperCase();
+          final idx = _optionLabels.contains(raw) ? _optionLabels.indexOf(raw) : (int.tryParse(raw) != null && int.parse(raw) >= 0 && int.parse(raw) <= 4 ? int.parse(raw) : 0);
+          await db.from('question_options').insert([for (var i = 0; i < 5; i++) {'question_id': ins['id'], 'label': _optionLabels[i], 'body': c(i + 1).isEmpty ? 'Option ${_optionLabels[i]}' : c(i + 1), 'is_correct': i == idx, 'sort_order': i}]);
+        }
+        imported++;
+      } on PostgrestException {
+        continue;
+      }
+    }
+    if (mounted) {
+      setState(() => importing = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$imported question(s) imported.')));
+    }
+    _load();
+  }
+
   // ---- course details -------------------------------------------------------------------------
   Future<void> _editDetails() async {
     final c = course!;
@@ -503,6 +567,12 @@ class _CourseQuestionsState extends State<AdminCourseQuestionsScreen> {
             ),
           ),
         ),
+      ]),
+      const SizedBox(height: 12),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        OutlinedButton.icon(onPressed: _template, style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)), icon: const Icon(Icons.download, size: 14), label: Text('Download template', style: body(14, weight: FontWeight.w600, color: AppColors.text2))),
+        OutlinedButton.icon(onPressed: importing ? null : _import, style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)), icon: const Icon(Icons.upload, size: 14), label: Text(importing ? 'Importing…' : 'Import archive', style: body(14, weight: FontWeight.w600, color: AppColors.text2))),
+        OutlinedButton.icon(onPressed: active.isEmpty ? null : _export, style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)), icon: const Icon(Icons.download, size: 14), label: Text('Export archive', style: body(14, weight: FontWeight.w600, color: AppColors.text2))),
       ]),
       const SizedBox(height: 16),
       BtnPrimary(icon: Icons.add, label: 'Add new question', onPressed: () => _questionForm()),

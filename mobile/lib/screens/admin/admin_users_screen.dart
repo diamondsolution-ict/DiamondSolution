@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/csv.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -186,7 +187,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     return ListView(padding: const EdgeInsets.all(20), children: [
       AdminHeading('Users', subtitle: '${f.length} of ${users.length} users'),
       const SizedBox(height: 12),
-      BtnPrimary(label: 'Add user', onPressed: _addUser),
+      Row(children: [
+        Expanded(child: OutlinedButton(onPressed: f.isEmpty ? null : () => shareCsv('scholars_directory_export_${DateTime.now().millisecondsSinceEpoch}.csv', [['WhatsApp Number', 'Full Name', 'Username', 'University', 'Email', 'Role', 'Status'], for (final u in f) ['${u['whatsapp'] ?? u['phone'] ?? ''}', '${u['display_name'] ?? ''}', '${u['username'] ?? ''}', '${u['university'] ?? ''}', emails[u['user_id']] ?? '', roles[u['user_id']] ?? 'student', '${u['status']}']]), child: Text('Export CSV', style: body(14, weight: FontWeight.w600, color: AppColors.text2)))),
+        const SizedBox(width: 8),
+        Expanded(child: BtnPrimary(label: 'Add user', onPressed: _addUser)),
+      ]),
       const SizedBox(height: 16),
       TextField(onChanged: (v) => setState(() => search = v), decoration: const InputDecoration(hintText: 'Search name, username, email, reason…')),
       const SizedBox(height: 8),
