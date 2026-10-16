@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/access.dart';
 import '../core/supabase.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
@@ -23,9 +24,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
     final uid = db.auth.currentUser!.id;
     final r = await Future.wait<dynamic>([
       db.from('departments').select('id, name, slug, image_path').eq('status', 'active').order('name', ascending: true),
-      db.from('access_grants').select('department_id').eq('user_id', uid),
+      db.from('access_grants').select('department_id, expires_at').eq('user_id', uid),
     ]);
-    return (List<Map<String, dynamic>>.from(r[0]), (r[1] as List).map((g) => g['department_id'] as String).toSet());
+    // Only grants that haven't expired count as "Authorized".
+    return (List<Map<String, dynamic>>.from(r[0]), (r[1] as List).where((g) => isGrantActive(g as Map<String, dynamic>)).map((g) => g['department_id'] as String).toSet());
   }
 
   @override
@@ -113,6 +115,8 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   late Future<void> loaded = _load();
   bool hasAccess = false;
   num? price;
+  int? priceDays;
+  String? grantExpiresAt;
   List<Map<String, dynamic>> courses = [];
   List<Map<String, dynamic>> levels = [];
   String selectedLevel = '';
@@ -122,11 +126,11 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     final uid = db.auth.currentUser!.id;
     final isAdmin = AuthScope.of(context).isAdmin;
     final r = await Future.wait<dynamic>([
-      db.from('access_grants').select('department_id').eq('user_id', uid).eq('department_id', widget.departmentId).maybeSingle(),
+      db.from('access_grants').select('department_id, expires_at').eq('user_id', uid).eq('department_id', widget.departmentId).maybeSingle(),
       // Price history table: newest row not in the future wins (same rule as the website/server).
       db
           .from('department_pricing')
-          .select('amount')
+          .select('amount, access_duration_days')
           .eq('department_id', widget.departmentId)
           .eq('currency', 'NGN')
           .lte('effective_from', DateTime.now().toUtc().toIso8601String())
@@ -135,9 +139,12 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
       db.from('courses').select('id, title, level_id').eq('department_id', widget.departmentId).eq('status', 'published').filter('deleted_at', 'is', null).order('title', ascending: true),
       db.from('department_levels').select('id, label, sort_order').eq('department_id', widget.departmentId).order('sort_order', ascending: true),
     ]);
-    hasAccess = isAdmin || r[0] != null;
+    final grant = r[0] as Map<String, dynamic>?;
+    hasAccess = isAdmin || isGrantActive(grant);
+    grantExpiresAt = grant?['expires_at'] as String?;
     final prices = r[1] as List;
     price = prices.isEmpty ? null : prices.first['amount'] as num;
+    priceDays = prices.isEmpty ? null : prices.first['access_duration_days'] as int?;
     courses = List<Map<String, dynamic>>.from(r[2]);
     levels = List<Map<String, dynamic>>.from(r[3]);
   }
@@ -148,7 +155,11 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     if (!mounted) return;
     setState(() => paying = false);
     if (ok == true) {
-      setState(() => hasAccess = true);
+      // Mirrors what the server just granted (processDepartmentAccessPayment).
+      setState(() {
+        hasAccess = true;
+        grantExpiresAt = priceDays == null || priceDays == 0 ? null : DateTime.now().add(Duration(days: priceDays!)).toUtc().toIso8601String();
+      });
     } else if (ok == false) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment was not completed.')));
     }
@@ -178,7 +189,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.auto_awesome, size: 12, color: AppColors.goldDark),
                       const SizedBox(width: 6),
-                      Text('Lifetime access active', style: body(12, weight: FontWeight.w700, color: AppColors.goldDark)),
+                      Text(AuthScope.of(context).isAdmin ? 'Lifetime access active' : describeAccessStatus(grantExpiresAt), style: body(12, weight: FontWeight.w700, color: AppColors.goldDark)),
                     ]),
                   ),
                 ),
@@ -236,7 +247,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
             const SizedBox(height: 16),
             Text('Restricted', style: heading(18)),
             const SizedBox(height: 8),
-            Text('Pay once for lifetime access to every course in ${widget.name}.', textAlign: TextAlign.center, style: body(14, color: AppColors.text3)),
+            Text('Pay once for ${describeAccessPolicy(priceDays)} to every course in ${widget.name}.', textAlign: TextAlign.center, style: body(14, color: AppColors.text3)),
             const SizedBox(height: 24),
             BtnPrimary(
               label: paying ? 'Confirming…' : 'Authorize payment — ${price == null ? '—' : '₦${_commas(price!)}'}',

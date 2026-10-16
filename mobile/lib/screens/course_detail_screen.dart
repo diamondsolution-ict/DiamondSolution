@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/access.dart';
 import '../core/supabase.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
@@ -33,7 +34,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       db.from('department_levels').select('label').eq('id', course['level_id']).single(),
       db.from('questions').select('id').eq('course_id', widget.courseId).eq('status', 'active').limit(1).count(),
       db.from('course_outline_sections').select('id, title, start_question_order, end_question_order').eq('course_id', widget.courseId).order('sort_order', ascending: true),
-      db.from('access_grants').select('department_id').eq('user_id', uid).eq('department_id', course['department_id']).maybeSingle(),
+      db.from('access_grants').select('department_id, expires_at').eq('user_id', uid).eq('department_id', course['department_id']).maybeSingle(),
       db.from('study_progress').select('current_order, completed').eq('user_id', uid).eq('course_id', widget.courseId).maybeSingle(),
     ]);
     return {
@@ -43,7 +44,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       'count': (r[2] as dynamic).count as int,
       'outline': List<Map<String, dynamic>>.from(r[3]),
       // Admins read everything for free, same as has_department_access() server-side.
-      'access': isAdmin || r[4] != null,
+      'access': isAdmin || isGrantActive(r[4] as Map<String, dynamic>?),
+      'expires': (r[4] as Map?)?['expires_at'],
+      'isAdmin': isAdmin,
       'progress': r[5],
     };
   }
@@ -133,7 +136,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               if (!access) _noAccess(d) else _launchCard(total, progress, resumable, course),
               if (access && total > 0) ...[
                 const SizedBox(height: 8),
-                Text('LIFETIME ACCESS · ONE-TIME PAYMENT · SECURED TRANSACTION', textAlign: TextAlign.center, style: body(10, weight: FontWeight.w700, color: AppColors.text3, letterSpacing: 1.2)),
+                Text('${((d['isAdmin'] as bool) ? 'Lifetime access' : describeAccessStatus(d['expires'] as String?)).toUpperCase()} · ONE-TIME PAYMENT · SECURED TRANSACTION', textAlign: TextAlign.center, style: body(10, weight: FontWeight.w700, color: AppColors.text3, letterSpacing: 1.2)),
               ],
               const SizedBox(height: 32),
               Row(children: [

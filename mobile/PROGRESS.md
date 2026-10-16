@@ -34,6 +34,7 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Sign in / register / one-device login / 24h device lock + ₦1000 unlock / reactivation |
 | ✅ | Device identified by Android ID (survives reinstall) |
 | ✅ | Paystack checkout (departments, device unlock, reactivation) via `init-payment` |
+| ✅ | Yearly department access: expiry shown, expired grants no longer count as access (follows main's `accessDuration.ts`) |
 | ✅ | Study sessions record attempts, resume, jump-to-question, outline sections |
 | ✅ | Fixed: lists were sorted backwards (Dart `order()` defaults to descending) |
 | ⬜ | Real-device test of everything above (payments, device lock, study, leaderboard) |

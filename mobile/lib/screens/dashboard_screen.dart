@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../core/access.dart';
 import '../core/logo.dart';
 import '../core/supabase.dart';
 import '../core/theme.dart';
@@ -140,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       db.from('daily_practice_stats').select('practice_date, attempted, correct, study_duration_seconds').eq('user_id', uid),
       db.from('study_progress').select('course_id, current_order, updated_at, completed, courses(title, department_levels(label))').eq('user_id', uid).eq('completed', false).order('updated_at', ascending: false).limit(1),
       db.from('departments').select('id, name, image_path').eq('status', 'active').order('name', ascending: true),
-      db.from('access_grants').select('department_id').eq('user_id', uid),
+      db.from('access_grants').select('department_id, expires_at').eq('user_id', uid),
       db.from('affiliate_profiles').select('referral_code').eq('user_id', uid).maybeSingle(),
       db.rpc('leaderboard', params: {'p_from': _ymd(weekStart), 'p_to': _ymd(weekEnd), 'p_department_id': auth.profile?['department_id'], 'p_limit': 1}),
       db.from('quotes').select('text, author'),
@@ -173,7 +174,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     d.departments = List<Map<String, dynamic>>.from(r[2]);
-    d.granted = (r[3] as List).map((g) => g['department_id'] as String).toSet();
+    d.granted = (r[3] as List).where((g) => isGrantActive(g as Map<String, dynamic>)).map((g) => g['department_id'] as String).toSet();
     d.referralCode = (r[4] as Map?)?['referral_code'] as String?;
 
     final standings = List<Map<String, dynamic>>.from(r[5]);

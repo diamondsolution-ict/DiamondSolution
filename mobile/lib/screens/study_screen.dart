@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../core/access.dart';
 import '../core/supabase.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
@@ -99,8 +100,8 @@ class _StudyScreenState extends State<StudyScreen> {
 
       // RLS enforces access too; checking here gives a clean message instead of an empty list.
       if (!isAdmin) {
-        final grant = await db.from('access_grants').select('department_id').eq('user_id', uid).eq('department_id', course['department_id']).maybeSingle();
-        if (grant == null) {
+        final grant = await db.from('access_grants').select('department_id, expires_at').eq('user_id', uid).eq('department_id', course['department_id']).maybeSingle();
+        if (!isGrantActive(grant)) {
           accessDenied = true;
           setState(() => loading = false);
           return;
