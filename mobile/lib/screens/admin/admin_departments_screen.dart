@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../core/ui.dart';
 import 'admin_common.dart';
 import 'admin_courses_screen.dart';
+import 'admin_questions_screen.dart';
 import 'image_upload.dart';
 
 // Mirrors src/pages/admin/AdminDepartments.tsx: list, create, edit (price history rows, status,
@@ -320,7 +321,7 @@ class _AdminDepartmentsScreenState extends State<AdminDepartmentsScreen> {
       return PopScope(
         canPop: false,
         onPopInvokedWithResult: (_, __) => setState(() => coursesFor = null),
-        child: AdminCoursesScreen(departmentId: coursesFor!, onBack: () => setState(() => coursesFor = null)),
+        child: AdminCoursesScreen(departmentId: coursesFor!, onBack: () => setState(() => coursesFor = null), onManageQuestions: (c) => openCourseQuestions(context, c['id'] as String)),
       );
     }
     return ListView(padding: const EdgeInsets.all(20), children: [

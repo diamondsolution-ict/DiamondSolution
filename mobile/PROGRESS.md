@@ -44,7 +44,8 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ⬜ | Not in app yet: CSV export buttons (Payments, Affiliates, WhatsApp) — web only |
 | ✅ | Admin-only tools done: admin key gate + step-up code dialog, Users (suspend/delete/role/add/approve partner), Withdrawals (pay, reject, manual, recheck) |
 | ✅ | Departments (create/edit/prices/levels/delete), Courses per department, Pictures & Media (gallery upload), System Logs, Settings (links, affiliate programme, own security code) |
-| ⬜ | Questions browser + editor (last admin tool; "Manage questions" in Courses is hidden until it exists) |
+| ✅ | Questions browser + editor: add/edit/archive/restore/delete, search, active/archived, bulk archive, edit course details, course outline sections |
+| ⬜ | Not in app: question CSV import/export and template download (web only) |
 
 ## Release
 | | Item |
