@@ -1,7 +1,7 @@
 name: diamond_solution
 description: Diamond Solution mobile app (Android) — study/exam-prep, on the same Supabase backend as the website.
 publish_to: none
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

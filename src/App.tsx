@@ -7,6 +7,7 @@ import {
   AdminOnlyRoute,
 } from "@/components/ProtectedRoute";
 import Splash from "@/pages/Splash";
+import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -49,6 +50,7 @@ export default function App() {
       <LanguageProvider>
         <Routes>
           <Route path="/" element={<Splash />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

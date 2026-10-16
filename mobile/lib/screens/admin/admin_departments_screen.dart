@@ -10,7 +10,7 @@ import 'image_upload.dart';
 
 // Mirrors src/pages/admin/AdminDepartments.tsx: list, create, edit (price history rows, status,
 // picture), levels, delete. Prices are a history table: a changed amount/duration inserts a new row.
-String _durationLabel(int? days) => days == null ? 'Lifetime' : (days == 365 ? '1 year' : '$days days');
+String _durationLabel(int? days) => days == null ? 'No expiry' : (days == 365 ? '1 year' : '$days days');
 
 class AdminDepartmentsScreen extends StatefulWidget {
   const AdminDepartmentsScreen({super.key});
@@ -82,7 +82,7 @@ class _AdminDepartmentsScreenState extends State<AdminDepartmentsScreen> {
             const SizedBox(width: 12),
             Expanded(child: labeled('Price (\$)', TextField(controller: usd, keyboardType: TextInputType.number), optional: 'optional')),
           ]),
-          labeled('Access duration (days)', TextField(controller: dur, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '365')), hint: '365 = 1 year from purchase. Leave blank for lifetime access.'),
+          labeled('Access duration (days)', TextField(controller: dur, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '365')), hint: '365 = 1 year from purchase. Leave blank only for access that never expires.'),
           labeled('Levels (comma-separated)', TextField(controller: lv)),
           if (err != null) ...[Banner2(err!), const SizedBox(height: 12)],
           Row(children: [
@@ -164,7 +164,7 @@ class _AdminDepartmentsScreenState extends State<AdminDepartmentsScreen> {
             const SizedBox(width: 12),
             Expanded(child: labeled('Price (\$)', TextField(controller: usd, keyboardType: TextInputType.number), optional: 'optional')),
           ]),
-          labeled('Access duration (days)', TextField(controller: dur, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '365')), hint: '365 = 1 year from purchase. Leave blank for lifetime access. Changing this only affects future purchases — students who already paid keep the terms they bought under.'),
+          labeled('Access duration (days)', TextField(controller: dur, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '365')), hint: '365 = 1 year from purchase. Leave blank only for access that never expires. Changing this only affects future purchases — students who already paid keep the terms they bought under.'),
           labeled(
             'Status',
             Container(

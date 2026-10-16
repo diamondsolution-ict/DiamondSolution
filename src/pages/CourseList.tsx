@@ -304,11 +304,10 @@ export default function CourseList() {
           {hasAccess && (
             <div className="badge-gold inline-flex items-center gap-1.5">
               <Sparkles size={12} />
-              {isAdmin
-                ? "Lifetime access active"
-                : describeAccessStatus(
-                    grantedDepartmentIds.get(departmentId) ?? null,
-                  )}
+              {describeAccessStatus(
+                grantedDepartmentIds.get(departmentId) ?? null,
+                isAdmin,
+              )}
             </div>
           )}
 

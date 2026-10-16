@@ -317,7 +317,7 @@ export default function CourseDetail() {
       )}
       {hasAccess && !!meta?.questionCount && (
         <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-text-3">
-          {isAdmin ? "Lifetime access" : describeAccessStatus(grantExpiresAt)} ·{" "}
+          {describeAccessStatus(grantExpiresAt, isAdmin)} ·{" "}
           {describePaymentTerm(grantExpiresAt, isAdmin)} · Secured transaction
         </p>
       )}

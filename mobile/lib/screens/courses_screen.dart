@@ -189,7 +189,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.auto_awesome, size: 12, color: AppColors.goldDark),
                       const SizedBox(width: 6),
-                      Text(AuthScope.of(context).isAdmin ? 'Lifetime access active' : describeAccessStatus(grantExpiresAt), style: body(12, weight: FontWeight.w700, color: AppColors.goldDark)),
+                      Text(describeAccessStatus(grantExpiresAt, isAdmin: AuthScope.of(context).isAdmin), style: body(12, weight: FontWeight.w700, color: AppColors.goldDark)),
                     ]),
                   ),
                 ),
