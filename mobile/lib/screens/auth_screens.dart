@@ -194,9 +194,9 @@ class SplashScreen extends StatelessWidget {
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                                   child: Column(children: [
-                                    Text(stats[i].$1, style: heading(18, weight: FontWeight.w900, color: AppColors.royal)),
+                                    FittedBox(fit: BoxFit.scaleDown, child: Text(stats[i].$1, maxLines: 1, style: heading(18, weight: FontWeight.w900, color: AppColors.royal))),
                                     const SizedBox(height: 2),
-                                    Text(t(stats[i].$2).toUpperCase(), style: body(9, weight: FontWeight.w900, color: AppColors.text3, letterSpacing: 0.9)),
+                                    FittedBox(fit: BoxFit.scaleDown, child: Text(t(stats[i].$2).toUpperCase(), maxLines: 1, style: body(9, weight: FontWeight.w900, color: AppColors.text3, letterSpacing: 0.9))),
                                   ]),
                                 ),
                               ),

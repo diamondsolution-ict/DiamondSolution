@@ -25,13 +25,15 @@ class DiamondLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = white ? Colors.white : AppColors.navy;
-    final name = Text('Diamond Solution',
-        style: heading((size * 0.4).clamp(18, 40), weight: FontWeight.w800, color: color, height: 1));
+    // One line always: on a phone with a big system font it scales down instead of wrapping.
+    final name = FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text('Diamond Solution', maxLines: 1, style: heading((size * 0.4).clamp(18, 40), weight: FontWeight.w800, color: color, height: 1)));
     final tagline = Text('Committed to raising first-class professionals.',
         textAlign: TextAlign.center, style: body(12, weight: FontWeight.w500, color: white ? AppColors.slate300 : const Color(0xFF475569)));
     final mark = LogoMark(height: size * 1.15, white: white);
     if (horizontal) {
-      return Row(mainAxisSize: MainAxisSize.min, children: [mark, const SizedBox(width: 12), name]);
+      return Row(mainAxisSize: MainAxisSize.min, children: [mark, const SizedBox(width: 12), Flexible(child: name)]);
     }
     return Column(mainAxisSize: MainAxisSize.min, children: [
       mark,
