@@ -66,11 +66,11 @@ export default function Splash() {
 
           <div className="mt-6 grid w-full grid-cols-3 divide-x divide-royal-border overflow-hidden rounded-2xl border border-royal-border bg-royal-soft">
             {STATS.map((s) => (
-              <div key={s.labelKey} className="px-2 py-3.5 text-center">
+              <div key={s.labelKey} className="min-w-0 px-1 py-3.5 text-center">
                 <p className="font-heading text-lg font-black text-royal">
                   {s.value}
                 </p>
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-3">
+                <p className="whitespace-nowrap text-[8px] font-black uppercase tracking-wide text-text-3 min-[360px]:text-[9px]">
                   {t(s.labelKey)}
                 </p>
               </div>

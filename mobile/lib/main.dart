@@ -48,6 +48,12 @@ class _DiamondAppState extends State<DiamondApp> {
         title: 'Diamond Solution',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
+        // A phone set to a very large font size can't break the layouts: text is allowed to grow, but
+        // only up to 1.15x (labels, stat tiles and buttons are laid out for normal sizes).
+        builder: (context, child) {
+          final mq = MediaQuery.of(context);
+          return MediaQuery(data: mq.copyWith(textScaler: mq.textScaler.clamp(maxScaleFactor: 1.15)), child: child!);
+        },
         home: ListenableBuilder(
           listenable: auth,
           builder: (context, _) {

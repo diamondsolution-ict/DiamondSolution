@@ -39,7 +39,22 @@ class _AdminSupportScreenState extends State<AdminSupportScreen> {
     super.dispose();
   }
 
+  String? loadError;
+
   Future<void> _loadThreads() async {
+    try {
+      await _loadThreadsInner();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loadError = "Couldn't load conversations: $e";
+          loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadThreadsInner() async {
     final rows = List<Map<String, dynamic>>.from(await db.from('chat_threads').select('id, user_id, admin_unread_count, last_message_at').order('last_message_at', ascending: false));
     final ids = rows.map((t) => t['user_id'] as String).toList();
     final names = <String, Map<String, dynamic>>{};
@@ -137,7 +152,9 @@ class _AdminSupportScreenState extends State<AdminSupportScreen> {
         Container(
           decoration: BoxDecoration(color: Colors.white, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(16)),
           clipBehavior: Clip.antiAlias,
-          child: loading
+          child: loadError != null
+              ? Padding(padding: const EdgeInsets.all(16), child: Text(loadError!, style: body(14, color: AppColors.rose700)))
+              : loading
               ? Padding(padding: const EdgeInsets.all(16), child: Text('Loading…', style: body(14, color: AppColors.text3)))
               : threads.isEmpty
                   ? Padding(padding: const EdgeInsets.all(16), child: Text('No conversations yet.', style: body(14, color: AppColors.text3)))

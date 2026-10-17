@@ -193,11 +193,15 @@ Future<Map<String, String>> emailsFor(Iterable<String> ids) async {
   final out = <String, String>{};
   for (var i = 0; i < all.length; i += 200) {
     final part = all.sublist(i, i + 200 > all.length ? all.length : i + 200);
-    final rows = await db.rpc('admin_list_emails', params: {'p_user_ids': part}) as List;
-    for (final e in rows) {
-      final id = e['user_id'];
-      final mail = e['email'];
-      if (id is String && mail is String) out[id] = mail;
+    try {
+      final rows = await db.rpc('admin_list_emails', params: {'p_user_ids': part}) as List;
+      for (final e in rows) {
+        final id = e['user_id'];
+        final mail = e['email'];
+        if (id is String && mail is String) out[id] = mail;
+      }
+    } catch (_) {
+      // Emails are a nicety: if the look-up fails the list still loads, just without them.
     }
   }
   return out;
