@@ -48,6 +48,18 @@
 }
 
 @layer base {
+  /* Stops Android browsers from auto-inflating text in narrow columns ("font boosting"), which made
+     small uppercase labels overflow and break mid-word on some phones. */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  /* Small uppercase labels never split inside a word. */
+  .uppercase {
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+  }
   html,
   body {
     @apply bg-canvas font-sans text-text-1 antialiased;
