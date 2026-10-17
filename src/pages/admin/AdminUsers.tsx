@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Unlock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -9,7 +9,7 @@ import { downloadCSV } from "@/lib/csv";
 import { functionErrorMessage } from "@/lib/functionError";
 
 type Role = "student" | "moderator" | "admin";
-type StatusFilter = "all" | "active" | "suspended";
+type StatusFilter = "all" | "active" | "suspended" | "device-locked";
 
 interface UserRow {
   user_id: string;
@@ -22,6 +22,7 @@ interface UserRow {
   suspension_reason: string | null;
   currency: string;
   created_at: string;
+  device_block_started_at: string | null;
 }
 
 type PendingAction =
@@ -61,7 +62,7 @@ export default function AdminUsers() {
     const { data: profileRows } = await supabase
       .from("profiles")
       .select(
-        "user_id, display_name, username, university, whatsapp, phone, status, suspension_reason, currency, created_at",
+        "user_id, display_name, username, university, whatsapp, phone, status, suspension_reason, currency, created_at, device_block_started_at",
       )
       .order("created_at", { ascending: false });
     setUsers(profileRows ?? []);
@@ -111,7 +112,13 @@ export default function AdminUsers() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
-      if (statusFilter !== "all" && u.status !== statusFilter) return false;
+      if (statusFilter === "device-locked" && !u.device_block_started_at) return false;
+      if (
+        statusFilter !== "all" &&
+        statusFilter !== "device-locked" &&
+        u.status !== statusFilter
+      )
+        return false;
       if (!q) return true;
       return (
         (u.display_name ?? "").toLowerCase().includes(q) ||
@@ -135,6 +142,28 @@ export default function AdminUsers() {
     }
     setInfo("Affiliate partner approved.");
     void load();
+  }
+
+  // Same RPC, same no-step-up pattern as AdminSupport.tsx's own unlock button (Support is where
+  // a moderator reaches this) — a free staff override for a student signed in from a 3rd
+  // device, skipping the ₦1,000 pay-to-unlock. Kept here too since a locked student who hasn't
+  // messaged Support yet was otherwise invisible to an admin working from Users.
+  async function handleUnlockDevice(userId: string) {
+    setBusyId(userId);
+    setError(null);
+    const { error: rpcError } = await supabase.rpc("admin_unlock_device", {
+      p_user_id: userId,
+    });
+    setBusyId(null);
+    if (rpcError) {
+      setError(`Unlock failed: ${rpcError.message}`);
+      return;
+    }
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.user_id === userId ? { ...u, device_block_started_at: null } : u,
+      ),
+    );
   }
 
   async function runPendingAction(otpToken: string) {
@@ -265,6 +294,7 @@ export default function AdminUsers() {
           <option value="all">All</option>
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
+          <option value="device-locked">Device-locked</option>
         </select>
       </div>
 
@@ -375,9 +405,28 @@ export default function AdminUsers() {
                           {u.suspension_reason || "No reason given"}
                         </p>
                       )}
+                      {u.device_block_started_at && (
+                        <span
+                          title="Signed in from a 3rd device — blocked until a ₦1,000 unlock payment (or a free staff unlock) 24h after this started."
+                          className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          Device-locked
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center gap-1.5">
+                        {u.device_block_started_at && (
+                          <button
+                            onClick={() => void handleUnlockDevice(u.user_id)}
+                            disabled={rowBusy}
+                            className="flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                          >
+                            <Unlock size={12} />
+                            Unlock device
+                          </button>
+                        )}
                         {u.status === "suspended" ? (
                           <button
                             onClick={() =>
