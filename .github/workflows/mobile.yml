@@ -7,6 +7,11 @@ on:
     branches: [main]
     paths: ["mobile/**"]
   workflow_dispatch:
+    inputs:
+      build_bundle:
+        description: "Also build the Play Store .aab (only needed when publishing on Google Play)"
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -51,6 +56,7 @@ jobs:
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
             --dart-define=WEB_BASE_URL=${{ secrets.WEB_BASE_URL }}
       - name: Build Play Store bundle
+        if: ${{ inputs.build_bundle }}
         run: |
           flutter build appbundle --release \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
@@ -61,6 +67,7 @@ jobs:
           name: diamond-solution-apk
           path: mobile/build/app/outputs/flutter-apk/app-release.apk
       - uses: actions/upload-artifact@v4
+        if: ${{ inputs.build_bundle }}
         with:
           name: diamond-solution-aab
           path: mobile/build/app/outputs/bundle/release/app-release.aab

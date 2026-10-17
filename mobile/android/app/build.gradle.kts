@@ -50,6 +50,13 @@ android {
 
     buildTypes {
         release {
+            // No R8/resource shrinking: with it on, the release build renamed/stripped Kotlin
+            // `suspend` methods that the shared_preferences plugin calls from Dart, and the app
+            // crashed on launch with NoSuchMethodError (SharedPreferencesApiRegistrar.getAll).
+            // The APK is a bit larger without it, which doesn't matter for this app.
+            isMinifyEnabled = false
+            isShrinkResources = false
+            isDebuggable = false
             // Falls back to debug signing only when no key.properties exists (local test builds);
             // Play Store uploads must come from a build with the release key.
             signingConfig = if (keystoreProperties.containsKey("storeFile"))
