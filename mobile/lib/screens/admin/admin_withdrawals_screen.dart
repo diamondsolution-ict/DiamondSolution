@@ -36,9 +36,9 @@ class _AdminWithdrawalsScreenState extends State<AdminWithdrawalsScreen> {
     final w = List<Map<String, dynamic>>.from(r[0] as List);
     final ids = {for (final x in w) x['user_id'] as String}.toList();
     if (ids.isNotEmpty) {
-      final p = await Future.wait<dynamic>([db.from('profiles').select('user_id, display_name').inFilter('user_id', ids), db.rpc('admin_list_emails', params: {'p_user_ids': ids})]);
+      final p = await Future.wait<dynamic>([selectIn('profiles', 'user_id, display_name', 'user_id', ids), emailsFor(ids)]);
       names = {for (final x in p[0] as List) x['user_id'] as String: (x['display_name'] as String?) ?? 'Unnamed'};
-      emails = {for (final x in p[1] as List) x['user_id'] as String: x['email'] as String};
+      emails = p[1] as Map<String, String>;
     }
     if (!mounted) return;
     setState(() {

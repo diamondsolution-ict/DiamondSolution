@@ -30,23 +30,33 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   }
 
   Future<void> _load() async {
-    final rows = List<Map<String, dynamic>>.from(await db.from('profiles').select('user_id, display_name, username, university, whatsapp, phone, status, suspension_reason, currency, created_at').order('created_at', ascending: false));
-    final ids = rows.map((u) => u['user_id'] as String).toList();
-    if (ids.isNotEmpty) {
-      final r = await Future.wait<dynamic>([
-        db.rpc('admin_list_emails', params: {'p_user_ids': ids}),
-        db.from('user_roles').select('user_id, role').inFilter('user_id', ids),
-        db.from('affiliate_profiles').select('user_id, status').inFilter('user_id', ids),
-      ]);
-      emails = {for (final e in r[0] as List) e['user_id'] as String: e['email'] as String};
-      roles = {for (final e in r[1] as List) e['user_id'] as String: e['role'] as String};
-      affiliate = {for (final e in r[2] as List) e['user_id'] as String: e['status'] as String};
-    }
-    if (mounted) {
-      setState(() {
-        users = rows;
-        loading = false;
-      });
+    try {
+      final rows = List<Map<String, dynamic>>.from(await db.from('profiles').select('user_id, display_name, username, university, whatsapp, phone, status, suspension_reason, currency, created_at').order('created_at', ascending: false));
+      final ids = rows.map((u) => u['user_id'] as String).toList();
+      if (ids.isNotEmpty) {
+        // user_roles / affiliate_profiles hold few rows, so they're read whole; emails come in chunks.
+        final r = await Future.wait<dynamic>([
+          emailsFor(ids),
+          db.from('user_roles').select('user_id, role'),
+          db.from('affiliate_profiles').select('user_id, status'),
+        ]);
+        emails = r[0] as Map<String, String>;
+        roles = {for (final e in r[1] as List) if (e['user_id'] is String) e['user_id'] as String: '${e['role']}'};
+        affiliate = {for (final e in r[2] as List) if (e['user_id'] is String) e['user_id'] as String: '${e['status']}'};
+      }
+      if (mounted) {
+        setState(() {
+          users = rows;
+          loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          error = "Couldn't load users: $e";
+          loading = false;
+        });
+      }
     }
   }
 
@@ -90,6 +100,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       error = 'Action failed: ${functionErrorMessage(e, 'unknown error')}';
     }
     if (mounted) setState(() => busyId = null);
+  }
+
+  Future<void> _deleteUser(String id, String name) async {
+    final ok = await confirmDanger(context, title: 'Delete $name?', message: 'This permanently deletes the account and everything attached to it. It cannot be undone. If you only want to block them, suspend the account instead.');
+    if (ok && mounted) _run('delete', id, title: 'Permanently delete this account.');
   }
 
   Future<void> _addUser() async {
@@ -288,7 +303,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       if (reason == null || !mounted) return;
                       _run('suspend', id, reason: reason, title: 'Suspend this account.');
                     }),
-            small('Delete', AppColors.rose700, AppColors.rose50, AppColors.rose200, isSelf || busy ? null : () => _run('delete', id, title: 'Permanently delete this account.')),
+            small('Delete', AppColors.rose700, AppColors.rose50, AppColors.rose200, isSelf || busy ? null : () => _deleteUser(id, '${u['display_name'] ?? 'this user'}')),
           ]),
         ]),
       ),

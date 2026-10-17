@@ -297,14 +297,14 @@ class _CourseQuestionsState extends State<AdminCourseQuestionsScreen> {
   }
 
   Future<void> _hardDelete(String id) async {
-    if (!await confirmDialog(context, 'Permanently delete this question? This cannot be undone — if you just want to hide it, use Archive instead.')) return;
+    if (!await confirmDanger(context, title: 'Delete this question forever?', message: 'This cannot be undone. If you only want to hide it from students, use Archive instead.')) return;
     await db.from('questions').delete().eq('id', id);
     _load();
   }
 
   Future<void> _bulkArchive() async {
     if (active.isEmpty) return;
-    if (!await confirmDialog(context, 'Archive all ${active.length} active question(s) in "${course?['title']}"? They\'ll be hidden from students immediately and can be restored one at a time from the Archived tab.')) return;
+    if (!await confirmDanger(context, title: 'Archive all ${active.length} questions?', message: 'Every active question in "${course?['title']}" is hidden from students immediately. You can restore them one at a time from the Archived tab.', confirmLabel: 'Archive all')) return;
     setState(() => bulkBusy = true);
     await db.from('questions').update({'status': 'trashed', 'deleted_at': DateTime.now().toUtc().toIso8601String()}).eq('course_id', widget.courseId).eq('status', 'active');
     if (mounted) setState(() => bulkBusy = false);

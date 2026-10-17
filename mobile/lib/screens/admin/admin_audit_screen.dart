@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
+import 'admin_common.dart';
 
 // Mirrors src/pages/admin/AdminAuditLog.tsx (System Logs).
 class AdminAuditScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _AdminAuditScreenState extends State<AdminAuditScreen> {
     final data = List<Map<String, dynamic>>.from(await db.from('admin_actions_log').select('id, actor_user_id, action, target_table, target_id, reason, created_at').order('created_at', ascending: false).limit(200));
     final ids = {for (final r in data) r['actor_user_id'] as String}.toList();
     if (ids.isNotEmpty) {
-      final p = await db.from('profiles').select('user_id, display_name').inFilter('user_id', ids);
+      final p = await selectIn('profiles', 'user_id, display_name', 'user_id', ids);
       names = {for (final x in p) x['user_id'] as String: (x['display_name'] as String?) ?? 'Unknown'};
     }
     if (mounted) {

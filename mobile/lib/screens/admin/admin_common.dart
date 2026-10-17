@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/supabase.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 
@@ -173,3 +174,53 @@ Widget labeled(String label, Widget field, {String? hint, String? optional}) => 
         if (hint != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(hint, style: body(12, color: AppColors.text3))),
       ]),
     );
+
+/// `select ... where column in (ids)` in chunks. One request with hundreds of uuids makes a URL so long
+/// the server/proxy rejects it, which left Users, Payments and Affiliates stuck on "Loading…".
+Future<List<Map<String, dynamic>>> selectIn(String table, String columns, String column, Iterable<String> ids, {int chunk = 60}) async {
+  final all = ids.toSet().toList();
+  final out = <Map<String, dynamic>>[];
+  for (var i = 0; i < all.length; i += chunk) {
+    final part = all.sublist(i, i + chunk > all.length ? all.length : i + chunk);
+    out.addAll(List<Map<String, dynamic>>.from(await db.from(table).select(columns).inFilter(column, part)));
+  }
+  return out;
+}
+
+/// user_id -> email through admin_list_emails (a POST, chunked anyway to keep each call small).
+Future<Map<String, String>> emailsFor(Iterable<String> ids) async {
+  final all = ids.toSet().toList();
+  final out = <String, String>{};
+  for (var i = 0; i < all.length; i += 200) {
+    final part = all.sublist(i, i + 200 > all.length ? all.length : i + 200);
+    final rows = await db.rpc('admin_list_emails', params: {'p_user_ids': part}) as List;
+    for (final e in rows) {
+      final id = e['user_id'];
+      final mail = e['email'];
+      if (id is String && mail is String) out[id] = mail;
+    }
+  }
+  return out;
+}
+
+/// A red-bordered warning for irreversible actions (delete a department, course, level, question,
+/// user). Returns true only if the admin presses the red button.
+Future<bool> confirmDanger(BuildContext context, {required String title, required String message, String confirmLabel = 'Delete'}) async {
+  final r = await showDialog<bool>(
+    context: context,
+    barrierColor: AppColors.navy.withValues(alpha: 0.5),
+    builder: (ctx) => AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.rose200)),
+      icon: Container(width: 44, height: 44, decoration: const BoxDecoration(color: AppColors.rose50, shape: BoxShape.circle), child: const Icon(Icons.warning_amber_rounded, size: 24, color: Color(0xFFE11D48))),
+      title: Text(title, textAlign: TextAlign.center, style: heading(18)),
+      content: Text(message, textAlign: TextAlign.center, style: body(14, color: AppColors.text2)),
+      actionsAlignment: MainAxisAlignment.center,
+      actions: [
+        OutlinedButton(onPressed: () => Navigator.pop(ctx, false), style: OutlinedButton.styleFrom(minimumSize: const Size(110, 42)), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE11D48), minimumSize: const Size(110, 42)), child: Text(confirmLabel)),
+      ],
+    ),
+  );
+  return r ?? false;
+}

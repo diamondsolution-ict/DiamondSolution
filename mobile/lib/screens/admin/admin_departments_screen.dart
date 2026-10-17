@@ -183,6 +183,7 @@ class _AdminDepartmentsScreenState extends State<AdminDepartmentsScreen> {
                 onPressed: saving
                     ? null
                     : () async {
+                        if (status == 'archived' && d['status'] != 'archived' && !await confirmDanger(ctx, title: 'Archive "${d['name']}"?', message: 'Students will stop seeing this department and its courses until you set it back to Active.', confirmLabel: 'Archive')) return;
                         setS(() {
                           saving = true;
                           err = null;
@@ -261,7 +262,7 @@ class _AdminDepartmentsScreenState extends State<AdminDepartmentsScreen> {
                         IconButton(
                           icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.text3),
                           onPressed: () async {
-                            if (!await confirmDialog(ctx, 'Delete level "${l['label']}"? Courses using this level block deletion — remove or move them first.')) return;
+                            if (!await confirmDanger(ctx, title: 'Delete level "${l['label']}"?', message: "This can't be undone. Courses using this level block deletion — move or remove them first.")) return;
                             try {
                               await db.from('department_levels').delete().eq('id', l['id'] as String);
                               await reload();
@@ -305,7 +306,7 @@ class _AdminDepartmentsScreenState extends State<AdminDepartmentsScreen> {
   }
 
   Future<void> _delete(Map<String, dynamic> d) async {
-    if (!await confirmDialog(context, 'Delete "${d['name']}"? This can\'t be undone. Departments with existing courses, pricing history, or students can\'t be deleted — archive them instead.')) return;
+    if (!await confirmDanger(context, title: 'Delete the "${d['name']}" department?', message: "This permanently deletes the department and can't be undone. Departments that still have courses, pricing history or students can't be deleted — archive them instead.")) return;
     setState(() => listError = null);
     try {
       await db.from('departments').delete().eq('id', d['id'] as String);
