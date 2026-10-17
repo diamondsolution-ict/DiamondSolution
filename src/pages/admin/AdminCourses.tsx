@@ -8,6 +8,7 @@ import {
   ListChecks,
   Pencil,
   Plus,
+  Trash2,
   X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -38,6 +39,7 @@ interface Course {
   level_id: string;
   default_question_type: "objective" | "application";
   description: string | null;
+  image_path: string | null;
 }
 // "none" = zero active questions at all; "placeholder" = only the auto-generated stand-in from
 // 03-placeholder-questions.sql; "real" = at least one genuine question.
@@ -65,6 +67,7 @@ export default function AdminCourses() {
   >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [title, setTitle] = useState("");
@@ -107,7 +110,7 @@ export default function AdminCourses() {
         supabase
           .from("courses")
           .select(
-            "id, title, slug, status, department_id, level_id, default_question_type, description",
+            "id, title, slug, status, department_id, level_id, default_question_type, description, image_path",
           )
           .eq("department_id", departmentId)
           .is("deleted_at", null)
@@ -237,6 +240,41 @@ export default function AdminCourses() {
 
   function levelLabel(id: string) {
     return levels.find((l) => l.id === id)?.label ?? "—";
+  }
+
+  // Hard delete. Blocked by a foreign-key violation (23503) if any question_attempts rows
+  // reference this course or one of its questions — i.e. a student has actually studied it —
+  // since question_attempts has no ON DELETE CASCADE from courses/questions (see
+  // 20261002041327_study_activity.sql): that table is a student's permanent Revision Center
+  // history, so losing it isn't an acceptable side effect of an admin cleaning up the catalog.
+  // Same safety pattern as department/level deletion in AdminDepartments.tsx — archive instead.
+  async function handleDelete(c: Course) {
+    if (
+      !confirm(
+        `Delete "${c.title}"? This can't be undone. Courses a student has already studied can't be deleted — archive them instead (Edit → Status).`,
+      )
+    )
+      return;
+
+    setListError(null);
+    const { error: deleteError } = await supabase
+      .from("courses")
+      .delete()
+      .eq("id", c.id);
+
+    if (deleteError) {
+      setListError(
+        deleteError.code === "23503"
+          ? `Can't delete "${c.title}" — one or more students have already studied it. Archive it instead (Edit → Status).`
+          : deleteError.message,
+      );
+      return;
+    }
+
+    if (c.image_path) {
+      await supabase.storage.from("media").remove([c.image_path]);
+    }
+    await load();
   }
 
   return (
@@ -426,6 +464,14 @@ export default function AdminCourses() {
           )}
 
           <div className="mt-8">
+            {listError && (
+              <p
+                role="alert"
+                className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              >
+                {listError}
+              </p>
+            )}
             {loading ? (
               <p className="text-sm text-text-3">Loading…</p>
             ) : courses.length === 0 ? (
@@ -472,6 +518,13 @@ export default function AdminCourses() {
                         <ListChecks size={13} />
                         Manage questions <ArrowRight size={13} />
                       </Link>
+                      <button
+                        onClick={() => void handleDelete(c)}
+                        className="flex shrink-0 items-center gap-1 text-sm font-semibold text-rose-600 hover:underline"
+                      >
+                        <Trash2 size={13} />
+                        Delete
+                      </button>
                     </div>
                   </div>
                 ))}
