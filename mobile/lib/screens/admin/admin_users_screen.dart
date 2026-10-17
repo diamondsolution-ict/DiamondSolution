@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../../core/csv.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
@@ -31,7 +32,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
   Future<void> _load() async {
     try {
-      final rows = List<Map<String, dynamic>>.from(await db.from('profiles').select('user_id, display_name, username, university, whatsapp, phone, status, suspension_reason, currency, created_at').order('created_at', ascending: false));
+      final rows = List<Map<String, dynamic>>.from(await db.from('profiles').select('user_id, display_name, username, university, whatsapp, phone, status, suspension_reason, currency, created_at, device_block_started_at').order('created_at', ascending: false));
       final ids = rows.map((u) => u['user_id'] as String).toList();
       if (ids.isNotEmpty) {
         // user_roles / affiliate_profiles hold few rows, so they're read whole; emails come in chunks.
@@ -80,6 +81,21 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       await _load();
     } catch (e) {
       error = '$e';
+    }
+    if (mounted) setState(() => busyId = null);
+  }
+
+  Future<void> _unlockDevice(String userId) async {
+    setState(() {
+      busyId = userId;
+      error = null;
+    });
+    try {
+      await db.rpc('admin_unlock_device', params: {'p_user_id': userId});
+      info = 'Account unlocked.';
+      await _load();
+    } catch (e) {
+      error = 'Unlock failed: ${e is PostgrestException ? e.message : e}';
     }
     if (mounted) setState(() => busyId = null);
   }
@@ -303,6 +319,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       if (reason == null || !mounted) return;
                       _run('suspend', id, reason: reason, title: 'Suspend this account.');
                     }),
+            if (u['device_block_started_at'] != null)
+              small('Unlock device', AppColors.royal, AppColors.royalSoft, AppColors.royalBorder, busy ? null : () => _unlockDevice(id)),
             small('Delete', AppColors.rose700, AppColors.rose50, AppColors.rose200, isSelf || busy ? null : () => _deleteUser(id, '${u['display_name'] ?? 'this user'}')),
           ]),
         ]),
