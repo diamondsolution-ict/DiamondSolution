@@ -45,6 +45,15 @@ interface OutlineSection {
 const OBJECTIVE_SECONDS = 60;
 const APPLICATION_SECONDS = 120;
 
+// Local calendar date, not UTC — record_question_attempt()/add_study_duration() both stamp
+// daily_practice_stats with this, and the Dashboard's 7-day chart is built from the browser's
+// local dates too; the server's default (UTC) current_date could shift late-day sessions onto
+// the "wrong" day for students outside UTC.
+function localDateString() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 export default function StudyPage() {
   const { id: courseId } = useParams<{ id: string }>();
   const { user, isAdmin } = useAuth();
@@ -76,6 +85,12 @@ export default function StudyPage() {
 
   const [secondsLeft, setSecondsLeft] = useState(OBJECTIVE_SECONDS);
   const questionStartRef = useRef(Date.now());
+  // Set the moment a FRESH submit happens (never on revisiting an already-answered question via
+  // Previous), cleared by flushReadingTime() below. Lets the time between "I just submitted"
+  // and "I clicked Next" — reading the explanation, while still on this page — count toward
+  // study_duration_seconds, which record_question_attempt()'s own p_time_taken_seconds never
+  // covered (that one stops the clock at Submit).
+  const submittedAtRef = useRef<number | null>(null);
 
   const question = questions[currentIndex];
   const totalSubmitted = Object.keys(sessionResults).length;
@@ -259,16 +274,12 @@ export default function StudyPage() {
     setSubmitted(true);
     setSessionResults((prev) => ({ ...prev, [question.id]: result }));
     setSelectedByQuestion((prev) => ({ ...prev, [question.id]: selectedOptionId }));
+    // Starts the "reading the explanation" clock — stopped and reported by flushReadingTime()
+    // once the student actually navigates away from this question.
+    submittedAtRef.current = Date.now();
 
     const isLast = currentIndex === questions.length - 1;
     const nextOrder = currentIndex + 1;
-
-    // Local calendar date, not UTC — record_question_attempt() stamps daily_practice_stats
-    // with this, and the Dashboard's 7-day chart is built from the browser's local dates too;
-    // using the server's default (UTC) current_date here could shift late-day sessions onto
-    // the "wrong" day for students outside UTC.
-    const now = new Date();
-    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
     const { error: attemptError } = await supabase.rpc(
       "record_question_attempt",
@@ -281,7 +292,7 @@ export default function StudyPage() {
         p_time_taken_seconds: timeTaken,
         p_current_order: nextOrder,
         p_completed: isLast,
-        p_practice_date: localDate,
+        p_practice_date: localDateString(),
       },
     );
     // Never block the quiz UI on this — the question is already answered and the local
@@ -294,7 +305,29 @@ export default function StudyPage() {
     }
   }
 
+  // Reports time spent on this question AFTER submitting (reading the explanation/expected
+  // answer) as extra study_duration_seconds, separately from record_question_attempt()'s own
+  // p_time_taken_seconds (which only covers up to the Submit click). Fire-and-forget, same as
+  // record_question_attempt's own error handling — never blocks navigation. A no-op when the
+  // question being left was only being revisited (Previous into an already-answered question),
+  // since submittedAtRef is only ever set by a fresh handleSubmit, not by goToIndex.
+  function flushReadingTime() {
+    if (submittedAtRef.current === null) return;
+    const elapsed = Math.round((Date.now() - submittedAtRef.current) / 1000);
+    submittedAtRef.current = null;
+    if (elapsed <= 0) return;
+    void supabase
+      .rpc("add_study_duration", {
+        p_seconds: elapsed,
+        p_practice_date: localDateString(),
+      })
+      .then(({ error }) => {
+        if (error) console.error("add_study_duration failed:", error);
+      });
+  }
+
   function handleNext() {
+    flushReadingTime();
     const isLast = currentIndex === questions.length - 1;
     const reachedSectionEnd =
       activeSection && currentIndex + 1 === activeSection.end_question_order;
@@ -312,6 +345,7 @@ export default function StudyPage() {
 
   function handlePrevious() {
     if (currentIndex === 0) return;
+    flushReadingTime();
     goToIndex(currentIndex - 1);
   }
 
@@ -506,7 +540,10 @@ export default function StudyPage() {
       <header className="sticky top-0 z-10 bg-navy text-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              flushReadingTime();
+              navigate(-1);
+            }}
             aria-label="Go back"
             className="rounded-full p-1.5 text-slate-300 hover:bg-white/10 hover:text-white"
           >
@@ -630,7 +667,10 @@ export default function StudyPage() {
         </div>
 
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            flushReadingTime();
+            navigate(-1);
+          }}
           className="mx-auto mt-4 block text-xs font-semibold text-text-3 hover:text-text-1 hover:underline"
         >
           Exit quiz
