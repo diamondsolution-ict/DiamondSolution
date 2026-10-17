@@ -47,7 +47,7 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 2),
           Text((auth.user?.email ?? '').toUpperCase(), style: body(12, color: AppColors.text3, letterSpacing: 0.5)),
           const SizedBox(height: 8),
-          Badge2(auth.isAdmin ? 'Admin' : 'Student'),
+          Badge2(auth.isAdmin ? 'Admin' : (auth.isModerator ? 'Moderator' : 'Student')),
         ]),
       ),
       const SizedBox(height: 16),

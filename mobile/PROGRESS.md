@@ -39,7 +39,13 @@ Nothing here has been run on a real Android phone against the live Supabase proj
 | ✅ | Fixed: affiliate commission % was shown as 0.25% instead of 25% |
 | ✅ | Fixed: lists were sorted backwards (Dart `order()` defaults to descending) |
 | ⬜ | Real-device test of everything above (payments, device lock, study, leaderboard) |
-| ⬜ | Admin / moderator back office (stays on the website) |
+| ✅ | Staff entry: Admin/Moderator tab in the bottom bar (staff only), white drawer like the web sidebar |
+| ✅ | Moderator tools (all 8): Dashboard, Analytics, WhatsApp Numbers, Affiliates, Payments (live Paystack recheck), Notifications, Quotes, Support (live chat + device unlock) |
+| ✅ | CSV export (Payments, Affiliates, WhatsApp, Users) through the phone's share sheet |
+| ✅ | Admin-only tools done: admin key gate + step-up code dialog, Users (suspend/delete/role/add/approve partner), Withdrawals (pay, reject, manual, recheck) |
+| ✅ | Departments (create/edit/prices/levels/delete), Courses per department, Pictures & Media (gallery upload), System Logs, Settings (links, affiliate programme, own security code) |
+| ✅ | Questions browser + editor: add/edit/archive/restore/delete, search, active/archived, bulk archive, edit course details, course outline sections |
+| ✅ | Question CSV template, import and export (file picker + share sheet) |
 
 ## Release
 | | Item |

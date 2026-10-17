@@ -94,7 +94,7 @@ class _StudyScreenState extends State<StudyScreen> {
     });
     try {
       final uid = db.auth.currentUser!.id;
-      final isAdmin = AuthScope.of(context).isAdmin;
+      final isAdmin = AuthScope.of(context).isStaff;
       final course = await db.from('courses').select('id, title, department_id').eq('id', widget.courseId).single();
       courseTitle = course['title'] as String;
 

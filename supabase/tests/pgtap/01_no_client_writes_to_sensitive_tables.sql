@@ -13,9 +13,13 @@
 begin;
 select plan(8);
 
+-- Triggers are skipped while seeding auth.users: handle_new_user() now demands a referral code
+-- (20261016010000_require_referral_code_at_signup.sql), which is irrelevant to what this test checks.
+set local session_replication_role = replica;
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'pgtap-student@test.local'),
   ('22222222-2222-2222-2222-222222222222', 'pgtap-admin@test.local');
+set local session_replication_role = origin;
 
 -- Seeded as superuser (bypasses RLS) — this is test setup, not what's under test.
 insert into user_roles (user_id, role) values

@@ -14,7 +14,10 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { describeAccessStatus } from "@/lib/accessDuration";
+import {
+  describeAccessStatus,
+  describePaymentTerm,
+} from "@/lib/accessDuration";
 
 interface Course {
   id: string;
@@ -315,11 +318,8 @@ export default function CourseDetail() {
       )}
       {hasAccess && !!meta?.questionCount && (
         <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-text-3">
-          {isAdmin || isModerator
-            ? "Lifetime access"
-            : describeAccessStatus(grantExpiresAt)}{" "}
-          ·
-          One-time payment · Secured transaction
+          {describeAccessStatus(grantExpiresAt, isAdmin || isModerator)} ·{" "}
+          {describePaymentTerm(grantExpiresAt, isAdmin || isModerator)} · Secured transaction
         </p>
       )}
 

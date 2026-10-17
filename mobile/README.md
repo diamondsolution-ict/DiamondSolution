@@ -85,5 +85,6 @@ Each screen mirrors the queries of the matching web page in `src/pages/`.
 Without `key.properties`, release builds are signed with the debug key — fine for testing, not
 accepted by the Play Store. The app id is `com.diamondsolution.diamond_solution`; change it in
 `android/app/build.gradle.kts` before the first upload if you want a different one (it can't be
-changed afterwards). The launcher icon is a placeholder navy/gold diamond: replace
-`assets/icon.png` and `assets/icon_foreground.png`, then `dart run flutter_launcher_icons`.
+changed afterwards). The launcher icon is the company logo (`assets/icon.png`,
+`assets/icon_foreground.png`; regenerate with `dart run flutter_launcher_icons`). Full Play Store
+steps, listing text and the signing-secrets setup for CI are in `store/PLAY_STORE.md`.

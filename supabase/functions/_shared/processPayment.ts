@@ -138,11 +138,30 @@ export async function processDepartmentAccessPayment({
     );
   }
 
-  const expiresAt = priceRow.access_duration_days
-    ? new Date(
-        Date.now() + priceRow.access_duration_days * 86_400_000,
-      ).toISOString()
-    : null;
+  // Access is time-limited by default now (department_pricing.access_duration_days = 365 for a
+  // yearly fee; null = lifetime). Work out the new expiry against any grant the student already
+  // has so that paying again never costs them anything:
+  //   - an existing lifetime grant (expires_at null) stays lifetime — never downgraded to a year;
+  //   - renewing while still active adds the new term on top of the remaining time;
+  //   - renewing after it lapsed starts a fresh term from today.
+  const { data: existingGrant } = await db
+    .from("access_grants")
+    .select("expires_at")
+    .eq("user_id", userId)
+    .eq("department_id", departmentId)
+    .maybeSingle();
+
+  let expiresAt: string | null = null;
+  if (priceRow.access_duration_days && !(existingGrant && existingGrant.expires_at === null)) {
+    const now = Date.now();
+    const currentEnd = existingGrant?.expires_at
+      ? new Date(existingGrant.expires_at).getTime()
+      : 0;
+    const start = Math.max(now, currentEnd);
+    expiresAt = new Date(
+      start + priceRow.access_duration_days * 86_400_000,
+    ).toISOString();
+  }
 
   const { error: grantError } = await db.from("access_grants").upsert(
     {
@@ -167,9 +186,15 @@ export async function processDepartmentAccessPayment({
     userId,
     type: "payment_success",
     title: "Payment received",
-    body: department
-      ? `Your payment for ${department.name} was confirmed — you now have access.`
-      : "Your payment was confirmed — you now have access.",
+    body: `${
+      department
+        ? `Your payment for ${department.name} was confirmed`
+        : "Your payment was confirmed"
+    } — ${
+      expiresAt
+        ? `you have access until ${new Date(expiresAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })}.`
+        : "you now have access."
+    }`,
   });
 
   await creditReferralCommission({

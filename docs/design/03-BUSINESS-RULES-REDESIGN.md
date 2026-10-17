@@ -86,6 +86,13 @@ session. `admin_actions_log` records which admin performed which action, when, a
 
 ## 5. Permanent, non-expiring access once a department is paid for
 
+> **Update (Oct 2026):** this policy was changed at the owner's request — department access is now a
+> **yearly fee** (365 days from payment; `department_pricing.access_duration_days` defaults to 365,
+> NULL still means lifetime). Existing lifetime grants were left alone, and paying again never
+> downgrades one. See `20261016000000_department_access_now_yearly.sql`,
+> `20261017000000_department_pricing_default_yearly.sql` and `src/lib/accessDuration.ts`.
+> The text below is the original design rationale.
+
 **Old**: no expiry field exists anywhere; a department purchase grants access forever unless
 the whole account is suspended/deleted.
 
