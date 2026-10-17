@@ -8,6 +8,7 @@ import {
 } from "@/components/ProtectedRoute";
 import Splash from "@/pages/Splash";
 import Privacy from "@/pages/Privacy";
+import About from "@/pages/About";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/account" element={<AccountSettings />} />
             <Route path="/payments" element={<PaymentHistory />} />
+            <Route path="/about" element={<About />} />
           </Route>
 
           <Route element={<AdminRoute />}>

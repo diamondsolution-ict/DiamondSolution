@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
 import '../main.dart';
+import 'about_screen.dart';
 import 'account_screen.dart';
 import 'activity_log_screen.dart';
 import 'affiliate_screen.dart';
@@ -70,6 +71,7 @@ class ProfileScreen extends StatelessWidget {
       _menu('Partner Program', [
         _item(Icons.card_giftcard, 'Affiliate Program', onTap: () => push(const AffiliateScreen())),
         _item(Icons.help_outline, 'Support', onTap: onOpenChats),
+        _item(Icons.menu_book_outlined, 'About & Guide', onTap: () => push(const AboutScreen())),
       ]),
       const SizedBox(height: 16),
       InkWell(

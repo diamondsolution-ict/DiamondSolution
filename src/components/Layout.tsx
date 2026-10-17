@@ -46,6 +46,7 @@ const DESKTOP_EXTRA_NAV = [
   { to: "/activity-log", labelKey: "nav.activity", icon: ListChecks },
   { to: "/affiliate", labelKey: "nav.affiliate", icon: Gift },
   { to: "/payments", labelKey: "nav.payments", icon: Receipt },
+  { to: "/about", labelKey: "nav.about", icon: BookOpen },
 ];
 
 export function Layout({ title, onBack, children, wide = false }: LayoutProps) {

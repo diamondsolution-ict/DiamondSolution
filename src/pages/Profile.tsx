@@ -7,6 +7,7 @@ import {
   UserCog,
   Gift,
   HelpCircle,
+  BookOpen,
   LogOut,
   GraduationCap,
   Phone,
@@ -105,6 +106,11 @@ export default function Profile() {
           icon={HelpCircle}
           label="Support"
           onClick={() => navigate("/chats")}
+        />
+        <MenuItem
+          icon={BookOpen}
+          label="About & Guide"
+          onClick={() => navigate("/about")}
         />
       </MenuSection>
 

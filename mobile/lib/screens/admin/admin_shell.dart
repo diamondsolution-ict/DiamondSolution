@@ -3,6 +3,7 @@ import '../../core/logo.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../main.dart';
+import '../about_screen.dart';
 import 'admin_affiliates_screen.dart';
 import 'admin_analytics_screen.dart';
 import 'admin_audit_screen.dart';
@@ -102,6 +103,10 @@ class _AdminShellState extends State<AdminShell> {
                       if (auth.isAdmin || !s.adminOnly) _navTile(s, sections),
                     const SizedBox(height: 20),
                   ],
+                _navTile(_Section('About & Guide', Icons.menu_book_outlined, () => const SizedBox(), adminOnly: false), sections, onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AboutScreen()));
+                }),
                 _navTile(_Section('User Dashboard', Icons.layers_outlined, () => const SizedBox(), adminOnly: false), sections, onTap: () {
                   Navigator.of(context).pop();
                   Navigator.of(context).pop();

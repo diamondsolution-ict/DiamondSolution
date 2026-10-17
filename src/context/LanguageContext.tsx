@@ -108,6 +108,7 @@ const translations: Record<Language, Record<string, string>> = {
     "nav.activity": "Activity",
     "nav.affiliate": "Affiliate",
     "nav.payments": "Payments",
+    "nav.about": "About & Guide",
     "layout.motivation.title": "Small steps make big progress!",
     "layout.motivation.subtitle":
       "Consistency compounds — keep your streak going.",
@@ -203,6 +204,7 @@ const translations: Record<Language, Record<string, string>> = {
     "nav.activity": "Activité",
     "nav.affiliate": "Affilié",
     "nav.payments": "Paiements",
+    "nav.about": "À propos et guide",
     "layout.motivation.title": "Les petits pas mènent loin !",
     "layout.motivation.subtitle": "La régularité paie — continuez votre série.",
     "common.signOut": "Déconnexion",

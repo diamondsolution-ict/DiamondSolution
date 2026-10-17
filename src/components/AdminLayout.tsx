@@ -18,6 +18,7 @@ import {
   MessageSquare,
   ScrollText,
   Shield,
+  BookOpen,
   Menu,
   X,
   LogOut,
@@ -43,6 +44,7 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
     items: [
       { to: "/admin/dashboard", label: "Dashboard", icon: LayoutGrid },
       { to: "/dashboard", label: "User Dashboard", icon: Layers },
+      { to: "/about", label: "About & Guide", icon: BookOpen },
       { to: "/admin/users", label: "Users", icon: Users, adminOnly: true },
       { to: "/admin/whatsapp-numbers", label: "WhatsApp Numbers", icon: MessageCircle },
       { to: "/admin/affiliates", label: "Affiliates", icon: Link2 },
