@@ -147,6 +147,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     priceDays = prices.isEmpty ? null : prices.first['access_duration_days'] as int?;
     courses = List<Map<String, dynamic>>.from(r[2]);
     levels = List<Map<String, dynamic>>.from(r[3]);
+    // No "All levels" option (same as the website): a department's courses are viewed one level at a
+    // time, starting with the first level.
+    if (levels.isNotEmpty && !levels.any((l) => l['id'] == selectedLevel)) selectedLevel = levels.first['id'] as String;
   }
 
   Future<void> _pay() async {
@@ -196,7 +199,6 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                 if (levels.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Wrap(spacing: 8, runSpacing: 8, children: [
-                    _chip('All levels', selectedLevel.isEmpty, () => setState(() => selectedLevel = '')),
                     for (final l in levels) _chip(l['label'] as String, selectedLevel == l['id'], () => setState(() => selectedLevel = l['id'] as String)),
                   ]),
                 ],
