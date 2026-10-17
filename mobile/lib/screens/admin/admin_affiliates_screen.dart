@@ -19,6 +19,7 @@ class AdminAffiliatesScreen extends StatefulWidget {
 class _AdminAffiliatesScreenState extends State<AdminAffiliatesScreen> {
   bool registry = false;
   bool loading = true;
+  String? loadError;
   List<Map<String, dynamic>> commissions = [], balances = [], affiliates = [];
   Map<String, String> usernames = {}, displayNames = {}, emails = {};
 
@@ -29,6 +30,7 @@ class _AdminAffiliatesScreenState extends State<AdminAffiliatesScreen> {
   }
 
   Future<void> _load() async {
+    try {
     final r = await Future.wait<dynamic>([
       db.from('commissions').select('id, referrer_user_id, referred_user_id, commission_amount, commission_currency, status, created_at').order('created_at', ascending: false).limit(500),
       db.from('affiliate_balances').select(),
@@ -39,12 +41,12 @@ class _AdminAffiliatesScreenState extends State<AdminAffiliatesScreen> {
     final ids = {for (final x in c) if (x['referrer_user_id'] is String) x['referrer_user_id'] as String, for (final x in a) x['user_id'] as String}.toList();
     if (ids.isNotEmpty) {
       final p = await Future.wait<dynamic>([
-        db.from('profiles').select('user_id, display_name, username').inFilter('user_id', ids),
-        db.rpc('admin_list_emails', params: {'p_user_ids': ids}),
+        selectIn('profiles', 'user_id, display_name, username', 'user_id', ids),
+        emailsFor(ids),
       ]);
       displayNames = {for (final x in p[0] as List) x['user_id'] as String: (x['display_name'] as String?) ?? 'Unnamed'};
       usernames = {for (final x in p[0] as List) x['user_id'] as String: (x['username'] as String?) ?? x['user_id'] as String};
-      emails = {for (final x in p[1] as List) x['user_id'] as String: x['email'] as String};
+      emails = p[1] as Map<String, String>;
     }
     if (!mounted) return;
     setState(() {
@@ -53,6 +55,14 @@ class _AdminAffiliatesScreenState extends State<AdminAffiliatesScreen> {
       affiliates = a;
       loading = false;
     });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loadError = "Couldn't load affiliates: $e";
+          loading = false;
+        });
+      }
+    }
   }
 
   void _export() {
@@ -87,7 +97,9 @@ class _AdminAffiliatesScreenState extends State<AdminAffiliatesScreen> {
         const SizedBox(height: 16),
         OutlinedButton.icon(onPressed: loading ? null : _export, icon: const Icon(Icons.download, size: 13), label: Text('Export', style: body(12, weight: FontWeight.w600, color: AppColors.text2))),
         const SizedBox(height: 16),
-        if (loading)
+        if (loadError != null)
+          Banner2(loadError!)
+        else if (loading)
           Text('Loading…', style: body(14, color: AppColors.text3))
         else if (!registry)
           commissions.isEmpty
