@@ -46,15 +46,13 @@ class _AdminSupportScreenState extends State<AdminSupportScreen> {
     final emails = <String, String>{};
     if (ids.isNotEmpty) {
       final r = await Future.wait<dynamic>([
-        db.from('profiles').select('user_id, display_name, device_block_started_at').inFilter('user_id', ids),
-        db.rpc('admin_list_emails', params: {'p_user_ids': ids}),
+        selectIn('profiles', 'user_id, display_name, device_block_started_at', 'user_id', ids),
+        emailsFor(ids),
       ]);
       for (final p in r[0] as List) {
         names[p['user_id'] as String] = Map<String, dynamic>.from(p as Map);
       }
-      for (final e in r[1] as List) {
-        emails[e['user_id'] as String] = e['email'] as String;
-      }
+      emails.addAll(r[1] as Map<String, String>);
     }
     if (!mounted) return;
     setState(() {

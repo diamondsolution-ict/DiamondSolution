@@ -94,6 +94,7 @@ class _AdminCoursesScreenState extends State<AdminCoursesScreen> {
                       setS(() => err = 'Pick a department and level first.');
                       return;
                     }
+                    if (c != null && status == 'archived' && c['status'] != 'archived' && !await confirmDanger(ctx, title: 'Archive this course?', message: 'Students will no longer see "${title.text.trim()}" or be able to study it until you publish it again.', confirmLabel: 'Archive')) return;
                     setS(() {
                       saving = true;
                       err = null;

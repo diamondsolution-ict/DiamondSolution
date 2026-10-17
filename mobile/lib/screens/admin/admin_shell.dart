@@ -62,9 +62,6 @@ class _AdminShellState extends State<AdminShell> {
       _Section('System Logs', Icons.receipt_long_outlined, () => const AdminAuditScreen(), adminOnly: true),
       _Section('Settings', Icons.shield_outlined, () => const AdminSettingsScreen(), adminOnly: true),
     ]),
-    ('Help', [
-      _Section('About', Icons.info_outline, () => const AboutBody()),
-    ]),
   ];
 
   void _goTo(String label) {
@@ -106,6 +103,10 @@ class _AdminShellState extends State<AdminShell> {
                       if (auth.isAdmin || !s.adminOnly) _navTile(s, sections),
                     const SizedBox(height: 20),
                   ],
+                _navTile(_Section('About & Guide', Icons.menu_book_outlined, () => const SizedBox(), adminOnly: false), sections, onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AboutScreen()));
+                }),
                 _navTile(_Section('User Dashboard', Icons.layers_outlined, () => const SizedBox(), adminOnly: false), sections, onTap: () {
                   Navigator.of(context).pop();
                   Navigator.of(context).pop();

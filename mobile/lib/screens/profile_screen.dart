@@ -67,11 +67,11 @@ class ProfileScreen extends StatelessWidget {
         _item(Icons.checklist, 'Activity Log', onTap: () => push(const ActivityLogScreen())),
         _item(Icons.receipt_long_outlined, 'Payment History', onTap: () => push(const PaymentHistoryScreen())),
         _item(Icons.manage_accounts_outlined, 'Account', onTap: () => push(const AccountScreen())),
-        _item(Icons.info_outline, 'About Diamond Solution', onTap: () => push(const AboutScreen())),
       ]),
       _menu('Partner Program', [
         _item(Icons.card_giftcard, 'Affiliate Program', onTap: () => push(const AffiliateScreen())),
         _item(Icons.help_outline, 'Support', onTap: onOpenChats),
+        _item(Icons.menu_book_outlined, 'About & Guide', onTap: () => push(const AboutScreen())),
       ]),
       const SizedBox(height: 16),
       InkWell(

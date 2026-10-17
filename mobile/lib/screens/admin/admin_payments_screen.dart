@@ -56,6 +56,7 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
   String status = 'all';
   String search = '';
   bool loading = true;
+  String? loadError;
   final recheckCtl = TextEditingController();
   bool rechecking = false;
   ({bool ok, String message})? recheckResult;
@@ -67,23 +68,31 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
   }
 
   Future<void> _load() async {
-    final rows = List<Map<String, dynamic>>.from(await db.from('payments').select(_cols).order('created_at', ascending: false).limit(500));
-    final userIds = {for (final p in rows) if (p['user_id'] is String) p['user_id'] as String}.toList();
-    final deptIds = {for (final p in rows) if (p['department_id'] is String) p['department_id'] as String}.toList();
-    final r = await Future.wait<dynamic>([
-      userIds.isEmpty ? Future.value([]) : db.from('profiles').select('user_id, display_name, phone').inFilter('user_id', userIds),
-      userIds.isEmpty ? Future.value([]) : db.rpc('admin_list_emails', params: {'p_user_ids': userIds}),
-      deptIds.isEmpty ? Future.value([]) : db.from('departments').select('id, name').inFilter('id', deptIds),
-    ]);
-    if (!mounted) return;
-    setState(() {
-      payments = rows;
-      names = {for (final p in r[0] as List) p['user_id'] as String: (p['display_name'] as String?) ?? 'Unnamed'};
-      phones = {for (final p in r[0] as List) p['user_id'] as String: (p['phone'] as String?) ?? ''};
-      emails = {for (final e in r[1] as List) e['user_id'] as String: e['email'] as String};
-      depts = {for (final d in r[2] as List) d['id'] as String: d['name'] as String};
-      loading = false;
-    });
+    try {
+      final rows = List<Map<String, dynamic>>.from(await db.from('payments').select(_cols).order('created_at', ascending: false).limit(500));
+      final userIds = {for (final p in rows) if (p['user_id'] is String) p['user_id'] as String};
+      final r = await Future.wait<dynamic>([
+        selectIn('profiles', 'user_id, display_name, phone', 'user_id', userIds),
+        emailsFor(userIds),
+        db.from('departments').select('id, name'),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        payments = rows;
+        names = {for (final p in r[0] as List) p['user_id'] as String: (p['display_name'] as String?) ?? 'Unnamed'};
+        phones = {for (final p in r[0] as List) p['user_id'] as String: (p['phone'] as String?) ?? ''};
+        emails = r[1] as Map<String, String>;
+        depts = {for (final d in r[2] as List) d['id'] as String: '${d['name']}'};
+        loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loadError = "Couldn't load payments: $e";
+          loading = false;
+        });
+      }
+    }
   }
 
   Future<({bool ok, String message})> _recheck(String reference) async {
@@ -173,7 +182,9 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
       const SizedBox(height: 12),
       TextField(onChanged: (v) => setState(() => search = v), decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 16), hintText: 'Search reference, payer, email, department…')),
       const SizedBox(height: 16),
-      if (loading)
+      if (loadError != null)
+        Banner2(loadError!)
+      else if (loading)
         Text('Loading…', style: body(14, color: AppColors.text3))
       else if (f.isEmpty)
         const EmptyCard(icon: Icons.inbox_outlined, message: 'No transactions match.')

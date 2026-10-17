@@ -8,6 +8,7 @@ import {
 } from "@/components/ProtectedRoute";
 import Splash from "@/pages/Splash";
 import Privacy from "@/pages/Privacy";
+import About from "@/pages/About";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -25,7 +26,6 @@ import PaymentHistory from "@/pages/PaymentHistory";
 import Reactivation from "@/pages/Reactivation";
 import DeviceLocked from "@/pages/DeviceLocked";
 import Chat from "@/pages/Chat";
-import About from "@/pages/About";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminAffiliates from "@/pages/admin/AdminAffiliates";

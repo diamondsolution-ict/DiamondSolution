@@ -60,6 +60,9 @@ class _StudyScreenState extends State<StudyScreen> {
   int secondsLeft = objectiveSeconds;
   Timer? timer;
   DateTime questionStart = DateTime.now();
+  // Set when an answer is submitted; the time from then until the student leaves the question
+  // (reading the explanation) is reported separately, like the website's flushReadingTime().
+  DateTime? submittedAt;
 
   _Question get q => questions[index];
   int get totalCorrect => results.values.where((r) => r == 'correct' || r == 'applied').length;
@@ -74,6 +77,7 @@ class _StudyScreenState extends State<StudyScreen> {
   @override
   void dispose() {
     timer?.cancel();
+    _flushReadingTime();
     super.dispose();
   }
 
@@ -190,6 +194,7 @@ class _StudyScreenState extends State<StudyScreen> {
 
     setState(() {
       submitted = true;
+      submittedAt = DateTime.now();
       results[question.id] = result;
       pickedByQuestion[question.id] = selected;
     });
@@ -213,7 +218,21 @@ class _StudyScreenState extends State<StudyScreen> {
     }
   }
 
+  /// Adds the time spent on a question AFTER submitting (reading the explanation / expected answer)
+  /// to today's study time. Without this only the seconds up to the Submit tap were counted, so a
+  /// 30-minute session showed as a few minutes. Fire-and-forget; capped so a phone left open on an
+  /// explanation doesn't record hours.
+  void _flushReadingTime() {
+    final start = submittedAt;
+    if (start == null) return;
+    submittedAt = null;
+    final elapsed = DateTime.now().difference(start).inSeconds.clamp(0, 900);
+    if (elapsed <= 0) return;
+    db.rpc('add_study_duration', params: {'p_seconds': elapsed, 'p_practice_date': isoDate(DateTime.now())}).then((_) {}, onError: (Object e) => debugPrint('add_study_duration failed: $e'));
+  }
+
   void _goTo(int i) {
+    _flushReadingTime();
     final target = questions[i];
     final answered = results.containsKey(target.id);
     setState(() {
@@ -230,6 +249,7 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   void _next() {
+    _flushReadingTime();
     final isLast = index == questions.length - 1;
     final section = activeSection;
     final reachedSectionEnd = section != null && index + 1 == section.end;

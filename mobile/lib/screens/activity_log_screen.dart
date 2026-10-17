@@ -135,7 +135,7 @@ class _AttemptCard extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${((q?['courses'] as Map?)?['title'] ?? '')} · $when'.toUpperCase(), style: body(12, weight: FontWeight.w600, color: AppColors.text3, letterSpacing: 0.5)),
                 const SizedBox(height: 4),
-                Text((q?['prompt'] ?? '') as String, maxLines: 2, overflow: TextOverflow.ellipsis, style: body(14)),
+                Text((q?['prompt'] ?? '') as String, style: body(14)),
               ]),
             ),
             const SizedBox(width: 12),

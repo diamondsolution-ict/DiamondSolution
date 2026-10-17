@@ -18,7 +18,7 @@ import {
   MessageSquare,
   ScrollText,
   Shield,
-  Info,
+  BookOpen,
   Menu,
   X,
   LogOut,
@@ -44,6 +44,7 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
     items: [
       { to: "/admin/dashboard", label: "Dashboard", icon: LayoutGrid },
       { to: "/dashboard", label: "User Dashboard", icon: Layers },
+      { to: "/about", label: "About & Guide", icon: BookOpen },
       { to: "/admin/users", label: "Users", icon: Users, adminOnly: true },
       { to: "/admin/whatsapp-numbers", label: "WhatsApp Numbers", icon: MessageCircle },
       { to: "/admin/affiliates", label: "Affiliates", icon: Link2 },
@@ -69,10 +70,6 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
       { to: "/admin/audit-log", label: "System Logs", icon: ScrollText, adminOnly: true },
       { to: "/admin/settings", label: "Settings", icon: Shield, adminOnly: true },
     ],
-  },
-  {
-    heading: "Help",
-    items: [{ to: "/about", label: "About", icon: Info }],
   },
 ];
 

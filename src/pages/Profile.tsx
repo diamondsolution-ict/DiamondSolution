@@ -7,7 +7,7 @@ import {
   UserCog,
   Gift,
   HelpCircle,
-  Info,
+  BookOpen,
   LogOut,
   GraduationCap,
   Phone,
@@ -94,11 +94,6 @@ export default function Profile() {
           label="Account"
           onClick={() => navigate("/account")}
         />
-        <MenuItem
-          icon={Info}
-          label="About Diamond Solution"
-          onClick={() => navigate("/about")}
-        />
       </MenuSection>
 
       <MenuSection title="Partner Program">
@@ -111,6 +106,11 @@ export default function Profile() {
           icon={HelpCircle}
           label="Support"
           onClick={() => navigate("/chats")}
+        />
+        <MenuItem
+          icon={BookOpen}
+          label="About & Guide"
+          onClick={() => navigate("/about")}
         />
       </MenuSection>
 
