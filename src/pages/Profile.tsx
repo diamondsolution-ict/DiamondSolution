@@ -7,6 +7,7 @@ import {
   UserCog,
   Gift,
   HelpCircle,
+  Info,
   LogOut,
   GraduationCap,
   Phone,
@@ -92,6 +93,11 @@ export default function Profile() {
           icon={UserCog}
           label="Account"
           onClick={() => navigate("/account")}
+        />
+        <MenuItem
+          icon={Info}
+          label="About Diamond Solution"
+          onClick={() => navigate("/about")}
         />
       </MenuSection>
 

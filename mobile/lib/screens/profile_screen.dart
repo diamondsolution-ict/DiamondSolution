@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
 import '../main.dart';
+import 'about_screen.dart';
 import 'account_screen.dart';
 import 'activity_log_screen.dart';
 import 'affiliate_screen.dart';
@@ -66,6 +67,7 @@ class ProfileScreen extends StatelessWidget {
         _item(Icons.checklist, 'Activity Log', onTap: () => push(const ActivityLogScreen())),
         _item(Icons.receipt_long_outlined, 'Payment History', onTap: () => push(const PaymentHistoryScreen())),
         _item(Icons.manage_accounts_outlined, 'Account', onTap: () => push(const AccountScreen())),
+        _item(Icons.info_outline, 'About Diamond Solution', onTap: () => push(const AboutScreen())),
       ]),
       _menu('Partner Program', [
         _item(Icons.card_giftcard, 'Affiliate Program', onTap: () => push(const AffiliateScreen())),

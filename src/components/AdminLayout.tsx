@@ -18,6 +18,7 @@ import {
   MessageSquare,
   ScrollText,
   Shield,
+  Info,
   Menu,
   X,
   LogOut,
@@ -68,6 +69,10 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
       { to: "/admin/audit-log", label: "System Logs", icon: ScrollText, adminOnly: true },
       { to: "/admin/settings", label: "Settings", icon: Shield, adminOnly: true },
     ],
+  },
+  {
+    heading: "Help",
+    items: [{ to: "/about", label: "About", icon: Info }],
   },
 ];
 

@@ -3,6 +3,7 @@ import '../../core/logo.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../main.dart';
+import '../about_screen.dart';
 import 'admin_affiliates_screen.dart';
 import 'admin_analytics_screen.dart';
 import 'admin_audit_screen.dart';
@@ -60,6 +61,9 @@ class _AdminShellState extends State<AdminShell> {
       _Section('Support', Icons.chat_outlined, () => const AdminSupportScreen()),
       _Section('System Logs', Icons.receipt_long_outlined, () => const AdminAuditScreen(), adminOnly: true),
       _Section('Settings', Icons.shield_outlined, () => const AdminSettingsScreen(), adminOnly: true),
+    ]),
+    ('Help', [
+      _Section('About', Icons.info_outline, () => const AboutBody()),
     ]),
   ];
 

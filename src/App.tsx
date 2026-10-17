@@ -25,6 +25,7 @@ import PaymentHistory from "@/pages/PaymentHistory";
 import Reactivation from "@/pages/Reactivation";
 import DeviceLocked from "@/pages/DeviceLocked";
 import Chat from "@/pages/Chat";
+import About from "@/pages/About";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminAffiliates from "@/pages/admin/AdminAffiliates";
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/account" element={<AccountSettings />} />
             <Route path="/payments" element={<PaymentHistory />} />
+            <Route path="/about" element={<About />} />
           </Route>
 
           <Route element={<AdminRoute />}>
