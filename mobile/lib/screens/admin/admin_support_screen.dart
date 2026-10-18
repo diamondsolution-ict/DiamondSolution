@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/friendly_error.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
@@ -126,7 +127,7 @@ class _AdminSupportScreenState extends State<AdminSupportScreen> {
       await db.rpc('admin_unlock_device', params: {'p_user_id': userId});
       setState(() => threads = [for (final t in threads) t['user_id'] == userId ? {...t, 'device_block_started_at': null} : t]);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unlock failed: ${e is PostgrestException ? e.message : e}')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unlock failed: ${friendlyError(e)}')));
     }
     if (mounted) setState(() => unlocking = false);
   }

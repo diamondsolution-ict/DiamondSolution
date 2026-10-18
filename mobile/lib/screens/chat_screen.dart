@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/friendly_error.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/supabase.dart';
 import '../core/theme.dart';
@@ -62,7 +63,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() {
           loadError = true;
-          loadErrorMessage = e is PostgrestException ? e.message : 'Something went wrong — check your connection and try again.';
+          loadErrorMessage = friendlyError(e);
           loading = false;
         });
       }
@@ -116,7 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _subscribe();
       }
     } catch (e) {
-      error = e is PostgrestException ? e.message : '$e';
+      error = friendlyError(e);
       draft.text = text;
     }
     if (mounted) setState(() => sending = false);

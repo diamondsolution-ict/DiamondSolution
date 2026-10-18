@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
@@ -50,7 +51,7 @@ export default function AdminLogin() {
 
     setSubmitting(false);
     if (signInError) {
-      setError(signInError.message);
+      setError(friendlyError(signInError));
       return;
     }
     setAwaitingRoleCheck(true);

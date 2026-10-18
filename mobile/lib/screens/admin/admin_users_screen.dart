@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import '../../core/friendly_error.dart';
 import '../../core/csv.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
@@ -95,7 +95,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       info = 'Account unlocked.';
       await _load();
     } catch (e) {
-      error = 'Unlock failed: ${e is PostgrestException ? e.message : e}';
+      error = 'Unlock failed: ${friendlyError(e)}';
     }
     if (mounted) setState(() => busyId = null);
   }

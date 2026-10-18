@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useState, type FormEvent } from "react";
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
@@ -44,7 +45,7 @@ export default function AdminQuotes() {
     });
     setSaving(false);
     if (insertError) {
-      setError(insertError.message);
+      setError(friendlyError(insertError));
       return;
     }
     setText("");

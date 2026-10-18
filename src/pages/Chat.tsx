@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -156,7 +157,7 @@ export default function Chat() {
       { p_body: body },
     );
     if (sendError) {
-      setError(sendError.message);
+      setError(friendlyError(sendError));
       setDraft(body);
     } else if (!threadId && newThreadId) {
       setThreadId(newThreadId);

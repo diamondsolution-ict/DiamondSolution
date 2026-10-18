@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   Facebook,
@@ -165,7 +166,7 @@ export default function AdminSettings() {
     setSaving(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(friendlyError(updateError));
       return;
     }
     setInfo("Settings saved.");

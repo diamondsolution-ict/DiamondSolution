@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useId, useRef, useState } from "react";
 import { ImageIcon, Upload, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -70,7 +71,7 @@ export function ImageUpload({
         .upload(path, file, { upsert: true, contentType });
 
       if (uploadError) {
-        setError(uploadError.message);
+        setError(friendlyError(uploadError));
         return;
       }
       onUploaded(path);

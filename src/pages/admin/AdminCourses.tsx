@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -211,7 +212,7 @@ export default function AdminCourses() {
         .eq("id", editingId);
       setSaving(false);
       if (updateError) {
-        setError(updateError.message);
+        setError(friendlyError(updateError));
         return;
       }
       resetForm();
@@ -231,7 +232,7 @@ export default function AdminCourses() {
 
     setSaving(false);
     if (insertError) {
-      setError(insertError.message);
+      setError(friendlyError(insertError));
       return;
     }
     resetForm();

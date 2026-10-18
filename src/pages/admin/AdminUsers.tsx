@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { MessageCircle, Unlock } from "lucide-react";
@@ -137,7 +138,7 @@ export default function AdminUsers() {
     });
     setBusyId(null);
     if (rpcError) {
-      setError(rpcError.message);
+      setError(friendlyError(rpcError));
       return;
     }
     setInfo("Affiliate partner approved.");

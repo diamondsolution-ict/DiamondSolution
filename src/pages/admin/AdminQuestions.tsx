@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import {
   useEffect,
   useMemo,
@@ -341,7 +342,7 @@ export default function AdminQuestions() {
         .eq("id", questionId);
       if (qError) {
         setSaving(false);
-        setError(qError.message);
+        setError(friendlyError(qError));
         return;
       }
       // Options are replaced wholesale rather than diffed — simpler and matches how creation
