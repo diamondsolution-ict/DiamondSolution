@@ -4,6 +4,7 @@ import '../core/supabase.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
 import '../main.dart';
+import 'admin/admin_common.dart' show fmtDate;
 import 'checkout_screen.dart';
 import 'course_detail_screen.dart';
 
@@ -121,6 +122,18 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   List<Map<String, dynamic>> levels = [];
   String selectedLevel = '';
   bool paying = false;
+  // The student's latest instalment plan for this department, only while it isn't fully paid.
+  Map<String, dynamic>? plan;
+
+  num get _firstInstalment => price == null ? 0 : (price! / 3).floor();
+  int get _paidCount => (plan?['installments_paid'] as num?)?.toInt() ?? 0;
+  // Instalments 1 and 2 are the floor of price/3; the 3rd absorbs the remainder (same split the server uses).
+  num get _nextInstalment {
+    final p = plan;
+    if (p == null) return _firstInstalment;
+    final each = num.parse('${p['installment_amount']}');
+    return _paidCount == 2 ? num.parse('${p['total_amount']}') - 2 * each : each;
+  }
 
   Future<void> _load() async {
     final uid = db.auth.currentUser!.id;
@@ -138,6 +151,14 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
           .limit(1),
       db.from('courses').select('id, title, level_id').eq('department_id', widget.departmentId).eq('status', 'published').filter('deleted_at', 'is', null).order('title', ascending: true),
       db.from('department_levels').select('id, label, sort_order').eq('department_id', widget.departmentId).order('sort_order', ascending: true),
+      db
+          .from('department_payment_plans')
+          .select('installments_paid, total_amount, installment_amount, next_due_at')
+          .eq('user_id', uid)
+          .eq('department_id', widget.departmentId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle(),
     ]);
     final grant = r[0] as Map<String, dynamic>?;
     hasAccess = isAdmin || isGrantActive(grant);
@@ -147,25 +168,45 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     priceDays = prices.isEmpty ? null : prices.first['access_duration_days'] as int?;
     courses = List<Map<String, dynamic>>.from(r[2]);
     levels = List<Map<String, dynamic>>.from(r[3]);
+    final p = r[4] as Map<String, dynamic>?;
+    plan = p != null && (p['installments_paid'] as num) < 3 ? p : null;
     // No "All levels" option (same as the website): a department's courses are viewed one level at a
     // time, starting with the first level.
     if (levels.isNotEmpty && !levels.any((l) => l['id'] == selectedLevel)) selectedLevel = levels.first['id'] as String;
   }
 
-  Future<void> _pay() async {
+  Future<void> _pay({bool installment = false}) async {
     setState(() => paying = true);
-    final ok = await startDepartmentCheckout(context, widget.departmentId);
+    final ok = await startDepartmentCheckout(context, widget.departmentId, installment: installment);
     if (!mounted) return;
     setState(() => paying = false);
     if (ok == true) {
-      // Mirrors what the server just granted (processDepartmentAccessPayment).
-      setState(() {
-        hasAccess = true;
-        grantExpiresAt = priceDays == null || priceDays == 0 ? null : DateTime.now().add(Duration(days: priceDays!)).toUtc().toIso8601String();
-      });
+      // Reload instead of guessing: instalments, 30-day windows and plan completion all change the
+      // expiry, and the server's own grant is the only thing worth trusting.
+      setState(() => loaded = _load());
     } else if (ok == false) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment was not completed.')));
     }
+  }
+
+  Widget _planBanner() {
+    final due = DateTime.tryParse('${plan?['next_due_at']}')?.toLocal();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: CardLuxury(
+        padding: const EdgeInsets.all(14),
+        child: Row(children: [
+          const Icon(Icons.schedule, size: 16, color: AppColors.goldDark),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text('Instalment $_paidCount of 3 paid — instalment ${_paidCount + 1} of 3 (₦${_commas(_nextInstalment)}) due by ${due == null ? '—' : fmtDate(due.toIso8601String())}.',
+                style: body(12, weight: FontWeight.w600, color: AppColors.text2)),
+          ),
+          const SizedBox(width: 8),
+          TextButton(onPressed: paying ? null : () => _pay(), child: Text(paying ? '…' : 'Pay now')),
+        ]),
+      ),
+    );
   }
 
   String _levelLabel(String id) => levels.where((l) => l['id'] == id).map((l) => l['label'] as String).firstOrNull ?? '';
@@ -184,6 +225,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
               if (courses.isEmpty)
                 const EmptyCard(icon: Icons.menu_book_outlined, message: 'No courses in this department yet.')
               else ...[
+                if (plan != null) _planBanner(),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
@@ -247,14 +289,32 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
               child: const Icon(Icons.lock_outline, size: 22, color: AppColors.gold),
             ),
             const SizedBox(height: 16),
-            Text('Restricted', style: heading(18)),
+            Text(plan != null ? 'Access locked' : 'Restricted', style: heading(18)),
             const SizedBox(height: 8),
-            Text(describePaywall(priceDays, widget.name), textAlign: TextAlign.center, style: body(14, color: AppColors.text3)),
-            const SizedBox(height: 24),
-            BtnPrimary(
-              label: paying ? 'Confirming…' : 'Authorize payment — ${price == null ? '—' : '₦${_commas(price!)}'}${describePriceTerm(priceDays)}',
-              onPressed: paying || price == null ? null : _pay,
-            ),
+            if (plan != null) ...[
+              Text("Instalment $_paidCount of 3 is paid, but instalment ${_paidCount + 1} of 3 wasn't paid in time, so access to ${widget.name} is locked. Pay it now to restore access immediately — no penalty, no waiting.",
+                  textAlign: TextAlign.center, style: body(14, color: AppColors.text3)),
+              const SizedBox(height: 24),
+              BtnPrimary(
+                label: paying ? 'Confirming…' : 'Pay instalment ${_paidCount + 1} of 3 — ₦${_commas(_nextInstalment)}',
+                onPressed: paying ? null : () => _pay(),
+              ),
+            ] else ...[
+              Text(describePaywall(priceDays, widget.name), textAlign: TextAlign.center, style: body(14, color: AppColors.text3)),
+              const SizedBox(height: 24),
+              BtnPrimary(
+                label: paying ? 'Confirming…' : 'Pay in full — ${price == null ? '—' : '₦${_commas(price!)}'}${describePriceTerm(priceDays)}',
+                onPressed: paying || price == null ? null : () => _pay(),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                onPressed: paying || price == null ? null : () => _pay(installment: true),
+                child: FittedBox(fit: BoxFit.scaleDown, child: Text(paying ? 'Confirming…' : 'Or pay in 3 instalments — ₦${_commas(_firstInstalment)} now')),
+              ),
+              const SizedBox(height: 8),
+              Text('1st instalment unlocks every course immediately. 2nd due in 30 days, 3rd due 30 days after that.', textAlign: TextAlign.center, style: body(12, color: AppColors.text3)),
+            ],
             if (AuthScope.of(context).profile?['currency'] == 'USD') ...[const SizedBox(height: 8), Text('Charged in NGN via Paystack.', style: body(12, color: AppColors.text3))],
           ]),
         ),

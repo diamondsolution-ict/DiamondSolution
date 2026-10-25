@@ -23,6 +23,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   String statusFilter = 'all';
   bool loading = true;
   String? busyId, error, info;
+  List<Map<String, dynamic>> departments = [];
+  // user_id -> department_ids exempted by an admin (granted_via_payment_id null = never paid for).
+  Map<String, Set<String>> exempt = {};
 
   @override
   void initState() {
@@ -40,7 +43,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           emailsFor(ids),
           db.from('user_roles').select('user_id, role'),
           db.from('affiliate_profiles').select('user_id, status'),
+          db.from('departments').select('id, name').eq('status', 'active').order('name', ascending: true),
+          selectIn('access_grants', 'user_id, department_id, granted_via_payment_id', 'user_id', ids),
         ]);
+        departments = List<Map<String, dynamic>>.from(r[3] as List);
+        exempt = {};
+        for (final g in r[4] as List) {
+          if (g['granted_via_payment_id'] == null) (exempt[g['user_id'] as String] ??= {}).add(g['department_id'] as String);
+        }
         emails = r[0] as Map<String, String>;
         roles = {for (final e in r[1] as List) if (e['user_id'] is String) e['user_id'] as String: '${e['role']}'};
         affiliate = {for (final e in r[2] as List) if (e['user_id'] is String) e['user_id'] as String: '${e['status']}'};
@@ -83,6 +93,72 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       error = '$e';
     }
     if (mounted) setState(() => busyId = null);
+  }
+
+  Future<void> _grantAccess(String userId, String deptId) async {
+    setState(() {
+      busyId = userId;
+      error = null;
+    });
+    try {
+      await db.rpc('admin_grant_department_access', params: {'p_user_id': userId, 'p_department_id': deptId});
+      (exempt[userId] ??= {}).add(deptId);
+    } catch (e) {
+      error = 'Grant failed: ${friendlyError(e)}';
+    }
+    if (mounted) setState(() => busyId = null);
+  }
+
+  Future<void> _revokeAccess(String userId, String deptId, String deptName) async {
+    final ok = await confirmDanger(context, title: 'Remove free access?', message: "Remove $deptName's free access for this student? They'll need to pay for it again to get it back.", confirmLabel: 'Remove');
+    if (ok != true || !mounted) return;
+    setState(() {
+      busyId = userId;
+      error = null;
+    });
+    try {
+      await db.rpc('admin_revoke_department_access', params: {'p_user_id': userId, 'p_department_id': deptId});
+      exempt[userId]?.remove(deptId);
+    } catch (e) {
+      error = "Couldn't remove access: ${friendlyError(e)}";
+    }
+    if (mounted) setState(() => busyId = null);
+  }
+
+  Widget _freeAccess(String id, bool busy) {
+    final mine = exempt[id] ?? {};
+    final grantable = departments.where((d) => !mine.contains(d['id'])).toList();
+    String nameOf(String deptId) => departments.where((d) => d['id'] == deptId).map((d) => d['name'] as String).firstOrNull ?? 'Department';
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('FREE ACCESS', style: body(10, weight: FontWeight.w700, color: AppColors.text3, letterSpacing: 0.5)),
+      const SizedBox(height: 6),
+      Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        for (final d in mine)
+          Container(
+            padding: const EdgeInsets.only(left: 10, top: 2, bottom: 2, right: 2),
+            decoration: BoxDecoration(color: AppColors.royalSoft, borderRadius: BorderRadius.circular(99)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Flexible(child: Text(nameOf(d), overflow: TextOverflow.ellipsis, style: body(12, weight: FontWeight.w700, color: AppColors.royal))),
+              InkWell(
+                onTap: busy ? null : () => _revokeAccess(id, d, nameOf(d)),
+                customBorder: const CircleBorder(),
+                child: const Padding(padding: EdgeInsets.all(5), child: Icon(Icons.close, size: 14, color: AppColors.royal)),
+              ),
+            ]),
+          ),
+        if (grantable.isNotEmpty)
+          PopupMenuButton<String>(
+            enabled: !busy,
+            onSelected: (v) => _grantAccess(id, v),
+            itemBuilder: (_) => [for (final d in grantable) PopupMenuItem(value: d['id'] as String, child: Text(d['name'] as String))],
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(99)),
+              child: Text('+ Grant free access', style: body(12, weight: FontWeight.w600, color: AppColors.text2)),
+            ),
+          ),
+      ]),
+    ]);
   }
 
   Future<void> _unlockDevice(String userId) async {
@@ -308,6 +384,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             if (partner) const Badge2('Partner') else small('Approve Partner', AppColors.royal, AppColors.royalSoft, AppColors.royalBorder, busy ? null : () => _approvePartner(id)),
           ]),
           const SizedBox(height: 12),
+          if (AuthScope.of(context).isAdmin) ...[_freeAccess(id, busy), const SizedBox(height: 12)],
           Wrap(spacing: 8, runSpacing: 8, children: [
             if (suspended)
               small('Unsuspend', AppColors.royal, AppColors.royalSoft, AppColors.royalBorder, isSelf || busy ? null : () => _run('unsuspend', id, title: 'Restore this account.'))

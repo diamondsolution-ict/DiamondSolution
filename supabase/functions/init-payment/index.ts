@@ -29,7 +29,8 @@ Deno.serve(async (req) => {
 
   try {
     const user = await verifyUser(req);
-    const { purpose = "department_access", department_id } = await req.json();
+    const { purpose = "department_access", department_id, installment = false } =
+      await req.json();
     if (!user.email) throw new HttpError(400, "Your account has no email address.");
 
     const db = serviceClient();
@@ -64,8 +65,32 @@ Deno.serve(async (req) => {
       if (!priceRow) {
         throw new HttpError(400, "No price configured for this department.");
       }
-      amountNaira = Number(priceRow.amount);
-      reference = `dept_${department_id}_${user.id}_${Date.now()}`;
+      // Same pay-once vs pay-in-3 rules processDepartmentAccessPayment() enforces after payment:
+      // a plan already in progress can only be continued with its own next instalment (locked
+      // to the price when it started); otherwise `installment: true` starts a new plan at
+      // floor(price / 3) and anything else is the full price.
+      const { data: latestPlan } = await db
+        .from("department_payment_plans")
+        .select("total_amount, installment_amount, installments_paid")
+        .eq("user_id", user.id)
+        .eq("department_id", department_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestPlan && latestPlan.installments_paid < 3) {
+        const next = latestPlan.installments_paid + 1;
+        amountNaira =
+          next === 3
+            ? Number(latestPlan.total_amount) - 2 * Number(latestPlan.installment_amount)
+            : Number(latestPlan.installment_amount);
+        reference = `dept_inst_${department_id}_${user.id}_${Date.now()}`;
+      } else if (installment === true) {
+        amountNaira = Math.floor(Number(priceRow.amount) / 3);
+        reference = `dept_inst_${department_id}_${user.id}_${Date.now()}`;
+      } else {
+        amountNaira = Number(priceRow.amount);
+        reference = `dept_full_${department_id}_${user.id}_${Date.now()}`;
+      }
       metadata.department_id = department_id;
     } else if (purpose === "device_unlock") {
       // Same rules processDeviceUnlockPayment() enforces after payment — checked here first so

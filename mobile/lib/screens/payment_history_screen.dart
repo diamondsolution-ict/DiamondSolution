@@ -15,7 +15,7 @@ const _purposeLabel = {
 
 String _n(num v) => NumberFormat('#,##0.###').format(v);
 
-const _selectCols = 'id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, departments ( name ), access_grants ( expires_at )';
+const _selectCols = 'id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, installment_number, departments ( name ), access_grants ( expires_at )';
 
 String? _accessSummary(Map<String, dynamic> p) {
   if (p['purpose'] != 'department_access' || p['status'] != 'success') return null;
@@ -114,7 +114,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text((p['departments'] as Map?)?['name'] as String? ?? _purposeLabel[p['purpose']] ?? '', style: body(14, weight: FontWeight.w600)),
                       const SizedBox(height: 2),
-                      Text('${_purposeLabel[p['purpose']] ?? p['purpose']} · ${DateFormat('MMM d, yyyy · HH:mm').format(DateTime.parse(p['created_at'] as String).toLocal())} · ${p['provider']}', style: body(12, color: AppColors.text3)),
+                      Text('${p['installment_number'] != null ? 'Instalment ${p['installment_number']} of 3' : (_purposeLabel[p['purpose']] ?? p['purpose'])} · ${DateFormat('MMM d, yyyy · HH:mm').format(DateTime.parse(p['created_at'] as String).toLocal())} · ${p['provider']}', style: body(12, color: AppColors.text3)),
                       if (_accessSummary(p) != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text(_accessSummary(p)!, style: body(12, weight: FontWeight.w500, color: AppColors.royal))),
                     ]),
                   ),
@@ -228,7 +228,7 @@ class _DetailDialogState extends State<_DetailDialog> {
               const SizedBox(height: 16),
               Wrap(spacing: 16, runSpacing: 12, children: [
                 SizedBox(width: 150, child: _kv('Amount', Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${_n(p['amount'] as num)} ${p['currency']}', style: body(14, weight: FontWeight.w700)), const SizedBox(height: 4), _StatusBadge(p['status'] as String)]))),
-                SizedBox(width: 150, child: _kv('What for', Text(_purposeLabel[p['purpose']] ?? '${p['purpose']}', style: body(14)))),
+                SizedBox(width: 150, child: _kv('What for', Text('${_purposeLabel[p['purpose']] ?? p['purpose']}${p['installment_number'] != null ? ' — instalment ${p['installment_number']} of 3' : ''}', style: body(14)))),
                 if (dept != null) SizedBox(width: 150, child: _kv('Department', Text(dept, style: body(14)))),
                 SizedBox(width: 150, child: _kv('Provider', Text('${p['provider']}'[0].toUpperCase() + '${p['provider']}'.substring(1), style: body(14)))),
                 SizedBox(width: 150, child: _kv('Created', Text(fmt.format(DateTime.parse(p['created_at'] as String).toLocal()), style: body(14)))),

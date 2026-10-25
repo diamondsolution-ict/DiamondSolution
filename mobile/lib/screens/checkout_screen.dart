@@ -4,16 +4,16 @@ import '../core/supabase.dart';
 
 /// Result of a checkout: true = verified and access granted, false = failed,
 /// null = closed without finishing or never started.
-Future<bool?> startDepartmentCheckout(BuildContext context, String departmentId) =>
-    startCheckout(context, purpose: 'department_access', departmentId: departmentId);
+Future<bool?> startDepartmentCheckout(BuildContext context, String departmentId, {bool installment = false}) =>
+    startCheckout(context, purpose: 'department_access', departmentId: departmentId, installment: installment);
 
 /// [purpose]: department_access | device_unlock | suspension_reactivation. The amount is always
 /// decided server-side (init-payment); nothing here can change what is charged.
 Future<bool?> startCheckout(BuildContext context,
-    {required String purpose, String? departmentId}) async {
+    {required String purpose, String? departmentId, bool installment = false}) async {
   try {
     final res = await db.functions.invoke('init-payment',
-        body: {'purpose': purpose, if (departmentId != null) 'department_id': departmentId});
+        body: {'purpose': purpose, if (departmentId != null) 'department_id': departmentId, if (installment) 'installment': true});
     final data = res.data as Map;
     if (data['success'] != true) throw data['error'] ?? 'Could not start checkout.';
     if (!context.mounted) return null;
