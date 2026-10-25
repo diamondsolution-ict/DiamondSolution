@@ -103,6 +103,14 @@ export const GUIDE_AUDIENCES: GuideAudience[] = [
             "body": "Open a department, tap the payment button and finish on the Paystack page. Access unlocks automatically; if it ever doesn't, open Payments (in your profile) or message Support with your payment reference."
           },
           {
+            "heading": "Pay in 3 instalments",
+            "body": "Don't want to pay the full fee at once? Choose 'Pay in 3 instalments': pay one third now and the whole department unlocks immediately. The 2nd third is due within 30 days and the 3rd within 30 days after that. The price is never higher — it's just split into three equal parts. Miss a due date and access locks until you pay that instalment; pay it late and access comes back straight away, with no penalty. Your Payment History shows which instalment each payment was."
+          },
+          {
+            "heading": "Free access",
+            "body": "Occasionally the team may give you free access to a department. It shows as normal access with no payment attached. If it is ever removed you can pay to unlock the department as usual."
+          },
+          {
             "heading": "Levels and courses",
             "body": "Inside a department, pick a level (for example 200L) to see its courses. Each course shows its questions, an outline of sections, and your progress."
           },
@@ -228,7 +236,7 @@ export const GUIDE_AUDIENCES: GuideAudience[] = [
           },
           {
             "heading": "Payments",
-            "body": "The full transaction ledger with search and status filters. Open a payment to see the payer, amount, gateway details and their other payments and withdrawals."
+            "body": "The full transaction ledger with search and status filters. Open a payment to see the payer, amount, gateway details and their other payments and withdrawals. A payment for 'Instalment 1, 2 or 3 of 3' means the student chose to pay a department in three parts; access locks automatically if a due date is missed and returns the moment they pay it."
           },
           {
             "heading": "Notifications",
@@ -320,7 +328,7 @@ export const GUIDE_AUDIENCES: GuideAudience[] = [
         "items": [
           {
             "heading": "Users",
-            "body": "Search every account. Change a role (student, moderator, admin), approve a person as an affiliate partner, suspend or restore an account (with a reason shown to them), add a user, export the directory, or delete an account. You can't act on your own account."
+            "body": "Search every account. Change a role (student, moderator, admin), approve a person as an affiliate partner, suspend or restore an account (with a reason shown to them), add a user, export the directory, or delete an account. You can't act on your own account. Each user card also has a Free Access section: grant any student free access to a department with no payment, or remove it again with the × on its chip (admins only). Granting never overwrites access a student really paid for, and removing refuses if they have since paid."
           },
           {
             "heading": "Withdrawals",

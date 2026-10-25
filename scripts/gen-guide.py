@@ -38,6 +38,8 @@ GUIDE = {
         {"title": "Departments, courses and access", "items": [
           ["Yearly access", "Each department is unlocked with a yearly fee, paid securely through Paystack (card, bank, transfer). Access lasts one year from payment — renew before it ends and the new year is added on top of the time you have left."],
           ["Paying", "Open a department, tap the payment button and finish on the Paystack page. Access unlocks automatically; if it ever doesn't, open Payments (in your profile) or message Support with your payment reference."],
+          ["Pay in 3 instalments", "Don't want to pay the full fee at once? Choose 'Pay in 3 instalments': pay one third now and the whole department unlocks immediately. The 2nd third is due within 30 days and the 3rd within 30 days after that. The price is never higher — it's just split into three equal parts. Miss a due date and access locks until you pay that instalment; pay it late and access comes back straight away, with no penalty. Your Payment History shows which instalment each payment was."],
+          ["Free access", "Occasionally the team may give you free access to a department. It shows as normal access with no payment attached. If it is ever removed you can pay to unlock the department as usual."],
           ["Levels and courses", "Inside a department, pick a level (for example 200L) to see its courses. Each course shows its questions, an outline of sections, and your progress."],
           ["Course outline", "Courses can be split into named sections. When you finish a section you get a checkpoint before moving on."],
         ]},
@@ -84,7 +86,7 @@ GUIDE = {
           ["Analytics", "Revenue and affiliate-payout charts for the year, suspension rate and average enrolment value, visits over time and peak hours, and the most active scholars for the last 7, 30 or 90 days."],
           ["WhatsApp Numbers", "The contact numbers students registered, searchable, with one-tap copy and a WhatsApp chat shortcut. Use Copy All or CSV export for announcements."],
           ["Affiliates", "The Matrix lists every commission earned; the Partner Registry shows each partner's referral code, total earned, total paid and balance. Both can be exported."],
-          ["Payments", "The full transaction ledger with search and status filters. Open a payment to see the payer, amount, gateway details and their other payments and withdrawals."],
+          ["Payments", "The full transaction ledger with search and status filters. Open a payment to see the payer, amount, gateway details and their other payments and withdrawals. A payment for 'Instalment 1, 2 or 3 of 3' means the student chose to pay a department in three parts; access locks automatically if a due date is missed and returns the moment they pay it."],
           ["Notifications", "Send a broadcast to every student, and review or remove past broadcasts."],
           ["Quotes", "Publish the quotes that rotate on the student dashboard, and delete old ones."],
           ["Support", "The live chat inbox. Reply to students, see unread counts, and unlock a student who is locked out for using too many devices."],
@@ -119,7 +121,7 @@ GUIDE = {
           ["Changing it", "Settings → Your admin security code. Keep it private and different from your password."],
         ]},
         {"title": "People and money", "items": [
-          ["Users", "Search every account. Change a role (student, moderator, admin), approve a person as an affiliate partner, suspend or restore an account (with a reason shown to them), add a user, export the directory, or delete an account. You can't act on your own account."],
+          ["Users", "Search every account. Change a role (student, moderator, admin), approve a person as an affiliate partner, suspend or restore an account (with a reason shown to them), add a user, export the directory, or delete an account. You can't act on your own account. Each user card also has a Free Access section: grant any student free access to a department with no payment, or remove it again with the × on its chip (admins only). Granting never overwrites access a student really paid for, and removing refuses if they have since paid."],
           ["Withdrawals", "Review affiliate payout requests. Pay eligible Nigerian bank-transfer requests automatically through Paystack, mark one as paid manually with an external reference, reject it with a reason, or recheck a transfer's status with Paystack. A banner tells you when automatic payouts are switched off."],
           ["Payments and recheck", "Same ledger as moderators; use Recheck on Paystack to settle any dispute with the gateway's own record."],
         ]},
