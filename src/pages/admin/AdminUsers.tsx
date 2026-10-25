@@ -24,6 +24,16 @@ interface UserRow {
   created_at: string;
   device_block_started_at: string | null;
 }
+interface DepartmentRow {
+  id: string;
+  name: string;
+}
+// granted_via_payment_id null = an admin exemption (free access, never paid for); non-null =
+// real, paid access — this feature only ever touches the former.
+interface GrantRow {
+  department_id: string;
+  granted_via_payment_id: string | null;
+}
 
 type PendingAction =
   | { type: "suspend"; userId: string; reason: string }
@@ -39,6 +49,8 @@ export default function AdminUsers() {
   const [affiliateStatus, setAffiliateStatus] = useState<
     Record<string, string>
   >({});
+  const [departments, setDepartments] = useState<DepartmentRow[]>([]);
+  const [grantsByUser, setGrantsByUser] = useState<Record<string, GrantRow[]>>({});
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [loading, setLoading] = useState(true);
@@ -67,17 +79,32 @@ export default function AdminUsers() {
       .order("created_at", { ascending: false });
     setUsers(profileRows ?? []);
 
+    const { data: deptRows } = await supabase
+      .from("departments")
+      .select("id, name")
+      .eq("status", "active")
+      .order("name");
+    setDepartments(deptRows ?? []);
+
     const userIds = (profileRows ?? []).map((u) => u.user_id);
     if (userIds.length > 0) {
-      const [{ data: emailRows }, { data: roleRows }, { data: affiliateRows }] =
-        await Promise.all([
-          supabase.rpc("admin_list_emails", { p_user_ids: userIds }),
-          supabase.from("user_roles").select("user_id, role").in("user_id", userIds),
-          supabase
-            .from("affiliate_profiles")
-            .select("user_id, status")
-            .in("user_id", userIds),
-        ]);
+      const [
+        { data: emailRows },
+        { data: roleRows },
+        { data: affiliateRows },
+        { data: grantRows },
+      ] = await Promise.all([
+        supabase.rpc("admin_list_emails", { p_user_ids: userIds }),
+        supabase.from("user_roles").select("user_id, role").in("user_id", userIds),
+        supabase
+          .from("affiliate_profiles")
+          .select("user_id, status")
+          .in("user_id", userIds),
+        supabase
+          .from("access_grants")
+          .select("user_id, department_id, granted_via_payment_id")
+          .in("user_id", userIds),
+      ]);
       setEmails(
         Object.fromEntries(
           (emailRows ?? []).map((r: { user_id: string; email: string }) => [
@@ -101,6 +128,16 @@ export default function AdminUsers() {
           ),
         ),
       );
+      const byUser: Record<string, GrantRow[]> = {};
+      for (const g of (grantRows ?? []) as (GrantRow & { user_id: string })[]) {
+        (byUser[g.user_id] ??= []).push({
+          department_id: g.department_id,
+          granted_via_payment_id: g.granted_via_payment_id,
+        });
+      }
+      setGrantsByUser(byUser);
+    } else {
+      setGrantsByUser({});
     }
     setLoading(false);
   }
@@ -164,6 +201,55 @@ export default function AdminUsers() {
         u.user_id === userId ? { ...u, device_block_started_at: null } : u,
       ),
     );
+  }
+
+  // Free access, no payment — grants never overwrite a department a student already paid for
+  // (admin_grant_department_access() itself refuses to touch a row with a real
+  // granted_via_payment_id), so this is always safe to click even by mistake.
+  async function handleGrantAccess(userId: string, departmentId: string) {
+    if (!departmentId) return;
+    setBusyId(userId);
+    setError(null);
+    const { error: rpcError } = await supabase.rpc("admin_grant_department_access", {
+      p_user_id: userId,
+      p_department_id: departmentId,
+    });
+    setBusyId(null);
+    if (rpcError) {
+      setError(`Grant failed: ${rpcError.message}`);
+      return;
+    }
+    setGrantsByUser((prev) => ({
+      ...prev,
+      [userId]: [
+        ...(prev[userId] ?? []).filter((g) => g.department_id !== departmentId),
+        { department_id: departmentId, granted_via_payment_id: null },
+      ],
+    }));
+  }
+
+  async function handleRevokeAccess(userId: string, departmentId: string, deptName: string) {
+    if (
+      !window.confirm(
+        `Remove ${deptName}'s free access for this student? They'll need to pay for it again to get it back.`,
+      )
+    )
+      return;
+    setBusyId(userId);
+    setError(null);
+    const { error: rpcError } = await supabase.rpc("admin_revoke_department_access", {
+      p_user_id: userId,
+      p_department_id: departmentId,
+    });
+    setBusyId(null);
+    if (rpcError) {
+      setError(`Couldn't remove access: ${rpcError.message}`);
+      return;
+    }
+    setGrantsByUser((prev) => ({
+      ...prev,
+      [userId]: (prev[userId] ?? []).filter((g) => g.department_id !== departmentId),
+    }));
   }
 
   async function runPendingAction(otpToken: string) {
@@ -315,7 +401,7 @@ export default function AdminUsers() {
         ) : filtered.length === 0 ? (
           <p className="p-4 text-sm text-text-3">No users match.</p>
         ) : (
-          <table className="w-full min-w-[840px] text-left text-sm">
+          <table className="w-full min-w-[1020px] text-left text-sm">
             <thead>
               <tr className="border-b border-canvas-border bg-canvas-soft text-[10px] font-bold uppercase tracking-wide text-text-3">
                 <th className="px-4 py-3 font-bold">Scholar Profile</th>
@@ -323,6 +409,7 @@ export default function AdminUsers() {
                 <th className="px-4 py-3 font-bold">Role</th>
                 <th className="px-4 py-3 font-bold">Affiliate Status</th>
                 <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 font-bold">Free Access</th>
                 <th className="px-4 py-3 font-bold">Actions</th>
               </tr>
             </thead>
@@ -332,6 +419,15 @@ export default function AdminUsers() {
                 const role = roles[u.user_id] ?? "student";
                 const isPartner = affiliateStatus[u.user_id] === "active";
                 const rowBusy = busyId === u.user_id;
+                const grants = grantsByUser[u.user_id] ?? [];
+                const exemptedDeptIds = new Set(
+                  grants
+                    .filter((g) => g.granted_via_payment_id === null)
+                    .map((g) => g.department_id),
+                );
+                const grantableDepartments = departments.filter(
+                  (d) => !exemptedDeptIds.has(d.id),
+                );
 
                 return (
                   <tr key={u.user_id} className="align-top">
@@ -414,6 +510,52 @@ export default function AdminUsers() {
                           Device-locked
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex min-w-[160px] flex-wrap items-center gap-1.5">
+                        {[...exemptedDeptIds].map((deptId) => {
+                          const deptName =
+                            departments.find((d) => d.id === deptId)?.name ?? "Department";
+                          return (
+                            <span
+                              key={deptId}
+                              title="Admin-granted free access — never paid for"
+                              className="inline-flex items-center gap-1 rounded-full bg-royal-soft px-2.5 py-1 text-xs font-bold text-royal"
+                            >
+                              {deptName}
+                              <button
+                                onClick={() =>
+                                  void handleRevokeAccess(u.user_id, deptId, deptName)
+                                }
+                                disabled={rowBusy}
+                                aria-label={`Remove free access to ${deptName}`}
+                                className="ml-0.5 text-royal/60 hover:text-rose-600 disabled:opacity-50"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          );
+                        })}
+                        {grantableDepartments.length > 0 && (
+                          <select
+                            value=""
+                            disabled={rowBusy}
+                            onChange={(e) =>
+                              void handleGrantAccess(u.user_id, e.target.value)
+                            }
+                            className="rounded-xl border border-canvas-border bg-white px-2 py-1 text-xs disabled:opacity-50"
+                          >
+                            <option value="" disabled>
+                              + Grant free access…
+                            </option>
+                            {grantableDepartments.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center gap-1.5">
