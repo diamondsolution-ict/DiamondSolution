@@ -30,6 +30,7 @@ interface PaymentRow {
   raw_provider_response: Record<string, unknown> | null;
   departments: { name: string } | null;
   access_grants: { expires_at: string | null }[] | null;
+  installment_number: number | null;
 }
 
 function accessSummary(p: PaymentRow): string | null {
@@ -85,7 +86,7 @@ export default function PaymentHistory() {
     const { data } = await supabase
       .from("payments")
       .select(
-        "id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, departments ( name ), access_grants ( expires_at )",
+        "id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, installment_number, departments ( name ), access_grants ( expires_at )",
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -138,7 +139,7 @@ export default function PaymentHistory() {
       const { data: fresh } = await supabase
         .from("payments")
         .select(
-          "id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, departments ( name ), access_grants ( expires_at )",
+          "id, provider, provider_reference, purpose, department_id, amount, currency, status, created_at, verified_at, raw_provider_response, installment_number, departments ( name ), access_grants ( expires_at )",
         )
         .eq("id", selected.id)
         .maybeSingle();
@@ -235,8 +236,10 @@ export default function PaymentHistory() {
                   {p.departments?.name ?? PURPOSE_LABEL[p.purpose]}
                 </p>
                 <p className="mt-0.5 text-xs text-text-3">
-                  {PURPOSE_LABEL[p.purpose]} · {format(new Date(p.created_at), "MMM d, yyyy · HH:mm")} ·{" "}
-                  {p.provider}
+                  {p.installment_number
+                    ? `Instalment ${p.installment_number} of 3`
+                    : PURPOSE_LABEL[p.purpose]}{" "}
+                  · {format(new Date(p.created_at), "MMM d, yyyy · HH:mm")} · {p.provider}
                 </p>
                 {accessSummary(p) && (
                   <p className="mt-0.5 text-xs font-medium text-royal">{accessSummary(p)}</p>
@@ -299,7 +302,11 @@ export default function PaymentHistory() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-text-3">
                   What for
                 </p>
-                <p className="text-text-1">{PURPOSE_LABEL[selected.purpose]}</p>
+                <p className="text-text-1">
+                  {PURPOSE_LABEL[selected.purpose]}
+                  {selected.installment_number &&
+                    ` — instalment ${selected.installment_number} of 3`}
+                </p>
               </div>
               {selected.departments?.name && (
                 <div>

@@ -10,6 +10,15 @@
 // at all (e.g. Paystack's own API call errored before we got any definitive answer) — there's
 // no real outcome to record for that, and a row claiming otherwise would mislead the admin
 // transactions ledger rather than inform it.
+//
+// Pay-once vs pay-in-3: the client never tells the server which one it is — the server infers
+// it purely from the verified Paystack amount, same "never trust a client-supplied value"
+// discipline as everything else here. If no instalment plan is already in progress, a payment
+// matching the full price is a full payment (unchanged from before); a payment matching
+// floor(price / 3) starts a new 3-instalment plan. If a plan IS in progress, the only valid
+// amount is that plan's own next instalment (locked to the price when the plan started, not
+// today's price) — see department_payment_plans in
+// 20261025000000_department_access_installments.sql for the full design rationale.
 import { serviceClient, HttpError } from "./supabaseClients.ts";
 import type { PaystackVerifyResult } from "./paystack.ts";
 import { notify } from "./notify.ts";
@@ -19,6 +28,35 @@ interface ProcessArgs {
   userId: string;
   departmentId: string;
   paystack: PaystackVerifyResult;
+}
+
+interface PlanRow {
+  id: string;
+  total_amount: number;
+  currency: string;
+  installment_amount: number;
+  access_duration_days: number | null;
+  installments_paid: number;
+  started_at: string | null;
+}
+
+// Instalments 1 and 2 are the floor of price/3; instalment 3 absorbs whatever's left, so the
+// three always sum to exactly the total regardless of rounding (e.g. ₦20,000 -> 6,666 / 6,666 /
+// 6,668, never a penny lost or invented).
+function firstInstallmentAmount(totalAmount: number): number {
+  return Math.floor(totalAmount / 3);
+}
+// Number(...) on every field read here — Postgres numeric columns come back from PostgREST as
+// strings, and a raw (unconverted) string slipping into a later .toLocaleString() call would
+// silently show "5000.00" instead of "5,000" rather than error (String.prototype.toLocaleString
+// is a harmless no-op, not a type error).
+function amountForInstallment(
+  plan: Pick<PlanRow, "total_amount" | "installment_amount">,
+  installmentNumber: number,
+): number {
+  return installmentNumber === 3
+    ? Number(plan.total_amount) - 2 * Number(plan.installment_amount)
+    : Number(plan.installment_amount);
 }
 
 export async function processDepartmentAccessPayment({
@@ -96,11 +134,76 @@ export async function processDepartmentAccessPayment({
     return; // unreachable — recordFailure always throws — but keeps TS's control-flow happy
   }
 
-  const expectedKobo = Math.round(Number(priceRow.amount) * 100);
-  if (paystack.data.amount !== expectedKobo) {
-    await recordFailure(
-      `Amount mismatch: paid ${paystack.data.amount}, expected ${expectedKobo}.`,
-    );
+  // The most recent plan for this user/department, if any (there's no uniqueness constraint —
+  // a student can have an old completed plan from a prior year and a fresh one for this year's
+  // renewal; only the latest one is ever "in progress").
+  const { data: latestPlan } = await db
+    .from("department_payment_plans")
+    .select(
+      "id, total_amount, currency, installment_amount, access_duration_days, installments_paid, started_at",
+    )
+    .eq("user_id", userId)
+    .eq("department_id", departmentId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<PlanRow>();
+
+  const planInProgress =
+    latestPlan && latestPlan.installments_paid < 3 ? latestPlan : null;
+
+  const expectedFullKobo = Math.round(Number(priceRow.amount) * 100);
+
+  let plan: PlanRow | null = null;
+  let installmentNumber: number | null = null; // null = this is a full, one-time payment
+  let payAmountNaira: number;
+
+  if (planInProgress) {
+    // A plan is already running — the only amount that's ever valid now is its own next
+    // instalment, locked to the price when the plan started.
+    installmentNumber = planInProgress.installments_paid + 1;
+    payAmountNaira = amountForInstallment(planInProgress, installmentNumber);
+    const expectedKobo = Math.round(payAmountNaira * 100);
+    if (paystack.data.amount !== expectedKobo) {
+      await recordFailure(
+        `Amount mismatch: paid ${paystack.data.amount}, expected instalment ${installmentNumber} of 3 (${expectedKobo}).`,
+      );
+    }
+    plan = planInProgress;
+  } else if (paystack.data.amount === expectedFullKobo) {
+    // Full, one-time payment — exactly today's existing behavior.
+    payAmountNaira = Number(priceRow.amount);
+  } else {
+    // Not the full price — the only other valid amount is a fresh 1st instalment.
+    const firstAmount = firstInstallmentAmount(Number(priceRow.amount));
+    const expectedFirstKobo = Math.round(firstAmount * 100);
+    if (paystack.data.amount !== expectedFirstKobo) {
+      await recordFailure(
+        `Amount mismatch: paid ${paystack.data.amount}, expected either the full price (${expectedFullKobo}) or a first instalment (${expectedFirstKobo}).`,
+      );
+    }
+    installmentNumber = 1;
+    payAmountNaira = firstAmount;
+    const { data: newPlan, error: newPlanError } = await db
+      .from("department_payment_plans")
+      .insert({
+        user_id: userId,
+        department_id: departmentId,
+        total_amount: priceRow.amount,
+        currency: paystack.data.currency,
+        installment_amount: firstAmount,
+        access_duration_days: priceRow.access_duration_days,
+        installments_paid: 0,
+      })
+      .select(
+        "id, total_amount, currency, installment_amount, access_duration_days, installments_paid, started_at",
+      )
+      .single<PlanRow>();
+    if (newPlanError || !newPlan) {
+      await recordFailure(
+        newPlanError?.message ?? "Failed to start instalment plan.",
+      );
+    }
+    plan = newPlan!;
   }
 
   const paymentRow = existing
@@ -110,6 +213,8 @@ export async function processDepartmentAccessPayment({
           status: "success",
           verified_at: new Date().toISOString(),
           raw_provider_response: paystack.data,
+          installment_number: installmentNumber,
+          payment_plan_id: plan?.id ?? null,
         })
         .eq("id", existing.id)
         .select("id")
@@ -122,11 +227,13 @@ export async function processDepartmentAccessPayment({
           provider_reference: reference,
           purpose: "department_access",
           department_id: departmentId,
-          amount: priceRow.amount,
+          amount: payAmountNaira,
           currency: paystack.data.currency,
           status: "success",
           verified_at: new Date().toISOString(),
           raw_provider_response: paystack.data,
+          installment_number: installmentNumber,
+          payment_plan_id: plan?.id ?? null,
         })
         .select("id")
         .single();
@@ -142,8 +249,16 @@ export async function processDepartmentAccessPayment({
   // yearly fee; null = lifetime). Work out the new expiry against any grant the student already
   // has so that paying again never costs them anything:
   //   - an existing lifetime grant (expires_at null) stays lifetime — never downgraded to a year;
-  //   - renewing while still active adds the new term on top of the remaining time;
-  //   - renewing after it lapsed starts a fresh term from today.
+  //   - extending while still active adds the new term on top of the remaining time;
+  //   - extending after it lapsed starts a fresh term from today.
+  // Instalments 1 and 2 only ever extend by 30 days (a grace window to the next payment) using
+  // that same "extend from whichever is later" formula. Instalment 3 is handled separately,
+  // below — it does NOT reuse that formula, deliberately: chaining three 30-day extensions and
+  // then tacking a full fresh term on top of wherever that lands would hand every instalment
+  // payer an extra ~60 bonus days over someone who just pays in full, which was never decided
+  // on. Instead the final grant is pinned to exactly one year from the plan's own first
+  // payment (plan.started_at) — "your year starts when you first paid," the same way a single
+  // full payment's year starts the day it's made, instalments or not.
   const { data: existingGrant } = await db
     .from("access_grants")
     .select("expires_at")
@@ -151,16 +266,30 @@ export async function processDepartmentAccessPayment({
     .eq("department_id", departmentId)
     .maybeSingle();
 
+  const grantIsLifetime = !!(existingGrant && existingGrant.expires_at === null);
+  const planCompleting = installmentNumber === 3;
+
   let expiresAt: string | null = null;
-  if (priceRow.access_duration_days && !(existingGrant && existingGrant.expires_at === null)) {
-    const now = Date.now();
-    const currentEnd = existingGrant?.expires_at
-      ? new Date(existingGrant.expires_at).getTime()
-      : 0;
-    const start = Math.max(now, currentEnd);
-    expiresAt = new Date(
-      start + priceRow.access_duration_days * 86_400_000,
-    ).toISOString();
+  if (!grantIsLifetime) {
+    if (planCompleting) {
+      const durationDays = plan?.access_duration_days ?? priceRow.access_duration_days;
+      const anchor = plan?.started_at
+        ? new Date(plan.started_at).getTime()
+        : Date.now();
+      expiresAt = durationDays
+        ? new Date(anchor + durationDays * 86_400_000).toISOString()
+        : null;
+    } else {
+      const extensionDays = installmentNumber !== null ? 30 : priceRow.access_duration_days;
+      if (extensionDays) {
+        const now = Date.now();
+        const currentEnd = existingGrant?.expires_at
+          ? new Date(existingGrant.expires_at).getTime()
+          : 0;
+        const start = Math.max(now, currentEnd);
+        expiresAt = new Date(start + extensionDays * 86_400_000).toISOString();
+      }
+    }
   }
 
   const { error: grantError } = await db.from("access_grants").upsert(
@@ -175,33 +304,65 @@ export async function processDepartmentAccessPayment({
 
   if (grantError) throw new HttpError(500, grantError.message);
 
+  // Advance the plan's own counters to match, so the next payment (if any) knows what's next
+  // and the UI can show "instalment 2 of 3 due <date>" without re-deriving it.
+  if (plan && installmentNumber !== null) {
+    const planComplete = installmentNumber === 3;
+    const { error: planUpdateError } = await db
+      .from("department_payment_plans")
+      .update({
+        installments_paid: installmentNumber,
+        started_at:
+          installmentNumber === 1 ? new Date().toISOString() : undefined,
+        next_due_at: planComplete ? null : expiresAt,
+      })
+      .eq("id", plan.id);
+    if (planUpdateError) throw new HttpError(500, planUpdateError.message);
+  }
+
   const { data: department } = await db
     .from("departments")
     .select("name")
     .eq("id", departmentId)
     .maybeSingle();
 
+  const deptName = department?.name ?? "this department";
+  let successBody: string;
+  if (installmentNumber === null) {
+    successBody = `Your payment for ${deptName} was confirmed — ${
+      expiresAt
+        ? `you have access until ${new Date(expiresAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })}.`
+        : "you now have access."
+    }`;
+  } else if (installmentNumber < 3) {
+    const nextAmount = plan ? amountForInstallment(plan, installmentNumber + 1) : null;
+    successBody = `Instalment ${installmentNumber} of 3 received for ${deptName} — you have full access now. Next instalment${
+      nextAmount ? ` (₦${nextAmount.toLocaleString()})` : ""
+    } is due by ${new Date(expiresAt!).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })}.`;
+  } else {
+    successBody = `Final instalment received for ${deptName} — your plan is fully paid. ${
+      expiresAt
+        ? `You have access until ${new Date(expiresAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })}.`
+        : "You now have access."
+    }`;
+  }
+
   await notify({
     db,
     userId,
     type: "payment_success",
     title: "Payment received",
-    body: `${
-      department
-        ? `Your payment for ${department.name} was confirmed`
-        : "Your payment was confirmed"
-    } — ${
-      expiresAt
-        ? `you have access until ${new Date(expiresAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })}.`
-        : "you now have access."
-    }`,
+    body: successBody,
   });
 
   await creditReferralCommission({
     db,
     paymentId: paymentRow.data.id,
     referredUserId: userId,
-    baseAmount: Number(priceRow.amount),
+    // Commission is on money actually received this transaction, not the plan's eventual
+    // total — an instalment plan that's later defaulted on never should have minted commission
+    // on instalments that were never paid.
+    baseAmount: payAmountNaira,
     baseCurrency: paystack.data.currency,
   });
 
