@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/friendly_error.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/csv.dart';
 import '../../core/supabase.dart';
@@ -162,7 +163,7 @@ class _CourseQuestionsState extends State<AdminCourseQuestionsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          loadError = e is PostgrestException ? e.message : '$e';
+          loadError = friendlyError(e);
           loading = false;
         });
       }

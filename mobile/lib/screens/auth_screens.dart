@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/friendly_error.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OtpType;
 import '../core/i18n.dart';
 import '../core/logo.dart';
@@ -16,7 +17,7 @@ String? validatePassword(String p) {
   return null;
 }
 
-String _msg(Object e) => e.toString().replaceFirst(RegExp(r'^\w*Exception:?\s*'), '').replaceFirst(RegExp(r'^AuthApiException\(message: '), '').replaceFirst(RegExp(r', statusCode.*$'), '');
+String _msg(Object e) => friendlyError(e);
 
 enum AuthPage { splash, login, register, forgot }
 

@@ -6,6 +6,7 @@
 // ProtectedRoute: the recovery session is real but short-lived and single-purpose, so this page
 // handles it directly and signs back out once the password is changed, same as Reactivation.tsx
 // and DeviceLocked.tsx sit outside the normal protected-route tree for their own forced flows.
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { KeyRound, Lock, Loader2 } from "lucide-react";
@@ -79,7 +80,7 @@ export default function ResetPassword() {
 
     if (updateError) {
       setSubmitting(false);
-      setError(updateError.message);
+      setError(friendlyError(updateError));
       return;
     }
 

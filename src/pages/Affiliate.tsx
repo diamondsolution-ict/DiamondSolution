@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { format } from "date-fns";
 import {
@@ -234,7 +235,7 @@ export default function Affiliate() {
       // 23505 = unique_violation — retry with a fresh random suffix on a referral_code
       // collision; any other error means something real is wrong, so stop and surface it.
       if (insertError.code !== "23505") {
-        setError(insertError.message);
+        setError(friendlyError(insertError));
         setActivating(false);
         return;
       }
@@ -266,7 +267,7 @@ export default function Affiliate() {
     });
     setAddingMethod(false);
     if (insertError) {
-      setError(insertError.message);
+      setError(friendlyError(insertError));
       return;
     }
     setInfo("Payout method added.");
@@ -330,7 +331,7 @@ export default function Affiliate() {
       status: "pending",
     });
     if (insertError) {
-      setError(insertError.message);
+      setError(friendlyError(insertError));
       return;
     }
     setWithdrawForm({ amount: "", payoutMethodId: "" });

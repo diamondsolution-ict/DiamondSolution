@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -139,7 +140,7 @@ export default function Register() {
 
     setLoading(false);
     if (signUpError) {
-      setError(signUpError.message);
+      setError(friendlyError(signUpError));
       return;
     }
 
@@ -160,7 +161,7 @@ export default function Register() {
     });
     setResending(false);
     if (resendError) {
-      setError(resendError.message);
+      setError(friendlyError(resendError));
       return;
     }
     setResent(true);

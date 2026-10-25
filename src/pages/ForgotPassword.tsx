@@ -4,6 +4,7 @@
 // instead uses Supabase Auth's own built-in recovery link, which needs no custom Edge Function:
 // resetPasswordForEmail() emails a link that, when followed, lands on ResetPassword.tsx with a
 // real (if short-lived) session already established by supabase-js.
+import { friendlyError } from "@/lib/friendlyError";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, MailCheck } from "lucide-react";
@@ -33,7 +34,7 @@ export default function ForgotPassword() {
     // registered — confirming/denying an account's existence here would be a user-enumeration
     // leak. A real delivery failure (bad SMTP config, etc.) is the one case worth surfacing.
     if (resetError) {
-      setError(resetError.message);
+      setError(friendlyError(resetError));
       return;
     }
     setSent(true);

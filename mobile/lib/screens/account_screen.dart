@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/friendly_error.dart';
 import '../core/supabase.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
@@ -120,7 +121,7 @@ class _AccountScreenState extends State<AccountScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => pwError = "Couldn't send a security code: ${functionErrorMessage(e, '$e')}");
+      if (mounted) setState(() => pwError = "Couldn't send a security code: ${functionErrorMessage(e, friendlyError(e))}");
     }
     if (mounted) setState(() => pwBusy = false);
   }
@@ -139,7 +140,7 @@ class _AccountScreenState extends State<AccountScreen> {
         final cd = c.data as Map;
         if (cd['success'] != true) throw cd['error'] ?? 'unknown error';
       } catch (e) {
-        if (mounted) setState(() => pwError = "Couldn't change password: ${functionErrorMessage(e, '$e')}");
+        if (mounted) setState(() => pwError = "Couldn't change password: ${functionErrorMessage(e, friendlyError(e))}");
         if (mounted) setState(() => pwBusy = false);
         return;
       }
@@ -152,7 +153,7 @@ class _AccountScreenState extends State<AccountScreen> {
         if (mounted) Navigator.of(context).maybePop();
       });
     } catch (e) {
-      if (mounted) setState(() => pwError = functionErrorMessage(e, '$e'));
+      if (mounted) setState(() => pwError = functionErrorMessage(e, friendlyError(e)));
     }
     if (mounted) setState(() => pwBusy = false);
   }

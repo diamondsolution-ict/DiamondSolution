@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
@@ -144,7 +145,7 @@ export default function AdminWithdrawals() {
       { p_withdrawal_id: id, p_reference: reference },
     );
     setBusyId(null);
-    if (updateError) setError(updateError.message);
+    if (updateError) setError(friendlyError(updateError));
     void load();
   }
 

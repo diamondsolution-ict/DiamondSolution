@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LogIn, Lock, Mail } from "lucide-react";
@@ -30,7 +31,7 @@ export default function Login() {
 
     setLoading(false);
     if (signInError) {
-      setError(signInError.message);
+      setError(friendlyError(signInError));
       return;
     }
     navigate("/dashboard");

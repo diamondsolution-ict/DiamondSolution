@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { MessageCircle, Unlock } from "lucide-react";
@@ -174,7 +175,7 @@ export default function AdminUsers() {
     });
     setBusyId(null);
     if (rpcError) {
-      setError(rpcError.message);
+      setError(friendlyError(rpcError));
       return;
     }
     setInfo("Affiliate partner approved.");
@@ -193,7 +194,7 @@ export default function AdminUsers() {
     });
     setBusyId(null);
     if (rpcError) {
-      setError(`Unlock failed: ${rpcError.message}`);
+      setError(`Unlock failed: ${friendlyError(rpcError)}`);
       return;
     }
     setUsers((prev) =>
@@ -216,7 +217,7 @@ export default function AdminUsers() {
     });
     setBusyId(null);
     if (rpcError) {
-      setError(`Grant failed: ${rpcError.message}`);
+      setError(`Grant failed: ${friendlyError(rpcError)}`);
       return;
     }
     setGrantsByUser((prev) => ({
@@ -243,7 +244,7 @@ export default function AdminUsers() {
     });
     setBusyId(null);
     if (rpcError) {
-      setError(`Couldn't remove access: ${rpcError.message}`);
+      setError(`Couldn't remove access: ${friendlyError(rpcError)}`);
       return;
     }
     setGrantsByUser((prev) => ({
