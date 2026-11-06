@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/friendly_error.dart';
 import '../../core/supabase.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -26,10 +27,11 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   final commission = TextEditingController(text: '25');
   final minWd = TextEditingController(text: '10000');
   final curCode = TextEditingController(), newCode = TextEditingController(), confirmCode = TextEditingController();
+  final trialDays = TextEditingController(text: '14'), theoryLimit = TextEditingController(text: '3'), objectiveLimit = TextEditingController(text: '50');
   bool autoPayout = true;
   bool loading = true;
-  bool saving = false, affSaving = false, codeSaving = false;
-  String? error, info, affError, affInfo, codeError, codeInfo;
+  bool saving = false, affSaving = false, codeSaving = false, trialSaving = false;
+  String? error, info, affError, affInfo, codeError, codeInfo, trialError, trialInfo;
 
   @override
   void initState() {
@@ -40,7 +42,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   Future<void> _load() async {
     final r = await Future.wait<dynamic>([
       db.from('institutional_links').select('telegram, whatsapp, facebook, twitter, instagram, support_email').eq('id', 1).maybeSingle(),
-      db.from('app_settings').select('commission_rate, min_withdrawal_ngn, withdrawal_auto_payout_enabled').eq('id', 1).maybeSingle(),
+      db.from('app_settings').select('commission_rate, min_withdrawal_ngn, withdrawal_auto_payout_enabled, trial_days, trial_daily_theory_limit, trial_daily_objective_limit').eq('id', 1).maybeSingle(),
     ]);
     final d = r[0] as Map?;
     final a = r[1] as Map?;
@@ -55,6 +57,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
         commission.text = '${(asNum(a['commission_rate']) * 100).round()}';
         minWd.text = '${a['min_withdrawal_ngn']}';
         autoPayout = a['withdrawal_auto_payout_enabled'] == true;
+        trialDays.text = '${a['trial_days'] ?? 14}';
+        theoryLimit.text = '${a['trial_daily_theory_limit'] ?? 3}';
+        objectiveLimit.text = '${a['trial_daily_objective_limit'] ?? 50}';
       }
       loading = false;
     });
@@ -99,6 +104,32 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       affError = '$e';
     }
     if (mounted) setState(() => affSaving = false);
+  }
+
+  Future<void> _saveTrial() async {
+    setState(() {
+      trialError = null;
+      trialInfo = null;
+    });
+    final days = int.tryParse(trialDays.text.trim());
+    final theory = int.tryParse(theoryLimit.text.trim());
+    final objective = int.tryParse(objectiveLimit.text.trim());
+    if (days == null || days < 0) {
+      setState(() => trialError = 'Trial length must be a whole number of days, 0 or more.');
+      return;
+    }
+    if (theory == null || theory < 0 || objective == null || objective < 0) {
+      setState(() => trialError = 'Daily limits must be whole numbers, 0 or more.');
+      return;
+    }
+    setState(() => trialSaving = true);
+    try {
+      await db.from('app_settings').update({'trial_days': days, 'trial_daily_theory_limit': theory, 'trial_daily_objective_limit': objective, 'updated_by': AuthScope.of(context).user?.id}).eq('id', 1);
+      trialInfo = "Free trial settings saved. Applies to new signups and today onward — doesn't change what anyone's already used today.";
+    } catch (e) {
+      trialError = friendlyError(e);
+    }
+    if (mounted) setState(() => trialSaving = false);
   }
 
   Future<void> _changeCode() async {
@@ -191,6 +222,28 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             if (affInfo != null) ...[const SizedBox(height: 16), Banner2(affInfo!, success: true)],
             const SizedBox(height: 16),
             BtnPrimary(icon: Icons.save_outlined, label: affSaving ? 'Saving…' : 'Save affiliate settings', onPressed: affSaving ? null : _saveAffiliate),
+          ]),
+        ),
+        const SizedBox(height: 24),
+        CardLuxury(
+          padding: const EdgeInsets.all(24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [const Icon(Icons.card_giftcard, size: 17, color: AppColors.royal), const SizedBox(width: 8), Text('Free trial', style: heading(16))]),
+            const SizedBox(height: 4),
+            Text('What a brand-new student with no paid department access can try before they need to pay — full access to every department, capped at these daily limits.', style: body(14, color: AppColors.text3)),
+            const SizedBox(height: 16),
+            _label(null, 'Trial length (days)'),
+            TextField(controller: trialDays, keyboardType: TextInputType.number),
+            Padding(padding: const EdgeInsets.only(top: 4, bottom: 16), child: Text('From the day they sign up.', style: body(12, color: AppColors.text3))),
+            _label(null, 'Theory questions / day'),
+            TextField(controller: theoryLimit, keyboardType: TextInputType.number),
+            const SizedBox(height: 16),
+            _label(null, 'Objective questions / day'),
+            TextField(controller: objectiveLimit, keyboardType: TextInputType.number),
+            if (trialError != null) ...[const SizedBox(height: 16), Banner2(trialError!)],
+            if (trialInfo != null) ...[const SizedBox(height: 16), Banner2(trialInfo!, success: true)],
+            const SizedBox(height: 16),
+            BtnPrimary(icon: Icons.save_outlined, label: trialSaving ? 'Saving…' : 'Save free trial settings', onPressed: trialSaving ? null : _saveTrial),
           ]),
         ),
         const SizedBox(height: 24),

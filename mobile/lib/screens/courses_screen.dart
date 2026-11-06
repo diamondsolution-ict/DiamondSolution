@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/access.dart';
 import '../core/supabase.dart';
+import '../core/trial.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
 import '../main.dart';
@@ -20,13 +21,16 @@ class CoursesScreen extends StatefulWidget {
 
 class _CoursesScreenState extends State<CoursesScreen> {
   late Future<(List<Map<String, dynamic>>, Set<String>)> future = _load();
+  TrialStatus trial = TrialStatus.none;
 
   Future<(List<Map<String, dynamic>>, Set<String>)> _load() async {
     final uid = db.auth.currentUser!.id;
     final r = await Future.wait<dynamic>([
       db.from('departments').select('id, name, slug, image_path').eq('status', 'active').order('name', ascending: true),
       db.from('access_grants').select('department_id, expires_at').eq('user_id', uid),
+      fetchTrialStatus(),
     ]);
+    trial = r[2] as TrialStatus;
     // Only grants that haven't expired count as "Authorized".
     return (List<Map<String, dynamic>>.from(r[0]), (r[1] as List).where((g) => isGrantActive(g as Map<String, dynamic>)).map((g) => g['department_id'] as String).toSet());
   }
@@ -41,6 +45,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
             if (snap.hasError) return ListView(children: [Padding(padding: const EdgeInsets.all(24), child: Text('Something went wrong.\n${snap.error}', textAlign: TextAlign.center))]);
             final (depts, granted) = snap.data!;
             return ListView(padding: const EdgeInsets.fromLTRB(16, 24, 16, 112), children: [
+              if (trial.inTrial && !AuthScope.of(context).isStaff) TrialBanner(trial: trial, detailed: false),
               if (depts.isEmpty) const EmptyCard(icon: Icons.folder_open, message: 'No departments available yet.'),
               for (final d in depts)
                 Padding(
@@ -124,6 +129,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   bool paying = false;
   // The student's latest instalment plan for this department, only while it isn't fully paid.
   Map<String, dynamic>? plan;
+  TrialStatus trial = TrialStatus.none;
+  // True when the only reason this student can read the department is the free trial.
+  bool viaTrialOnly = false;
 
   num get _firstInstalment => price == null ? 0 : (price! / 3).floor();
   int get _paidCount => (plan?['installments_paid'] as num?)?.toInt() ?? 0;
@@ -159,9 +167,13 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
           .order('created_at', ascending: false)
           .limit(1)
           .maybeSingle(),
+      fetchTrialStatus(),
     ]);
     final grant = r[0] as Map<String, dynamic>?;
-    hasAccess = isAdmin || isGrantActive(grant);
+    trial = r[5] as TrialStatus;
+    // A student with no real grant yet, inside the free trial, reads like someone who paid (the server grants the same read access).
+    hasAccess = isAdmin || isGrantActive(grant) || trial.inTrial;
+    viaTrialOnly = !isAdmin && !isGrantActive(grant) && trial.inTrial;
     grantExpiresAt = grant?['expires_at'] as String?;
     final prices = r[1] as List;
     price = prices.isEmpty ? null : prices.first['amount'] as num;
@@ -225,6 +237,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
               if (courses.isEmpty)
                 const EmptyCard(icon: Icons.menu_book_outlined, message: 'No courses in this department yet.')
               else ...[
+                if (viaTrialOnly) TrialBanner(trial: trial, onUnlock: paying ? null : () => _pay()),
                 if (plan != null) _planBanner(),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -234,7 +247,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.auto_awesome, size: 12, color: AppColors.goldDark),
                       const SizedBox(width: 6),
-                      Text(describeAccessStatus(grantExpiresAt, isAdmin: AuthScope.of(context).isStaff), style: body(12, weight: FontWeight.w700, color: AppColors.goldDark)),
+                      Text(viaTrialOnly ? 'Free trial · ${trial.daysLabel}' : describeAccessStatus(grantExpiresAt, isAdmin: AuthScope.of(context).isStaff), style: body(12, weight: FontWeight.w700, color: AppColors.goldDark)),
                     ]),
                   ),
                 ),

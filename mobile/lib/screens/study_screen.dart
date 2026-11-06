@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/access.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import '../core/friendly_error.dart';
 import '../core/supabase.dart';
+import '../core/trial.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
 import '../core/widgets.dart';
@@ -45,6 +48,8 @@ class _StudyScreenState extends State<StudyScreen> {
   bool loading = true;
   String? loadError;
   bool accessDenied = false;
+  // Set when record_question_attempt rejects a trial attempt (daily cap reached or trial over).
+  String? trialBlocked;
   String courseTitle = '';
   List<_Question> questions = [];
   List<_Section> outline = [];
@@ -105,7 +110,7 @@ class _StudyScreenState extends State<StudyScreen> {
       // RLS enforces access too; checking here gives a clean message instead of an empty list.
       if (!isAdmin) {
         final grant = await db.from('access_grants').select('department_id, expires_at').eq('user_id', uid).eq('department_id', course['department_id']).maybeSingle();
-        if (!isGrantActive(grant)) {
+        if (!isGrantActive(grant) && !(await fetchTrialStatus()).inTrial) {
           accessDenied = true;
           setState(() => loading = false);
           return;
@@ -213,8 +218,13 @@ class _StudyScreenState extends State<StudyScreen> {
         'p_practice_date': isoDate(DateTime.now()),
       });
     } catch (e) {
-      // Never block the quiz on this; the answer is already shown locally.
-      debugPrint('record_question_attempt failed: $e');
+      // A trial-cap / trial-ended rejection is the one failure that must stop the student: the attempt was never
+      // recorded. Anything else (network blip) stays silent, the answer is already shown locally.
+      if (RegExp('trial', caseSensitive: false).hasMatch(e is PostgrestException ? e.message : '$e')) {
+        if (mounted) setState(() => trialBlocked = friendlyError(e));
+      } else {
+        debugPrint('record_question_attempt failed: $e');
+      }
     }
   }
 
@@ -277,6 +287,12 @@ class _StudyScreenState extends State<StudyScreen> {
       return PageShell(
         title: 'Studying',
         child: _centerCard(Icons.warning_amber_rounded, AppColors.rose500, AppColors.rose50, "Couldn't load this course", loadError!, action: BtnPrimary(label: 'Retry', onPressed: () => _load())),
+      );
+    }
+    if (trialBlocked != null) {
+      return PageShell(
+        title: courseTitle,
+        child: _centerCard(Icons.lock_outline, AppColors.goldDark, AppColors.goldPale, null, trialBlocked!, action: BtnPrimary(label: 'Back to course', onPressed: () => Navigator.of(context).pop())),
       );
     }
     if (accessDenied) return PageShell(title: 'Restricted', child: _centerCard(Icons.lock_outline, AppColors.rose500, AppColors.rose50, null, "You don't have access to this course."));

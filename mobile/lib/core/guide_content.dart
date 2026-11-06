@@ -31,7 +31,7 @@ const guidePlatforms = <GuideItem>[
 const guideAudiences = <GuideAudience>[
   GuideAudience('student', 'Students', 'Everything you need to study well, track your progress and get the most out of your account.', [
     GuideSection('Getting started', [
-      GuideItem('Create your account', 'Register with your name, email, phone/WhatsApp number, university and department. A referral code from an existing partner is required to register. Your username and password are yours alone — don\'t share them.'),
+      GuideItem('Create your account', 'Register with your name, email, phone/WhatsApp number, university and department. A referral code from an existing partner is optional — enter one if you were given it. Your username and password are yours alone — don\'t share them.'),
       GuideItem('English or French', 'Choose your language when you sign in or register; you can change it later in Account settings.'),
       GuideItem('First-visit tour', 'The first time you open the dashboard a short tour points out the main areas. You can skip it and it won\'t return.'),
       GuideItem('One device at a time', 'Your account is allowed on one signed-in device at a time. Signing in on a second device signs the first one out. Signing in on a third different device locks the account for 24 hours; you can unlock it straight away for ₦1,000 from the lock screen, or wait out the 24 hours. If you really need a new phone, sign in on it — don\'t keep switching between many devices.'),
@@ -45,6 +45,7 @@ const guideAudiences = <GuideAudience>[
       GuideItem('Departments', 'Your department and others appear below the stats. Open one to see its courses.'),
     ]),
     GuideSection('Departments, courses and access', [
+      GuideItem('14-day free trial', 'Every new account gets a 14-day free trial. During it you can open any department and practise, up to 3 theory and 50 objective questions a day (the limits reset each day, and the team can change them). A banner shows how many days are left and what you\'ve used today. When the 14 days end, the courses lock until you pay for a department. Paying for a department never uses up your trial allowance in other departments.'),
       GuideItem('Yearly access', 'Each department is unlocked with a yearly fee, paid securely through Paystack (card, bank, transfer). Access lasts one year from payment — renew before it ends and the new year is added on top of the time you have left.'),
       GuideItem('Paying', 'Open a department, tap the payment button and finish on the Paystack page. Access unlocks automatically; if it ever doesn\'t, open Payments (in your profile) or message Support with your payment reference.'),
       GuideItem('Pay in 3 instalments', 'Don\'t want to pay the full fee at once? Choose \'Pay in 3 instalments\': pay one third now and the whole department unlocks immediately. The 2nd third is due within 30 days and the 3rd within 30 days after that. The price is never higher — it\'s just split into three equal parts. Miss a due date and access locks until you pay that instalment; pay it late and access comes back straight away, with no penalty. Your Payment History shows which instalment each payment was.'),
@@ -129,7 +130,7 @@ const guideAudiences = <GuideAudience>[
       GuideItem('Pictures & Media', 'Upload or replace the picture shown on every department and course card (JPG, PNG or WebP, up to 5 MB).'),
     ]),
     GuideSection('Platform settings and records', [
-      GuideItem('Settings', 'Contact links shown across the platform (Telegram, WhatsApp, email, X, Facebook, Instagram), the affiliate commission rate, the minimum withdrawal, and whether automatic payouts are on. When they are off every withdrawal must be marked paid manually.'),
+      GuideItem('Settings', 'Contact links shown across the platform (Telegram, WhatsApp, email, X, Facebook, Instagram), the affiliate commission rate, the minimum withdrawal, whether automatic payouts are on, and the free trial (its length in days and the daily theory and objective question limits). When they are off every withdrawal must be marked paid manually.'),
       GuideItem('System Logs', 'A record of admin actions: who did what, to which record, and why. Check it if something changed and you don\'t know who did it.'),
       GuideItem('Danger warnings', 'Deleting or archiving a department, level, course, question or user shows a red warning first. Read it — deletions can\'t be undone.'),
     ]),

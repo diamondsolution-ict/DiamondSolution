@@ -46,7 +46,7 @@ export const GUIDE_AUDIENCES: GuideAudience[] = [
         "items": [
           {
             "heading": "Create your account",
-            "body": "Register with your name, email, phone/WhatsApp number, university and department. A referral code from an existing partner is required to register. Your username and password are yours alone — don't share them."
+            "body": "Register with your name, email, phone/WhatsApp number, university and department. A referral code from an existing partner is optional — enter one if you were given it. Your username and password are yours alone — don't share them."
           },
           {
             "heading": "English or French",
@@ -94,6 +94,10 @@ export const GUIDE_AUDIENCES: GuideAudience[] = [
       {
         "title": "Departments, courses and access",
         "items": [
+          {
+            "heading": "14-day free trial",
+            "body": "Every new account gets a 14-day free trial. During it you can open any department and practise, up to 3 theory and 50 objective questions a day (the limits reset each day, and the team can change them). A banner shows how many days are left and what you've used today. When the 14 days end, the courses lock until you pay for a department. Paying for a department never uses up your trial allowance in other departments."
+          },
           {
             "heading": "Yearly access",
             "body": "Each department is unlocked with a yearly fee, paid securely through Paystack (card, bank, transfer). Access lasts one year from payment — renew before it ends and the new year is added on top of the time you have left."
@@ -366,7 +370,7 @@ export const GUIDE_AUDIENCES: GuideAudience[] = [
         "items": [
           {
             "heading": "Settings",
-            "body": "Contact links shown across the platform (Telegram, WhatsApp, email, X, Facebook, Instagram), the affiliate commission rate, the minimum withdrawal, and whether automatic payouts are on. When they are off every withdrawal must be marked paid manually."
+            "body": "Contact links shown across the platform (Telegram, WhatsApp, email, X, Facebook, Instagram), the affiliate commission rate, the minimum withdrawal, whether automatic payouts are on, and the free trial (its length in days and the daily theory and objective question limits). When they are off every withdrawal must be marked paid manually."
           },
           {
             "heading": "System Logs",

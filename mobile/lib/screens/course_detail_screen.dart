@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/access.dart';
 import '../core/supabase.dart';
+import '../core/trial.dart';
 import '../core/theme.dart';
 import '../core/ui.dart';
 import '../main.dart';
@@ -36,7 +37,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       db.from('course_outline_sections').select('id, title, start_question_order, end_question_order').eq('course_id', widget.courseId).order('sort_order', ascending: true),
       db.from('access_grants').select('department_id, expires_at').eq('user_id', uid).eq('department_id', course['department_id']).maybeSingle(),
       db.from('study_progress').select('current_order, completed').eq('user_id', uid).eq('course_id', widget.courseId).maybeSingle(),
+      fetchTrialStatus(),
     ]);
+    final trial = r[6] as TrialStatus;
+    final realGrant = isGrantActive(r[4] as Map<String, dynamic>?);
     return {
       'course': course,
       'dept': (r[0] as Map)['name'],
@@ -44,7 +48,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       'count': (r[2] as dynamic).count as int,
       'outline': List<Map<String, dynamic>>.from(r[3]),
       // Staff (admins and moderators) read everything for free, same as has_department_access() server-side.
-      'access': isAdmin || isGrantActive(r[4] as Map<String, dynamic>?),
+      'access': isAdmin || realGrant || trial.inTrial,
+      'trialOnly': !isAdmin && !realGrant && trial.inTrial,
+      'trialLabel': trial.daysLabel,
       'expires': (r[4] as Map?)?['expires_at'],
       'isAdmin': isAdmin,
       'progress': r[5],
@@ -136,7 +142,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               if (!access) _noAccess(d) else _launchCard(total, progress, resumable, course),
               if (access && total > 0) ...[
                 const SizedBox(height: 8),
-                Text('${describeAccessStatus(d['expires'] as String?, isAdmin: d['isAdmin'] as bool).toUpperCase()} · ${describePaymentTerm(d['expires'] as String?, d['isAdmin'] as bool).toUpperCase()} · SECURED TRANSACTION', textAlign: TextAlign.center, style: body(10, weight: FontWeight.w700, color: AppColors.text3, letterSpacing: 1.2)),
+                Text('${d['trialOnly'] == true ? 'FREE TRIAL · ${(d['trialLabel'] as String).toUpperCase()}' : '${describeAccessStatus(d['expires'] as String?, isAdmin: d['isAdmin'] as bool).toUpperCase()} · ${describePaymentTerm(d['expires'] as String?, d['isAdmin'] as bool).toUpperCase()}'} · SECURED TRANSACTION', textAlign: TextAlign.center, style: body(10, weight: FontWeight.w700, color: AppColors.text3, letterSpacing: 1.2)),
               ],
               const SizedBox(height: 32),
               Row(children: [
