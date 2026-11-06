@@ -63,11 +63,11 @@ export default function Register() {
       .then(({ data }) => setDepartments(data ?? []));
   }, []);
 
-  // Referral code is mandatory now — this checks it as the student types (same debounced
-  // pattern Affiliate.tsx uses for bank account resolution) so a bad code is caught before
-  // submit, not after a failed signUp() round trip. The actual enforcement that can't be
-  // bypassed lives in the handle_new_user trigger server-side; this is purely for fast
-  // feedback.
+  // Referral code is optional — this checks it as the student types (same debounced pattern
+  // Affiliate.tsx uses for bank account resolution) purely so someone who does have a code
+  // gets fast feedback on whether it was recognized. A blank code is always fine; an
+  // unrecognized one is never blocking either (handle_new_user() just silently skips
+  // creating the referral relationship server-side) — this is feedback, not enforcement.
   useEffect(() => {
     const code = form.referralCode.trim();
     if (!code) {
@@ -99,14 +99,6 @@ export default function Register() {
     e.preventDefault();
     setError(null);
 
-    if (!form.referralCode.trim()) {
-      setError(t("register.referralCodeRequired"));
-      return;
-    }
-    if (codeStatus !== "valid") {
-      setError(t("register.referralCodeInvalid"));
-      return;
-    }
     if (form.password !== form.confirmPassword) {
       setError(t("register.passwordMismatch"));
       return;
@@ -223,7 +215,6 @@ export default function Register() {
 
             <Field label={t("register.referralCode")} icon={Gift}>
               <input
-                required
                 value={form.referralCode}
                 onChange={(e) => update("referralCode", e.target.value)}
                 placeholder={t("register.referralCodePlaceholder")}

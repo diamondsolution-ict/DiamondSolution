@@ -18,6 +18,7 @@ import {
   describeAccessStatus,
   describePaymentTerm,
 } from "@/lib/accessDuration";
+import { fetchTrialStatus, type TrialStatus } from "@/lib/trial";
 
 interface Course {
   id: string;
@@ -53,6 +54,8 @@ export default function CourseDetail() {
   const [meta, setMeta] = useState<Counts | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
+  const [viaTrialOnly, setViaTrialOnly] = useState(false);
+  const [trial, setTrial] = useState<TrialStatus>({ in_trial: false });
   const [grantExpiresAt, setGrantExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -85,6 +88,7 @@ export default function CourseDetail() {
         { data: outlineRows },
         { data: grant },
         { data: progressRow },
+        trialStatus,
       ] = await Promise.all([
         supabase
           .from("departments")
@@ -118,6 +122,7 @@ export default function CourseDetail() {
           .eq("user_id", user.id)
           .eq("course_id", id)
           .maybeSingle(),
+        fetchTrialStatus(),
       ]);
 
       setMeta({
@@ -129,8 +134,11 @@ export default function CourseDetail() {
       setProgress(progressRow ?? null);
       // Staff read everything for free, matching has_department_access()'s own
       // is_moderator_or_admin() OR — the backend already allowed this; the paywall UI just
-      // didn't know to skip itself.
-      setHasAccess(isAdmin || isModerator || !!grant);
+      // didn't know to skip itself. A student with no real grant yet, inside their 14-day free
+      // trial, gets the same treatment, matching has_department_access()'s own trial clause.
+      setHasAccess(isAdmin || isModerator || !!grant || trialStatus.in_trial);
+      setViaTrialOnly(!isAdmin && !isModerator && !grant && trialStatus.in_trial);
+      setTrial(trialStatus);
       setGrantExpiresAt(grant?.expires_at ?? null);
       setLoading(false);
     }
@@ -318,8 +326,10 @@ export default function CourseDetail() {
       )}
       {hasAccess && !!meta?.questionCount && (
         <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-text-3">
-          {describeAccessStatus(grantExpiresAt, isAdmin || isModerator)} ·{" "}
-          {describePaymentTerm(grantExpiresAt, isAdmin || isModerator)} · Secured transaction
+          {viaTrialOnly
+            ? `Free trial · ${trial.days_left} day${trial.days_left === 1 ? "" : "s"} left`
+            : `${describeAccessStatus(grantExpiresAt, isAdmin || isModerator)} · ${describePaymentTerm(grantExpiresAt, isAdmin || isModerator)}`}{" "}
+          · Secured transaction
         </p>
       )}
 

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Clock,
   FolderOpen,
+  Gift,
   Lock,
   Sparkles,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import {
   describePaywall,
   describePriceTerm,
 } from "@/lib/accessDuration";
+import { fetchTrialStatus, type TrialStatus } from "@/lib/trial";
 
 interface Department {
   id: string;
@@ -70,12 +72,13 @@ export default function CourseList() {
   const [levels, setLevels] = useState<Level[]>([]);
   const [selectedLevelId, setSelectedLevelId] = useState("");
   const [plan, setPlan] = useState<PlanRow | null>(null);
+  const [trial, setTrial] = useState<TrialStatus>({ in_trial: false });
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     async function loadOverview() {
-      const [{ data: depts }, { data: priceRows }, { data: grants }] =
+      const [{ data: depts }, { data: priceRows }, { data: grants }, trialStatus] =
         await Promise.all([
           supabase
             .from("departments")
@@ -102,12 +105,14 @@ export default function CourseList() {
             : Promise.resolve({
                 data: [] as { department_id: string; expires_at: string | null }[],
               }),
+          user ? fetchTrialStatus() : Promise.resolve({ in_trial: false }),
         ]);
       setDepartments(depts ?? []);
       setPrices(priceRows ?? []);
       setGrantedDepartmentIds(
         new Map((grants ?? []).map((g) => [g.department_id, g.expires_at])),
       );
+      setTrial(trialStatus);
     }
     void loadOverview();
   }, [user]);
@@ -162,12 +167,19 @@ export default function CourseList() {
   }, [departmentId, user]);
 
   const activeDept = departments.find((d) => d.id === departmentId);
+  const hasRealGrant = departmentId ? grantedDepartmentIds.has(departmentId) : false;
   // Staff read everything for free, matching has_department_access()'s own
   // is_moderator_or_admin() OR — the backend already allowed this; the paywall UI just didn't
-  // know to skip itself for them.
+  // know to skip itself for them. A student with no real grant yet, inside their 14-day free
+  // trial, gets the same treatment — has_department_access() already grants them the same read
+  // access server-side (see the migration), this just keeps the UI consistent with that.
   const hasAccess = departmentId
-    ? isAdmin || isModerator || grantedDepartmentIds.has(departmentId)
+    ? isAdmin || isModerator || hasRealGrant || trial.in_trial
     : false;
+  // Distinct from hasAccess — true only when the ONLY reason they can see this page is the
+  // trial, so the banner below never shows for someone who's actually paid (or is staff).
+  const viaTrialOnly =
+    hasAccess && !isAdmin && !isModerator && !hasRealGrant && trial.in_trial;
   const price = prices.find(
     (p) => p.department_id === departmentId && p.currency === "NGN",
   );
@@ -268,6 +280,16 @@ export default function CourseList() {
   if (!departmentId) {
     return (
       <Layout title="Departments" wide>
+        {trial.in_trial && (
+          <div className="card-luxury mb-3 flex items-center gap-2.5 border-royal-border bg-royal-soft p-3.5">
+            <Gift size={16} className="shrink-0 text-royal" />
+            <p className="text-xs font-semibold text-text-2">
+              Free trial — {trial.days_left} day{trial.days_left === 1 ? "" : "s"} left. Open
+              any department below to browse and practice, up to{" "}
+              {trial.theory_limit} theory and {trial.objective_limit} objective questions a day.
+            </p>
+          </div>
+        )}
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {departments.map((d) => {
             const granted = grantedDepartmentIds.has(d.id);
@@ -409,6 +431,26 @@ export default function CourseList() {
                 grantedDepartmentIds.get(departmentId) ?? null,
                 isAdmin || isModerator,
               )}
+            </div>
+          )}
+
+          {viaTrialOnly && (
+            <div className="card-luxury flex items-center gap-3 border-royal-border bg-royal-soft p-3.5">
+              <Gift size={16} className="shrink-0 text-royal" />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-text-2">
+                  Free trial — {trial.days_left} day{trial.days_left === 1 ? "" : "s"} left.
+                  Today: {trial.theory_used}/{trial.theory_limit} theory ·{" "}
+                  {trial.objective_used}/{trial.objective_limit} objective questions used.
+                </p>
+              </div>
+              <button
+                onClick={handlePayFull}
+                disabled={paying}
+                className="btn-secondary shrink-0 px-3 py-1.5 text-xs"
+              >
+                {paying ? "…" : "Unlock full access"}
+              </button>
             </div>
           )}
 

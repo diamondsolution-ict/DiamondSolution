@@ -2,6 +2,7 @@ import { friendlyError } from "@/lib/friendlyError";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   Facebook,
+  Gift,
   Instagram,
   KeyRound,
   Mail,
@@ -110,6 +111,13 @@ export default function AdminSettings() {
   const [affiliateError, setAffiliateError] = useState<string | null>(null);
   const [affiliateInfo, setAffiliateInfo] = useState<string | null>(null);
 
+  const [trialDays, setTrialDays] = useState("14");
+  const [theoryLimit, setTheoryLimit] = useState("3");
+  const [objectiveLimit, setObjectiveLimit] = useState("50");
+  const [trialSaving, setTrialSaving] = useState(false);
+  const [trialError, setTrialError] = useState<string | null>(null);
+  const [trialInfo, setTrialInfo] = useState<string | null>(null);
+
   async function load() {
     setLoading(true);
     const [{ data }, { data: affiliateSettings }] = await Promise.all([
@@ -123,7 +131,7 @@ export default function AdminSettings() {
       supabase
         .from("app_settings")
         .select(
-          "commission_rate, min_withdrawal_ngn, withdrawal_auto_payout_enabled",
+          "commission_rate, min_withdrawal_ngn, withdrawal_auto_payout_enabled, trial_days, trial_daily_theory_limit, trial_daily_objective_limit",
         )
         .eq("id", 1)
         .maybeSingle(),
@@ -142,6 +150,9 @@ export default function AdminSettings() {
       setCommissionRate(String(Math.round(affiliateSettings.commission_rate * 100)));
       setMinWithdrawalNgn(String(affiliateSettings.min_withdrawal_ngn));
       setAutoPayoutEnabled(affiliateSettings.withdrawal_auto_payout_enabled);
+      setTrialDays(String(affiliateSettings.trial_days));
+      setTheoryLimit(String(affiliateSettings.trial_daily_theory_limit));
+      setObjectiveLimit(String(affiliateSettings.trial_daily_objective_limit));
     }
     setLoading(false);
   }
@@ -205,6 +216,44 @@ export default function AdminSettings() {
       return;
     }
     setAffiliateInfo("Affiliate program settings saved.");
+  }
+
+  async function saveTrialSettings(e: FormEvent) {
+    e.preventDefault();
+    setTrialError(null);
+    setTrialInfo(null);
+
+    const days = Number(trialDays);
+    const theory = Number(theoryLimit);
+    const objective = Number(objectiveLimit);
+    if (!Number.isInteger(days) || days < 0) {
+      setTrialError("Trial length must be a whole number of days, 0 or more.");
+      return;
+    }
+    if (!Number.isInteger(theory) || theory < 0 || !Number.isInteger(objective) || objective < 0) {
+      setTrialError("Daily limits must be whole numbers, 0 or more.");
+      return;
+    }
+
+    setTrialSaving(true);
+    const { error: updateError } = await supabase
+      .from("app_settings")
+      .update({
+        trial_days: days,
+        trial_daily_theory_limit: theory,
+        trial_daily_objective_limit: objective,
+        updated_by: user?.id,
+      })
+      .eq("id", 1);
+    setTrialSaving(false);
+
+    if (updateError) {
+      setTrialError(friendlyError(updateError));
+      return;
+    }
+    setTrialInfo(
+      "Free trial settings saved. Applies to new signups and today onward — doesn't change what anyone's already used today.",
+    );
   }
 
   async function changeStepUpCode(e: FormEvent) {
@@ -379,6 +428,79 @@ export default function AdminSettings() {
         >
           <Save size={15} />
           {affiliateSaving ? "Saving…" : "Save affiliate settings"}
+        </button>
+      </form>
+
+      <form
+        onSubmit={saveTrialSettings}
+        className="card-luxury mt-6 space-y-4 p-6"
+      >
+        <div>
+          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-text-1">
+            <Gift size={17} className="text-royal" />
+            Free trial
+          </h2>
+          <p className="mt-1 text-sm text-text-3">
+            What a brand-new student with no paid department access can try before they need to
+            pay — full access to every department, capped at these daily limits.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label className="text-sm font-medium text-text-2">Trial length (days)</label>
+            <input
+              type="number"
+              min={0}
+              step="1"
+              value={trialDays}
+              onChange={(e) => setTrialDays(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+            />
+            <p className="mt-1 text-xs text-text-3">From the day they sign up.</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-text-2">Theory questions / day</label>
+            <input
+              type="number"
+              min={0}
+              step="1"
+              value={theoryLimit}
+              onChange={(e) => setTheoryLimit(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-text-2">Objective questions / day</label>
+            <input
+              type="number"
+              min={0}
+              step="1"
+              value={objectiveLimit}
+              onChange={(e) => setObjectiveLimit(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-canvas-border bg-white px-3 py-2.5 text-sm text-text-1 transition-colors focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/15"
+            />
+          </div>
+        </div>
+
+        {trialError && (
+          <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {trialError}
+          </p>
+        )}
+        {trialInfo && (
+          <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {trialInfo}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={trialSaving}
+          className="btn-primary flex items-center gap-2"
+        >
+          <Save size={15} />
+          {trialSaving ? "Saving…" : "Save free trial settings"}
         </button>
       </form>
 

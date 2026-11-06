@@ -18,6 +18,8 @@ import { fetchAllRows } from "@/lib/supabasePaging";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { fetchTrialStatus } from "@/lib/trial";
+import { friendlyError } from "@/lib/friendlyError";
 
 type QuestionType = "objective" | "application";
 type Result = "correct" | "incorrect" | "skipped" | "applied";
@@ -56,13 +58,17 @@ function localDateString() {
 
 export default function StudyPage() {
   const { id: courseId } = useParams<{ id: string }>();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isModerator } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
+  // Set when record_question_attempt() rejects a trial-sourced attempt (daily cap reached, or
+  // the 14-day trial itself has ended) — a hard stop, unlike every other failure from that RPC
+  // (network blip, etc.), which stays silent-and-continue on purpose (see handleSubmit).
+  const [trialBlocked, setTrialBlocked] = useState<string | null>(null);
   const [courseTitle, setCourseTitle] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [outline, setOutline] = useState<OutlineSection[]>([]);
@@ -116,10 +122,13 @@ export default function StudyPage() {
         }
         setCourseTitle(courseRow.title);
 
-        // Admins read everything for free, matching has_department_access()'s own is_admin()
-        // OR — the backend already allowed this; the paywall gate just didn't know to skip
-        // itself for them.
-        if (!isAdmin) {
+        // Staff read everything for free, matching has_department_access()'s own
+        // is_moderator_or_admin() OR — the backend already allowed this; the paywall gate just
+        // didn't know to skip itself for them. A student with no real grant yet, inside their
+        // 14-day free trial, gets the same treatment — has_department_access() already grants
+        // them the same read access server-side; record_question_attempt() is what actually
+        // enforces the daily cap once they try to submit an answer (handled in handleSubmit).
+        if (!isAdmin && !isModerator) {
           const { data: grant } = await supabase
             .from("access_grants")
             .select("department_id")
@@ -127,9 +136,12 @@ export default function StudyPage() {
             .eq("department_id", courseRow.department_id)
             .maybeSingle();
           if (!grant) {
-            setAccessDenied(true);
-            setLoading(false);
-            return;
+            const trial = await fetchTrialStatus();
+            if (!trial.in_trial) {
+              setAccessDenied(true);
+              setLoading(false);
+              return;
+            }
           }
         }
 
@@ -221,7 +233,7 @@ export default function StudyPage() {
     }
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, user, isAdmin]);
+  }, [courseId, user, isAdmin, isModerator]);
 
   // Per-question timer
   useEffect(() => {
@@ -295,13 +307,18 @@ export default function StudyPage() {
         p_practice_date: localDateString(),
       },
     );
-    // Never block the quiz UI on this — the question is already answered and the local
-    // session state above already reflects it. But this previously failed completely
-    // silently, so a real failure here (bad param, network blip) left daily_practice_stats
-    // permanently missing that attempt with no way to tell. Logging it is the minimum fix;
-    // worth revisiting with a retry or a subtle "not synced" indicator if it recurs.
     if (attemptError) {
-      console.error("record_question_attempt failed:", attemptError);
+      // A trial-cap/trial-ended rejection is the one failure from this RPC that genuinely
+      // should stop the student — the attempt was never recorded, so letting them keep
+      // clicking through more questions would just be a worse version of the same wall.
+      // Every other failure (bad param, network blip) stays silent-and-continue, same as
+      // before: the question is already answered and the local session state already
+      // reflects it, and daily_practice_stats merely missing one row isn't worth halting over.
+      if (/trial/i.test(attemptError.message)) {
+        setTrialBlocked(friendlyError(attemptError));
+      } else {
+        console.error("record_question_attempt failed:", attemptError);
+      }
     }
   }
 
@@ -409,6 +426,25 @@ export default function StudyPage() {
           <p className="text-sm text-text-3">
             You don't have access to this course.
           </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (trialBlocked) {
+    return (
+      <Layout title={courseTitle} onBack={() => navigate(-1)}>
+        <div className="card-luxury flex flex-col items-center gap-2 p-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50">
+            <Lock size={22} className="text-amber-600" />
+          </div>
+          <p className="text-sm text-text-3">{trialBlocked}</p>
+          <button
+            onClick={() => navigate(`/courses/${courseId}`)}
+            className="btn-primary mt-2 w-full"
+          >
+            Unlock full access
+          </button>
         </div>
       </Layout>
     );
